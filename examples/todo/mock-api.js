@@ -3,12 +3,24 @@
  *
  * It replaces window.fetch so requests to .../api/... are answered in the browser.
  * Todos are saved in localStorage, so they survive a page refresh.
- * Swap this file out for a real server and the page doesn't need to change.
+ *
+ * The API is shaped for the page, not the database: every endpoint answers with
+ * the WHOLE view, ready to render, like a server-side partial but in JSON:
+ *
+ *   {
+ *     filter: "all",                                // which filter button is selected
+ *     todos:  [{ id, title, done }, ...],           // already filtered
+ *     stats:  { total, done, open, percent },       // already counted
+ *     error:  "Title is required"                   // only when something went wrong
+ *   }
+ *
+ * So the page never has to work anything out: it just draws what it's given.
  */
 (function () {
   "use strict";
 
-  var STORAGE_KEY = "jsonx-todos";
+  var STORAGE_KEY = "jsonx-todos-v2";
+  var FILTERS = ["all", "active", "done"];
 
   var todos = load() || [
     { id: 1, title: "Try jsonx with Web Awesome", done: true },
@@ -22,60 +34,60 @@
   function save() {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(todos)); } catch (e) { /* private mode */ }
   }
-  function nextId() {
-    return todos.reduce(function (max, t) { return Math.max(max, t.id); }, 0) + 1;
-  }
-  function find(id) {
-    return todos.find(function (t) { return t.id === Number(id); });
-  }
 
-  // Each route: [method, path pattern, handler(match, body, query)].
-  // A handler returns plain data (status 200) or [status, data].
-  var routes = [
-    ["GET", /^\/api\/todos$/, function (m, body, query) {
-      var filter = query.get("filter") || "all";
-      return todos.filter(function (t) {
+  // Builds the view the page renders.
+  function view(filter, error) {
+    if (FILTERS.indexOf(filter) === -1) filter = "all";
+    var done = todos.filter(function (t) { return t.done; }).length;
+    var result = {
+      filter: filter,
+      todos: todos.filter(function (t) {
         return filter === "all" || (filter === "done" ? t.done : !t.done);
-      });
-    }],
-
-    ["POST", /^\/api\/todos$/, function (m, body) {
-      var title = (body.title || "").trim();
-      if (!title) return [400, { error: "Title is required" }];
-      var todo = { id: nextId(), title: title, done: false };
-      todos.push(todo);
-      save();
-      return [201, todo];
-    }],
-
-    ["PUT", /^\/api\/todos\/(\d+)$/, function (m, body) {
-      var todo = find(m[1]);
-      if (!todo) return [404, { error: "Not found" }];
-      if (body.toggle) todo.done = !todo.done;
-      save();
-      return todo;
-    }],
-
-    ["DELETE", /^\/api\/todos\/completed$/, function () {
-      todos = todos.filter(function (t) { return !t.done; });
-      save();
-      return { ok: true };
-    }],
-
-    ["DELETE", /^\/api\/todos\/(\d+)$/, function (m) {
-      todos = todos.filter(function (t) { return t.id !== Number(m[1]); });
-      save();
-      return [204, null];
-    }],
-
-    ["GET", /^\/api\/stats$/, function () {
-      var done = todos.filter(function (t) { return t.done; }).length;
-      return {
+      }),
+      stats: {
         total: todos.length,
         done: done,
         open: todos.length - done,
         percent: todos.length ? Math.round((done / todos.length) * 100) : 0
-      };
+      }
+    };
+    if (error) result.error = error;
+    return result;
+  }
+
+  // Each route: [method, path pattern, handler(match, values)] -> view.
+  // `values` holds the query string (GET/DELETE) or JSON body (POST).
+  var routes = [
+    ["GET", /^\/api\/todos$/, function (m, values) {
+      return view(values.filter);
+    }],
+
+    ["POST", /^\/api\/todos$/, function (m, values) {
+      var title = (values.title || "").trim();
+      // A problem is just part of the view: the page shows `error` like anything else.
+      if (!title) return view(values.filter, "Title is required");
+      var id = todos.reduce(function (max, t) { return Math.max(max, t.id); }, 0) + 1;
+      todos.push({ id: id, title: title, done: false });
+      save();
+      return view(values.filter);
+    }],
+
+    ["POST", /^\/api\/todos\/(\d+)\/toggle$/, function (m, values) {
+      todos.forEach(function (t) { if (t.id === Number(m[1])) t.done = !t.done; });
+      save();
+      return view(values.filter);
+    }],
+
+    ["DELETE", /^\/api\/todos\/completed$/, function (m, values) {
+      todos = todos.filter(function (t) { return !t.done; });
+      save();
+      return view(values.filter);
+    }],
+
+    ["DELETE", /^\/api\/todos\/(\d+)$/, function (m, values) {
+      todos = todos.filter(function (t) { return t.id !== Number(m[1]); });
+      save();
+      return view(values.filter);
     }]
   ];
 
@@ -90,21 +102,20 @@
     // Works wherever the page is hosted, e.g. /js-framework/examples/todo/api/todos
     var path = url.pathname.slice(at);
     var method = (options.method || "GET").toUpperCase();
-    var body = options.body ? JSON.parse(options.body) : {};
+    var values = Object.fromEntries(url.searchParams);
+    if (options.body) Object.assign(values, JSON.parse(options.body));
 
     for (var i = 0; i < routes.length; i++) {
       var match = routes[i][0] === method && path.match(routes[i][1]);
       if (!match) continue;
-      var result = routes[i][2](match, body, url.searchParams);
-      var hasStatus = Array.isArray(result) && typeof result[0] === "number";
-      var status = hasStatus ? result[0] : 200;
-      var data = hasStatus ? result[1] : result;
-      return later(status === 204
-        ? new Response(null, { status: 204 })
-        : new Response(JSON.stringify(data), { status: status, headers: { "Content-Type": "application/json" } }));
+      return later(json(200, routes[i][2](match, values)));
     }
-    return later(new Response(JSON.stringify({ error: "No route" }), { status: 404 }));
+    return later(json(404, { error: "No route for " + method + " " + path }));
   };
+
+  function json(status, data) {
+    return new Response(JSON.stringify(data), { status: status, headers: { "Content-Type": "application/json" } });
+  }
 
   // A short wait, like a real network, so the loading state is visible.
   function later(response) {

@@ -13,6 +13,36 @@ A tiny htmx-style framework for JSON APIs. You add attributes to your HTML; json
 </script>
 ```
 
+## The opinionated way: regions
+
+jsonx assumes your API is shaped for the page. Instead of small resources that the browser has to stitch together, each endpoint answers with the **whole view, ready to draw**, like a server-side partial render but in JSON. Then the page needs almost no wiring:
+
+```html
+<wa-card jx-get="api/todos" jx-template="#todo-app"></wa-card>
+
+<script type="text/ejs" id="todo-app">
+  <input type="hidden" name="filter" value="<%= data.filter %>">
+  <wa-input name="title"></wa-input>
+  <wa-button jx-post="api/todos">Add</wa-button>
+
+  <% data.todos.forEach(function (todo) { %>
+    <wa-checkbox <%= todo.done ? 'checked' : '' %> jx-post="api/todos/<%= todo.id %>/toggle"><%= todo.title %></wa-checkbox>
+  <% }) %>
+</script>
+```
+
+An element with a `jx-template` is a **region**, and three rules do the rest:
+
+1. **A region loads itself.** A `<wa-card>` can't be clicked, so its default trigger is `load`.
+2. **Results re-render the region.** A button inside a region doesn't need `jx-target` or `jx-template`. Whatever it calls, the response is drawn with the region's template.
+3. **A region is a form without the `<form>`.** Every request from inside it sends the region's named controls. Here that's `title` and the hidden `filter`, so the server always knows the current filter.
+
+Errors are part of the view too: if the title is empty, the server sends the same view with an `error` field, and the template shows it.
+
+The trade-off: re-rendering a region replaces everything in it, including anything half-typed in an input. Keep a region's state in the view, or make regions small.
+
+The [todo app](examples/todo/) works this way. The finer-grained attributes below (`jx-target`, `jx-swap`, `jx-include`) are still there for the cases regions don't fit.
+
 **Live demos:** https://crunchy000.github.io/js-framework/
 
 - [Todo app](https://crunchy000.github.io/js-framework/examples/todo/), built with [Web Awesome](https://webawesome.com) components
@@ -26,7 +56,7 @@ Open `examples/basic/index.html` in a browser. There's no build step and no serv
 
 | File | What it is |
 |---|---|
-| `jsonx.js` | The framework (about 380 lines, heavily commented). Read this first. |
+| `jsonx.js` | The framework (about 430 lines, heavily commented). Read this first. |
 | `vendor/ejs.min.js` | EJS 3.1.10's browser build (Apache-2.0, see `vendor/ejs-LICENSE.txt`). |
 | `examples/todo/` | The Web Awesome todo app, with its own mock API. |
 | `examples/basic/` | The feature tour, with three demo web components in `components.js`. |
@@ -39,9 +69,9 @@ Open `examples/basic/index.html` in a browser. There's no build step and no serv
 | Attribute | What it does | Default |
 |---|---|---|
 | `jx-get`, `jx-post`, `jx-put`, `jx-patch`, `jx-delete` | The URL to call, and with which HTTP method. | (required) |
-| `jx-trigger` | The event that starts the request. Any event name works, including custom events. Add `delay:300ms` to wait until events stop (good for search boxes), or `from:#other` to listen on another element. Use `load` to run once on page load. List several with commas. | depends on the element, see below |
-| `jx-template` | Selector of a `<script type="text/ejs">` that turns the JSON into HTML. The JSON is available as `data`. | none (nothing is rendered) |
-| `jx-target` | Where the result goes: a CSS selector, `this`, or `closest <selector>`. | the element itself |
+| `jx-trigger` | The event that starts the request. Any event name works, including custom events. Add `delay:300ms` to wait until events stop (good for search boxes), or `from:#other` to listen on another element. Use `keydown[key=Enter]` to fire only for one key. Use `load` to run once on page load. List several with commas. | depends on the element, see below |
+| `jx-template` | Selector of a `<script type="text/ejs">` that turns the JSON into HTML. The JSON is available as `data`. An element with a template is a region. | the region's template |
+| `jx-target` | Where the result goes: a CSS selector, `this`, or `closest <selector>`. | the region, or else the element itself |
 | `jx-swap` | How the result goes in: `innerHTML`, `outerHTML`, `beforeend`, `afterbegin`, `beforebegin`, `afterend`, `delete` (remove the target), `none`, or `prop:<name>` (set a property on the target). | `innerHTML` |
 | `jx-include` | Also send the values of other elements, e.g. `jx-include="#filter"`. | none |
 | `jx-vals` | Extra JSON to send, e.g. `jx-vals='{"toggle": true}'`. | none |
@@ -59,11 +89,13 @@ In short: things you click get `click`, things you change get `change`, and thin
 
 Writing a trigger for the element itself replaces the default. Triggers with `from:` listen to *other* elements, so they're added on top of the default. For example, `<ul jx-get="/api/todos" jx-trigger="change from:#filter">` loads with the page **and** reloads when the filter changes.
 
-**What gets sent:** the fields of the closest `<form>`, or the element's own `name` and `value`, plus the values of any `jx-include` elements, plus `jx-vals`. GET and DELETE send them as a query string; POST, PUT and PATCH send a JSON body.
+**What gets sent:** the named controls in the element's region (or the fields of its `<form>`), then the element's own `name` and `value`, then the values of any `jx-include` elements, then `jx-vals`. Later ones win, so `jx-vals='{"filter": "done"}'` on a button overrides the hidden filter for that one request. GET and DELETE send them as a query string; POST, PUT and PATCH send a JSON body.
 
 **Templates can include each other:** `<%- include("#todo-item", { data: todo }) %>`.
 
 **While a request runs**, the element has the class `jx-loading`, so you can style it.
+
+**Focus survives re-renders:** after a render, jsonx focuses the first new element with `autofocus`. That's how the todo input stays ready for the next todo.
 
 ## Events
 
@@ -77,7 +109,7 @@ jsonx fires DOM events you can listen to from page code. They bubble and cross s
 
 ## Web components
 
-There are three ways jsonx and web components work together. The feature tour has one of each, and the todo app uses Web Awesome's form controls (`<wa-input>`, `<wa-checkbox>`, `<wa-radio-group>`) the same way you'd use native ones.
+There are three ways jsonx and web components work together. The feature tour has one of each, and the todo app uses Web Awesome's `<wa-input>`, `<wa-checkbox>` and `<wa-button>` the same way you'd use native controls.
 
 1. **Components that fire events.** `jx-trigger` accepts any event name, so `<star-rating jx-post="/api/feedback" jx-trigger="rating-changed">` works. jsonx reads the component's `name` attribute and `value` property, like an `<input>`. Components inside a form that are [form-associated](https://developer.mozilla.org/en-US/docs/Web/API/ElementInternals) are picked up by the form automatically.
 2. **Components that take JSON as a property.** `jx-swap="prop:stats"` skips templates and does `target.stats = data`. The component decides how to draw itself. This is often the cleanest fit, because components usually want data, not HTML.

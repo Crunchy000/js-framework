@@ -74,54 +74,61 @@ async function todoExample(browser, base) {
   console.log('\n# examples/todo (Web Awesome)');
   const p = await newPage(browser);
   await p.goto(base + '/examples/todo/');
-  const items = '#list li:not(.empty)';
-  const stats = () => p.locator('#stats').innerText();
+  const items = '#app .todos li:not(.empty)';
+  const count = (n) => until(p, ([sel, n]) => document.querySelectorAll(sel).length === n, [items, n]);
+  const statsSay = (text) => until(p, (text) => document.querySelector('#app').innerText.includes(text), text);
+  const filterButton = (name) => p.locator('#app wa-button-group wa-button', { hasText: name });
 
-  await until(p, (sel) => document.querySelectorAll(sel).length === 3, items);
-  check('loads 3 todos', true);
-  await until(p, () => document.querySelector('#stats').innerText.includes('1 of 3 done'));
-  check('stats load', true);
+  await count(3);
+  await statsSay('1 of 3 done');
+  check('loads the whole view: 3 todos and stats', true);
 
   await p.locator('wa-input[name=title] input').fill('Buy milk');
-  await p.locator('wa-button[type=submit]').click();
-  await until(p, (sel) => document.querySelectorAll(sel).length === 4, items);
-  check('adds a todo via <wa-input> + <wa-button type=submit>', (await p.locator(items).nth(3).innerText()).includes('Buy milk'));
-  await until(p, () => !document.querySelector('wa-input[name=title]').value);
-  check('input is cleared after adding', true);
-  await until(p, () => document.querySelector('#stats').innerText.includes('1 of 4 done'));
-  check('stats refresh after adding', true);
+  await p.locator('wa-button[variant=brand]', { hasText: 'Add' }).click();
+  await count(4);
+  check('Add button sends the title from the region', (await p.locator(items).nth(3).innerText()).includes('Buy milk'));
+  await statsSay('1 of 4 done');
+  check('stats come back in the same response', true);
+  check('input is empty after adding', !(await p.evaluate(() => document.querySelector('wa-input[name=title]').value)));
+
+  await p.locator('wa-input[name=title] input').fill('Walk the dog');
+  await p.locator('wa-input[name=title] input').press('Enter');
+  await count(5);
+  check('Enter in the input adds a todo (keydown[key=Enter])', true);
+  await until(p, () => document.activeElement && document.activeElement.matches('wa-input[name=title]'));
+  check('input keeps focus after re-render (autofocus)', true);
 
   await p.locator(items).nth(3).locator('wa-checkbox').click();
-  await until(p, () => document.querySelectorAll('#list li.done').length === 2);
-  check('<wa-checkbox> change toggles a todo', true);
-  await until(p, () => document.querySelector('#stats').innerText.includes('2 of 4 done'));
-  check('stats refresh after toggling (row was replaced)', true);
+  await statsSay('2 of 5 done');
+  check('<wa-checkbox> toggles a todo', await p.locator('#app .todos li.done').count() === 2);
 
-  await p.locator('wa-radio[value=done]').click();
-  await until(p, (sel) => document.querySelectorAll(sel).length === 2, items);
-  check('<wa-radio-group> filter: done', true);
-  await p.locator('wa-radio[value=active]').click();
-  await until(p, (sel) => document.querySelectorAll(sel).length === 2 && !document.querySelector('#list li.done'), items);
-  check('<wa-radio-group> filter: active', true);
-  await p.locator('wa-radio[value=all]').click();
-  await until(p, (sel) => document.querySelectorAll(sel).length === 4, items);
+  await filterButton('Done').click();
+  await count(2);
+  check('filter: done', true);
+  await p.locator(items).nth(0).locator('wa-checkbox').click();
+  await count(1);
+  check('the filter is remembered by later requests (hidden input)', true);
+  await filterButton('Active').click();
+  await until(p, (sel) => document.querySelectorAll(sel).length === 4 && !document.querySelector('#app .todos li.done'), items);
+  check('filter: active', true);
+  await filterButton('All').click();
+  await count(5);
 
   await p.locator(items).nth(0).locator('wa-button').click();
-  await until(p, (sel) => document.querySelectorAll(sel).length === 3, items);
-  await until(p, () => document.querySelector('#stats').innerText.includes('of 3 done'));
-  check('deletes a todo, stats follow', true);
+  await count(4);
+  await statsSay('of 4 done');
+  check('deletes a todo', true);
 
-  await p.locator('#clear').click();
-  await until(p, () => document.querySelector('#stats').innerText.includes('0 of 2 done'));
-  await until(p, (sel) => document.querySelectorAll(sel).length === 2, items);
+  await p.locator('#app wa-button', { hasText: 'Clear completed' }).click();
+  await statsSay('0 of 3 done');
   check('clear completed', true);
 
-  await p.locator('wa-button[type=submit]').click();
-  await until(p, () => !document.querySelector('#error').hidden && document.querySelector('#error').textContent.includes('Title is required'));
-  check('empty todo shows the server error', true);
+  await p.locator('wa-button[variant=brand]', { hasText: 'Add' }).click();
+  await statsSay('Title is required');
+  check('an empty todo shows the error from the view', true);
 
   await p.reload();
-  await until(p, (sel) => document.querySelectorAll(sel).length === 2, items);
+  await count(3);
   check('todos survive a reload (localStorage)', true);
   if (process.env.SCREENSHOT) await p.screenshot({ path: process.env.SCREENSHOT, fullPage: true });
   check('no page errors', p.errors.length === 0);

@@ -11,6 +11,11 @@
  *           jx-target="#todos"          <- where the HTML goes (optional, default: this element)
  *           jx-swap="innerHTML">        <- how it goes in (optional, default: innerHTML)
  *
+ * Regions: an element with jx-template is a "region". Buttons inside it don't need
+ * jx-target or jx-template: their results re-render the region, and each request
+ * sends the region's named controls, like a form would. Pair this with an API that
+ * returns the whole view as JSON and most pages need only jx-get/jx-post.
+ *
  * Web components: jsonx works inside shadow DOM (call jsonx.process(this.shadowRoot)),
  * listens for custom events, and can hand JSON straight to a component as a
  * property with jx-swap="prop:items" instead of rendering HTML.
@@ -78,6 +83,7 @@
       source.addEventListener(trigger.event, function (event) {
         // The element may have been removed from the page since we started listening.
         if (!el.isConnected) return;
+        if (trigger.filter && String(event[trigger.filter.property]) !== trigger.filter.value) return;
 
         // Stop forms from reloading the page, and links from navigating.
         if (event.type === "submit" || el.tagName === "A") event.preventDefault();
@@ -117,7 +123,14 @@
     var raw = el.getAttribute("jx-trigger") || "";
     var triggers = raw.split(",").filter(function (one) { return one.trim(); }).map(function (one) {
       var parts = one.trim().split(/\s+/);
-      var trigger = { event: parts[0], delay: 0, from: null };
+      var trigger = { event: parts[0], delay: 0, from: null, filter: null };
+
+      // "keydown[key=Enter]" only fires when event.key is "Enter".
+      var filter = parts[0].match(/^(.+)\[(\w+)=([^\]]+)\]$/);
+      if (filter) {
+        trigger.event = filter[1];
+        trigger.filter = { property: filter[2], value: filter[3] };
+      }
       parts.slice(1).forEach(function (p) {
         var delay = p.match(/^delay:(\d+)(ms|s)?$/);
         if (delay) trigger.delay = Number(delay[1]) * (delay[2] === "s" ? 1000 : 1);
@@ -127,7 +140,7 @@
     });
 
     var hasOwnTrigger = triggers.some(function (t) { return !t.from; });
-    if (!hasOwnTrigger) triggers.unshift({ event: defaultTrigger(el), delay: 0, from: null });
+    if (!hasOwnTrigger) triggers.unshift({ event: defaultTrigger(el), delay: 0, from: null, filter: null });
     return triggers;
   }
 
@@ -165,13 +178,17 @@
     }
   }
 
-  // Collects the values to send: the closest form's fields (or the element's own
-  // name/value), the values of any elements named in jx-include="#a, #b",
-  // plus anything in jx-vals='{"key": "value"}'.
+  // Collects the values to send, in this order (later ones win):
+  //   1. every named control in the element's region (or its <form>), like a form would
+  //   2. the element's own name and value
+  //   3. the values of any elements in jx-include="#a, #b"
+  //   4. anything in jx-vals='{"key": "value"}'
   function collectValues(el) {
     var values = {};
     var form = el.tagName === "FORM" ? el : el.closest("form");
-    addValues(values, form || el);
+    var region = form || findRegion(el);
+    if (region) addValues(values, region);
+    if (region !== el) addValues(values, el);
 
     var include = el.getAttribute("jx-include");
     if (include) {
@@ -186,16 +203,26 @@
     return values;
   }
 
-  // Adds one element's values: every field if it's a form, otherwise its name and value.
+  // Adds values from one element: every field if it's a form, every named control
+  // inside it if it's a region, otherwise just its own name and value.
   function addValues(values, el) {
     if (el.tagName === "FORM") {
       // FormData also picks up form-associated custom elements.
       new FormData(el).forEach(function (value, key) { values[key] = value; });
       return;
     }
+    if (el.hasAttribute("jx-template")) {
+      el.querySelectorAll("[name]").forEach(function (control) { addValue(values, control); });
+    }
+    addValue(values, el);
+  }
+
+  // Works for <input> and for any web component with a `value` property.
+  function addValue(values, el) {
     var name = el.getAttribute("name");
-    // Works for <input> and for any web component with a `value` property.
-    if (name && el.value !== undefined && el.value !== null) values[name] = el.value;
+    if (!name || el.value === undefined || el.value === null || el.disabled) return;
+    if ((el.type === "checkbox" || el.type === "radio") && !el.checked) return;
+    values[name] = el.value;
   }
 
   function issueRequest(el) {
@@ -253,8 +280,16 @@
   // 3. Turning JSON into HTML and putting it on the page
   // ---------------------------------------------------------------------------
 
+  // A "region" is the nearest element (the element itself, or one of its parents)
+  // that has a jx-template. A button inside a region doesn't need its own
+  // jx-target or jx-template: its result re-renders the whole region.
+  function findRegion(el) {
+    return el.closest("[jx-template]");
+  }
+
   function render(el, data) {
-    var target = findTarget(el);
+    var region = findRegion(el);
+    var target = el.hasAttribute("jx-target") ? findTarget(el) : (region || el);
     var swap = el.getAttribute("jx-swap") || "innerHTML";
 
     // "prop:items" skips HTML entirely: it sets target.items = data.
@@ -267,7 +302,7 @@
 
     // No template (or swap="none"/"delete") means "call the API, don't render anything".
     var html = "";
-    var templateSelector = el.getAttribute("jx-template");
+    var templateSelector = el.getAttribute("jx-template") || (region && region.getAttribute("jx-template"));
     if (templateSelector && swap !== "none" && swap !== "delete") {
       // Inside the template, the JSON is available as `data`.
       html = getTemplate(templateSelector, el)({ data: data });
@@ -279,6 +314,12 @@
 
     var newContent = swapContent(target, html, swap);
     newContent.forEach(process); // new HTML might contain jx- attributes too
+
+    // Re-rendering loses keyboard focus, so put it back on anything marked autofocus.
+    newContent.forEach(function (node) {
+      var focus = node.matches("[autofocus]") ? node : node.querySelector("[autofocus]");
+      if (focus) setTimeout(function () { focus.focus(); });
+    });
 
     var announcer = el.isConnected ? el : (fallback && fallback.isConnected ? fallback : document);
     fire(announcer, "jx:afterRender", { data: data, target: target, source: el });
