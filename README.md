@@ -56,7 +56,7 @@ Open `examples/basic/index.html` in a browser. There's no build step and no serv
 
 | File | What it is |
 |---|---|
-| `jsonx.js` | The framework (about 430 lines, heavily commented). Read this first. |
+| `jsonx.js` | The framework (about 410 lines, heavily commented). Read this first. |
 | `vendor/ejs.min.js` | EJS 3.1.10's browser build (Apache-2.0, see `vendor/ejs-LICENSE.txt`). |
 | `examples/todo/` | The Web Awesome todo app, with its own mock API. |
 | `examples/basic/` | The feature tour, with three demo web components in `components.js`. |
