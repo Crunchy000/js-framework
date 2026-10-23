@@ -9,12 +9,15 @@
  *
  *   {
  *     filter: "all",                                // which filter button is selected
+ *     filters: [{ name, label, selected, variant, appearance }, ...],  // ready-made buttons
  *     todos:  [{ id, title, done }, ...],           // already filtered
  *     stats:  { total, done, open, percent },       // already counted
  *     error:  "Title is required"                   // only when something went wrong
  *   }
  *
  * So the page never has to work anything out: it just draws what it's given.
+ * That's what lets the same API drive both the EJS and the Mustache todo demos:
+ * Mustache templates can't contain logic, so everything they show is in here.
  */
 (function () {
   "use strict";
@@ -41,6 +44,16 @@
     var done = todos.filter(function (t) { return t.done; }).length;
     var result = {
       filter: filter,
+      filters: FILTERS.map(function (name) {
+        var selected = name === filter;
+        return {
+          name: name,
+          label: name[0].toUpperCase() + name.slice(1),
+          selected: selected,
+          variant: selected ? "brand" : "neutral",
+          appearance: selected ? "accent" : "outlined"
+        };
+      }),
       todos: todos.filter(function (t) {
         return filter === "all" || (filter === "done" ? t.done : !t.done);
       }),

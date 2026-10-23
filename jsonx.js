@@ -20,7 +20,9 @@
  * listens for custom events, and can hand JSON straight to a component as a
  * property with jx-swap="prop:items" instead of rendering HTML.
  *
- * Requires EJS's browser build (ejs.min.js) to be loaded first, which gives us `window.ejs`.
+ * Templates: load EJS (ejs.min.js) for <script type="text/ejs"> templates, or Mustache
+ * (mustache.min.js) for <script type="text/mustache">, before jsonx. Other engines
+ * can be added with jsonx.engine(type, compile).
  */
 (function () {
   "use strict";
@@ -304,8 +306,7 @@
     var html = "";
     var templateSelector = el.getAttribute("jx-template") || (region && region.getAttribute("jx-template"));
     if (templateSelector && swap !== "none" && swap !== "delete") {
-      // Inside the template, the JSON is available as `data`.
-      html = getTemplate(templateSelector, el)({ data: data });
+      html = getTemplate(templateSelector, el)(data);
     }
 
     // If the swap removes the element that made the request (say, a delete button
@@ -337,8 +338,43 @@
     return target;
   }
 
-  // Templates live in <script type="text/ejs" id="...">. (A <script> keeps its text
-  // exactly as written; a <template> tag would mangle EJS's "<%" tags.)
+  // ---------------------------------------------------------------------------
+  // Template engines
+  // ---------------------------------------------------------------------------
+  //
+  // Templates live in <script type="text/<engine>" id="...">, and the type picks
+  // the engine: type="text/ejs" uses EJS, type="text/mustache" uses Mustache.
+  // (A <script> keeps its text exactly as written; a <template> tag would mangle
+  // tags like EJS's "<%".)
+  //
+  // An engine is one function: compile(text, lookup) returns render(data) -> html.
+  // `lookup(name)` finds another template's text, for includes and partials.
+  // Add your own with jsonx.engine("text/handlebars", function (text, lookup) { ... }).
+  var engines = {};
+
+  function engine(type, compile) {
+    engines[type] = compile;
+  }
+
+  // EJS: the JSON is available as `data`, and templates can include each other:
+  //   <%- include("#todo-item", { data: todo }) %>
+  engine("text/ejs", function (text, lookup) {
+    var render = window.ejs.compile(text, {
+      includer: function (name) { return { template: lookup(name) }; }
+    });
+    return function (data) { return render({ data: data }); };
+  });
+
+  // Mustache: the JSON is the top level, so it's {{title}} rather than {{data.title}}.
+  // Partials use a template's id: {{> todo-item}} renders <script id="todo-item">.
+  engine("text/mustache", function (text, lookup) {
+    window.Mustache.parse(text); // check the template once, up front
+    return function (data) {
+      return window.Mustache.render(text, data, function (name) { return lookup("#" + name); });
+    };
+  });
+
+  // Finds a template and compiles it with the engine its type names.
   // We look in the element's own root first, then fall back to the main document,
   // so a component can ship its own templates or share the page's.
   function getTemplate(selector, el) {
@@ -350,13 +386,13 @@
     if (!templateCache.has(root)) templateCache.set(root, {});
     var cache = templateCache.get(root);
     if (!cache[selector]) {
-      cache[selector] = ejs.compile(node.textContent, {
-        // Lets one template use another: <%- include("#todo-item", { data: todo }) %>
-        includer: function (includeSelector) {
-          var inner = root.querySelector(includeSelector) || document.querySelector(includeSelector);
-          if (!inner) throw new Error('[jsonx] include "' + includeSelector + '" matched nothing');
-          return { template: inner.textContent };
-        }
+      var type = node.getAttribute("type") || "text/ejs";
+      var compile = engines[type];
+      if (!compile) throw new Error('[jsonx] no template engine for type "' + type + '"');
+      cache[selector] = compile(node.textContent, function (name) {
+        var inner = root.querySelector(name) || document.querySelector(name);
+        if (!inner) throw new Error('[jsonx] template "' + name + '" matched nothing');
+        return inner.textContent;
       });
     }
     return cache[selector];
@@ -395,7 +431,7 @@
   // ---------------------------------------------------------------------------
 
   // A small public API, for page code and web components.
-  window.jsonx = { process: process, request: issueRequest, render: render };
+  window.jsonx = { process: process, request: issueRequest, render: render, engine: engine };
 
   function start() {
     process(document.body);

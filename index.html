@@ -20,7 +20,7 @@
   <main class="wa-stack wa-gap-xl">
     <header class="wa-stack wa-gap-xs">
       <h1 class="wa-heading-3xl">jsonx</h1>
-      <p class="wa-body-l">A tiny htmx-style framework for JSON APIs. HTML attributes call your API, EJS templates turn the JSON into HTML in the browser, and it plays nicely with web components.</p>
+      <p class="wa-body-l">A tiny htmx-style framework for JSON APIs. HTML attributes call your API, templates (EJS, Mustache or your own) turn the JSON into HTML in the browser, and it plays nicely with web components.</p>
     </header>
 
 <pre><code>&lt;button jx-get="/api/todos" jx-template="#todo-list" jx-target="#todos"&gt;Load&lt;/button&gt;
@@ -37,6 +37,11 @@
           <h2 class="wa-heading-l">Todo app</h2>
           <p>A Web Awesome todo list: add, tick off, filter, delete and clear. Saved in your browser.</p>
           <wa-button slot="footer" variant="brand" href="examples/todo/">Open <wa-icon slot="end" name="arrow-right"></wa-icon></wa-button>
+        </wa-card>
+      <wa-card>
+          <h2 class="wa-heading-l">Todo app, Mustache</h2>
+          <p>The same app and API, drawn with a logic-less Mustache template instead of EJS.</p>
+          <wa-button slot="footer" href="examples/todo-mustache/">Open <wa-icon slot="end" name="arrow-right"></wa-icon></wa-button>
         </wa-card>
       <wa-card>
           <h2 class="wa-heading-l">Feature tour</h2>

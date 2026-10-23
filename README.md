@@ -1,6 +1,6 @@
 # jsonx
 
-A tiny htmx-style framework for JSON APIs. You add attributes to your HTML; jsonx calls your API, renders the JSON with an EJS template in the browser, and puts the result on the page. It also works with web components.
+A tiny htmx-style framework for JSON APIs. You add attributes to your HTML; jsonx calls your API, renders the JSON with a template in the browser (EJS, Mustache or your own engine), and puts the result on the page. It also works with web components.
 
 ```html
 <button jx-get="/api/todos" jx-template="#todo-list" jx-target="#todos">Load todos</button>
@@ -46,6 +46,7 @@ The [todo app](examples/todo/) works this way. The finer-grained attributes belo
 **Live demos:** https://crunchy000.github.io/js-framework/
 
 - [Todo app](https://crunchy000.github.io/js-framework/examples/todo/), built with [Web Awesome](https://webawesome.com) components
+- [Todo app with Mustache](https://crunchy000.github.io/js-framework/examples/todo-mustache/): the same app and API, with a logic-less Mustache template
 - [Feature tour](https://crunchy000.github.io/js-framework/examples/basic/), every attribute plus three web component patterns
 
 ## Try it locally
@@ -56,12 +57,14 @@ Open `examples/basic/index.html` in a browser. There's no build step and no serv
 
 | File | What it is |
 |---|---|
-| `jsonx.js` | The framework (about 410 lines, heavily commented). Read this first. |
+| `jsonx.js` | The framework (about 440 lines, heavily commented). Read this first. |
 | `vendor/ejs.min.js` | EJS 3.1.10's browser build (Apache-2.0, see `vendor/ejs-LICENSE.txt`). |
-| `examples/todo/` | The Web Awesome todo app, with its own mock API. |
+| `vendor/mustache.min.js` | Mustache.js 4.2.0 (MIT, see `vendor/mustache-LICENSE.txt`). |
+| `examples/todo/` | The Web Awesome todo app (EJS), with the mock API both todo demos use. |
+| `examples/todo-mustache/` | The same todo app with a Mustache template. |
 | `examples/basic/` | The feature tour, with three demo web components in `components.js`. |
 | `index.html` | The GitHub Pages home page. |
-| `tests/` | A browser test that clicks through both examples. |
+| `tests/` | A browser test that clicks through every example. |
 | `.github/workflows/pages.yml` | Runs the tests, then publishes the site to GitHub Pages on every push to `main`. |
 
 ## Attributes
@@ -91,7 +94,25 @@ Writing a trigger for the element itself replaces the default. Triggers with `fr
 
 **What gets sent:** the named controls in the element's region (or the fields of its `<form>`), then the element's own `name` and `value`, then the values of any `jx-include` elements, then `jx-vals`. Later ones win, so `jx-vals='{"filter": "done"}'` on a button overrides the hidden filter for that one request. GET and DELETE send them as a query string; POST, PUT and PATCH send a JSON body.
 
-**Templates can include each other:** `<%- include("#todo-item", { data: todo }) %>`.
+## Template engines
+
+The template's `type` picks the engine, so one page can even mix them:
+
+| Type | Engine | Data is | Include another template |
+|---|---|---|---|
+| `text/ejs` | [EJS](https://ejs.co) (load `vendor/ejs.min.js`) | `data`, e.g. `<%= data.title %>` | `<%- include("#todo-item", { data: todo }) %>` |
+| `text/mustache` | [Mustache](https://mustache.github.io) (load `vendor/mustache.min.js`) | the top level, e.g. `{{title}}` | `{{> todo-item}}` |
+
+**Which one?** EJS lets templates run JavaScript, which is handy for small bits of display logic. Mustache has no logic at all, so the API has to send everything ready to show. That fits the regions approach well: compare [the EJS todo](examples/todo/index.html) with [the Mustache todo](examples/todo-mustache/index.html). They share one mock API, which sends ready-made filter buttons so the Mustache template has nothing to work out.
+
+**Add your own** with `jsonx.engine(type, compile)`. `compile(text, lookup)` gets the template's text and returns a function that turns data into HTML. `lookup(selector)` returns another template's text, for includes. For example, [Handlebars](https://handlebarsjs.com):
+
+```js
+jsonx.engine("text/handlebars", function (text, lookup) {
+  return Handlebars.compile(text);
+});
+```
+
 
 **While a request runs**, the element has the class `jx-loading`, so you can style it.
 

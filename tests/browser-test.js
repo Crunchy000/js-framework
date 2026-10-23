@@ -70,10 +70,11 @@ async function basicExample(browser, base) {
   if (p.errors.length) console.log(p.errors);
 }
 
-async function todoExample(browser, base) {
-  console.log('\n# examples/todo (Web Awesome)');
+// The EJS and Mustache todo demos share an API and must behave the same.
+async function todoExample(browser, base, folder) {
+  console.log('\n# examples/' + folder + ' (Web Awesome)');
   const p = await newPage(browser);
-  await p.goto(base + '/examples/todo/');
+  await p.goto(base + '/examples/' + folder + '/');
   const items = '#app .todos li:not(.empty)';
   const count = (n) => until(p, ([sel, n]) => document.querySelectorAll(sel).length === n, [items, n]);
   const statsSay = (text) => until(p, (text) => document.querySelector('#app').innerText.includes(text), text);
@@ -140,7 +141,8 @@ async function todoExample(browser, base) {
   const browser = await chromium.launch();
   try {
     await basicExample(browser, server.url);
-    await todoExample(browser, server.url);
+    await todoExample(browser, server.url, 'todo');
+    await todoExample(browser, server.url, 'todo-mustache');
   } catch (e) {
     console.log('FAIL', e.message);
     failures++;
