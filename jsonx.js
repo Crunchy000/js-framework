@@ -306,9 +306,23 @@
     // No template (or swap="none"/"delete") means "call the API, don't render anything".
     var html = "";
     var templateSelector = el.getAttribute("jx-template") || (region && region.getAttribute("jx-template"));
-    if (templateSelector && swap !== "none" && swap !== "delete") {
-      html = getTemplate(templateSelector, el)(data);
+    var template = templateSelector && swap !== "none" && swap !== "delete" ? getTemplate(templateSelector, el) : null;
+
+    // Some engines (like jsonx-lit.js) draw straight into the target and update it
+    // in place, so there's no HTML string and nothing to swap.
+    if (template && template.into) {
+      if (swap !== "innerHTML" && swap !== "morph") {
+        throw new Error('[jsonx] jx-swap="' + swap + '" doesn\'t work with ' + templateSelector + "'s engine");
+      }
+      var firstTime = !target.__jxRendered;
+      target.__jxRendered = true;
+      template(data, target);
+      process(target); // wire up any new elements; existing ones stay wired
+      if (firstTime) focusAutofocus([target]);
+      fire(el.isConnected ? el : target, "jx:afterRender", { data: data, target: target, source: el });
+      return;
     }
+    if (template) html = template(data);
 
     // If the swap removes the element that made the request (say, a delete button
     // inside the row it deletes), we announce the result from the row's parent instead.
@@ -318,13 +332,18 @@
     newContent.forEach(process); // new HTML might contain jx- attributes too
 
     // Re-rendering loses keyboard focus, so put it back on anything marked autofocus.
-    newContent.forEach(function (node) {
-      var focus = node.matches("[autofocus]") ? node : node.querySelector("[autofocus]");
-      if (focus) setTimeout(function () { focus.focus(); });
-    });
+    focusAutofocus(newContent);
 
     var announcer = el.isConnected ? el : (fallback && fallback.isConnected ? fallback : document);
     fire(announcer, "jx:afterRender", { data: data, target: target, source: el });
+  }
+
+  // Browsers only honour `autofocus` when a page first loads, so do it for new content.
+  function focusAutofocus(nodes) {
+    nodes.forEach(function (node) {
+      var focus = node.matches("[autofocus]") ? node : node.querySelector("[autofocus]");
+      if (focus) setTimeout(function () { focus.focus(); });
+    });
   }
 
   // jx-target can be a CSS selector, "this", or "closest <selector>".
@@ -349,6 +368,8 @@
   // tags like EJS's "<%".)
   //
   // An engine is one function: compile(text, lookup) returns render(data) -> html.
+  // An engine can also draw straight into the page: return render(data, target)
+  // with render.into = true (see jsonx-lit.js).
   // `lookup(name)` finds another template's text, for includes and partials.
   // Add your own with jsonx.engine("text/handlebars", function (text, lookup) { ... }).
   var engines = {};

@@ -104,8 +104,8 @@ async function todoExample(browser, base, folder) {
   await p.locator(items).nth(3).locator('wa-checkbox').click();
   await statsSay('2 of 5 done');
   check('<wa-checkbox> toggles a todo', await p.locator('#app .todos li.done').count() === 2);
-  check('morph keeps unchanged components (same element)', await p.evaluate(() => window.firstRow === document.querySelector('#app .todos li:not(.empty) wa-checkbox')));
-  check('morph keeps half-typed text (echoed back as draft)', await p.evaluate(() => document.querySelector('wa-input[name=title]').value === 'Half-typ'));
+  check('unchanged components are kept (same element)', await p.evaluate(() => window.firstRow === document.querySelector('#app .todos li:not(.empty) wa-checkbox')));
+  check('half-typed text is kept (echoed back as draft)', await p.evaluate(() => document.querySelector('wa-input[name=title]').value === 'Half-typ'));
   await p.locator('wa-input[name=title] input').fill('');
 
   await filterButton('Done').click();
@@ -136,6 +136,27 @@ async function todoExample(browser, base, folder) {
   await p.reload();
   await count(3);
   check('todos survive a reload (localStorage)', true);
+  if (folder === 'todo-lit') {
+    const results = await p.evaluate(() => {
+      const make = (id, text) => {
+        const node = document.createElement('script');
+        node.type = 'text/mustache-lit'; node.id = id; node.textContent = text;
+        document.body.append(node);
+      };
+      make('bad', '<wa-checkbox {{#done}}checked{{/done}}></wa-checkbox>');
+      make('xss', '<p class="{{cls}}">{{text}}</p>');
+      const host = document.createElement('div');
+      host.setAttribute('jx-template', '#bad');
+      document.body.append(host);
+      let message = '';
+      try { jsonx.render(host, { done: true }); } catch (e) { message = e.message; }
+      host.setAttribute('jx-template', '#xss');
+      jsonx.render(host, { cls: '"><img src=x onerror=alert(1)>', text: '<b>hi</b>' });
+      return { message, img: !!host.querySelector('img'), b: !!host.querySelector('b'), text: host.textContent.trim() };
+    });
+    check('a tag loose inside an element gives a clear error', results.message.includes('loose inside a tag'));
+    check('values are escaped, not run as HTML', !results.img && !results.b && results.text === '<b>hi</b>');
+  }
   if (process.env.SCREENSHOT) await p.screenshot({ path: process.env.SCREENSHOT, fullPage: true });
   check('no page errors', p.errors.length === 0);
   if (p.errors.length) console.log(p.errors);
@@ -148,6 +169,7 @@ async function todoExample(browser, base, folder) {
     await basicExample(browser, server.url);
     await todoExample(browser, server.url, 'todo');
     await todoExample(browser, server.url, 'todo-mustache');
+    await todoExample(browser, server.url, 'todo-lit');
   } catch (e) {
     console.log('FAIL', e.message);
     failures++;

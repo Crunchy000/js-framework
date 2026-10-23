@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en" class="wa-cloak">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>jsonx todos (Lit)</title>
+
+  <!-- Web Awesome: theme, utilities and the component autoloader -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/styles/webawesome.css">
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
+
+  <!-- jsonx, plus the engine that renders Mustache templates with Lit.
+       The mock API is shared with the other todo demos. -->
+  <script src="../todo/mock-api.js"></script>
+  <script src="../../jsonx.js"></script>
+  <script type="module" src="../../jsonx-lit.js"></script>
+
+  <!-- Follow the visitor's light/dark setting -->
+  <script>
+    if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("wa-dark");
+  </script>
+
+  <style>
+    body { margin: 0; min-height: 100vh; background: var(--wa-color-surface-lowered); }
+    main { max-width: 640px; margin: 0 auto; padding: var(--wa-space-2xl) 16px; }
+    header p { margin: 0; color: var(--wa-color-text-quiet); }
+    .add wa-input { flex: 1 1 200px; }
+
+    .todos { list-style: none; margin: 0; padding: 0; }
+    .todos li {
+      display: flex; align-items: center; gap: var(--wa-space-s);
+      padding: var(--wa-space-xs) 0;
+      border-bottom: var(--wa-border-width-s) solid var(--wa-color-surface-border);
+    }
+    .todos li:last-child { border-bottom: 0; }
+    .todos li wa-checkbox { flex: 1; }
+    .todos li.done wa-checkbox::part(label) { text-decoration: line-through; color: var(--wa-color-text-quiet); }
+    .todos li.empty { color: var(--wa-color-text-quiet); justify-content: center; padding: var(--wa-space-l) 0; }
+
+    /* jsonx adds .jx-loading to whatever made the request, while it runs */
+    .jx-loading { opacity: .6; transition: opacity .2s; }
+    footer { text-align: center; color: var(--wa-color-text-quiet); font-size: var(--wa-font-size-s); }
+  </style>
+</head>
+<body>
+  <main class="wa-stack wa-gap-l">
+    <header class="wa-stack wa-gap-2xs">
+      <h1 class="wa-heading-2xl">Todos <wa-badge variant="neutral" style="font-size: var(--wa-font-size-s); vertical-align: middle;">Mustache + Lit</wa-badge></h1>
+      <p>The same app and the same JSON API as the <a href="../todo/">EJS</a> and <a href="../todo-mustache/">Mustache</a> versions. The template is still logic-less Mustache, but jsonx turns it into a <a href="https://lit.dev">Lit</a> template, so each update only touches the values that changed. Built with <a href="../../">jsonx</a> and <a href="https://webawesome.com">Web Awesome</a>.</p>
+    </header>
+
+    <!-- The whole app is one region: it loads itself, and every button inside re-renders it. -->
+    <wa-card id="app" jx-get="api/todos" jx-template="#todo-app">
+      <wa-skeleton effect="sheen"></wa-skeleton>
+    </wa-card>
+
+    <footer>Your todos are saved in this browser only, and shared with the other versions.</footer>
+  </main>
+
+  <!--
+    type="text/mustache-lit" means: Mustache syntax, rendered by Lit (jsonx-lit.js).
+    Mustache has no logic: no comparisons, no ternaries, no string functions.
+
+    Lit's one rule: a {{tag}} must sit between tags or in an attribute value,
+    never loose inside a tag. Lit's prefixes do the rest:
+      .value="{{draft}}"   sets the live property (right for form controls)
+      ?checked="{{x}}"     turns an attribute on or off
+    So the API sends everything ready to show (see ../todo/mock-api.js):
+      { filter, filters: [{ name, label, variant, appearance }], todos, stats, draft, error }
+
+    {{x}}           print x, HTML-escaped
+    {{#list}}...{{/list}}   repeat for each item (or show once if x is true)
+    {{^list}}...{{/list}}   show only if the list is empty (or x is false)
+    {{> todo-item}}  render the template with id="todo-item" (a partial)
+  -->
+  <script type="text/mustache-lit" id="todo-app">
+    <div class="wa-stack wa-gap-m">
+      <input type="hidden" name="filter" value="{{filter}}">
+
+      <div class="add wa-cluster wa-gap-s">
+        <wa-input name="title" placeholder="What needs doing?" aria-label="New todo" autocomplete="off" .value="{{draft}}"
+                  autofocus jx-post="api/todos" jx-trigger="keydown[key=Enter]"></wa-input>
+        <wa-button variant="brand" jx-post="api/todos">
+          <wa-icon slot="start" name="plus"></wa-icon>
+          Add
+        </wa-button>
+      </div>
+
+      {{#error}}
+        <wa-callout variant="danger" size="s">
+          <wa-icon slot="icon" name="circle-exclamation"></wa-icon>
+          {{error}}
+        </wa-callout>
+      {{/error}}
+
+      <div class="wa-split">
+        <wa-button-group label="Filter">
+          {{#filters}}
+            <wa-button size="s" variant="{{variant}}" appearance="{{appearance}}"
+                       jx-get="api/todos" jx-vals='{"filter": "{{name}}"}'>{{label}}</wa-button>
+          {{/filters}}
+        </wa-button-group>
+
+        <wa-button size="s" appearance="plain" jx-delete="api/todos/completed">Clear completed</wa-button>
+      </div>
+
+      <ul class="todos">
+        {{#todos}}
+          {{> todo-item}}
+        {{/todos}}
+        {{^todos}}
+          <li class="empty">Nothing here yet</li>
+        {{/todos}}
+      </ul>
+
+      <wa-divider></wa-divider>
+
+      <div class="wa-stack wa-gap-xs">
+        <div class="wa-split">
+          <span><strong>{{stats.done}}</strong> of {{stats.total}} done</span>
+          <span class="wa-cluster wa-gap-2xs">
+            <wa-badge variant="neutral">{{stats.open}} open</wa-badge>
+            <wa-badge variant="success">{{stats.done}} done</wa-badge>
+          </span>
+        </div>
+        <wa-progress-bar value="{{stats.percent}}" label="Progress"></wa-progress-bar>
+      </div>
+    </div>
+  </script>
+
+  <!-- One todo, used as a partial above. Inside {{#todos}}, names refer to the current todo. -->
+  <script type="text/mustache-lit" id="todo-item">
+    <li id="todo-{{id}}" class="{{#done}}done{{/done}}">
+      <wa-checkbox .checked="{{done}}" jx-post="api/todos/{{id}}/toggle">{{title}}</wa-checkbox>
+      <wa-button size="s" appearance="plain" variant="danger" jx-delete="api/todos/{{id}}">
+        <wa-icon name="trash" label="Delete {{title}}"></wa-icon>
+      </wa-button>
+    </li>
+  </script>
+</body>
+</html>

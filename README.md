@@ -39,7 +39,7 @@ An element with a `jx-template` is a **region**, and three rules do the rest:
 
 Errors are part of the view too: if the title is empty, the server sends the same view with an `error` field, and the template shows it.
 
-The trade-off: re-rendering a region replaces everything in it, including anything half-typed in an input. Keep a region's state in the view, or make regions small.
+Re-rendering doesn't have to throw the region away. Load idiomorph (`vendor/idiomorph.min.js`) and jsonx **morphs** instead: it compares the new HTML with the page and changes only what differs, so unchanged web components, focus and scroll position survive. Give list items an `id` so they're matched up correctly. Or use the [Lit engine](#mustache-rendered-by-lit), which skips the HTML string entirely. Either way, keep half-typed text in the view (the todo API echoes the title back as `draft`) so the server's view stays the truth.
 
 The [todo app](examples/todo/) works this way. The finer-grained attributes below (`jx-target`, `jx-swap`, `jx-include`) are still there for the cases regions don't fit.
 
@@ -47,6 +47,7 @@ The [todo app](examples/todo/) works this way. The finer-grained attributes belo
 
 - [Todo app](https://crunchy000.github.io/js-framework/examples/todo/), built with [Web Awesome](https://webawesome.com) components
 - [Todo app with Mustache](https://crunchy000.github.io/js-framework/examples/todo-mustache/): the same app and API, with a logic-less Mustache template
+- [Todo app with Mustache + Lit](https://crunchy000.github.io/js-framework/examples/todo-lit/): the same Mustache template, rendered by Lit so updates only touch what changed
 - [Feature tour](https://crunchy000.github.io/js-framework/examples/basic/), every attribute plus three web component patterns
 
 ## Try it locally
@@ -57,11 +58,15 @@ Open `examples/basic/index.html` in a browser. There's no build step and no serv
 
 | File | What it is |
 |---|---|
-| `jsonx.js` | The framework (about 440 lines, heavily commented). Read this first. |
+| `jsonx.js` | The framework (about 510 lines, heavily commented). Read this first. |
 | `vendor/ejs.min.js` | EJS 3.1.10's browser build (Apache-2.0, see `vendor/ejs-LICENSE.txt`). |
+| `jsonx-lit.js` | The `text/mustache-lit` engine: compiles Mustache into Lit templates (an ES module). |
 | `vendor/mustache.min.js` | Mustache.js 4.2.0 (MIT, see `vendor/mustache-LICENSE.txt`). |
+| `vendor/idiomorph.min.js` | idiomorph 0.8.0, for `jx-swap="morph"` (0BSD, see `vendor/idiomorph-LICENSE.txt`). |
+| `vendor/lit-html/` | lit-html 3.3.1 and three of its directives (BSD-3-Clause, see `vendor/lit-html/LICENSE.txt`). |
 | `examples/todo/` | The Web Awesome todo app (EJS), with the mock API both todo demos use. |
 | `examples/todo-mustache/` | The same todo app with a Mustache template. |
+| `examples/todo-lit/` | The same todo app with Mustache rendered by Lit. |
 | `examples/basic/` | The feature tour, with three demo web components in `components.js`. |
 | `index.html` | The GitHub Pages home page. |
 | `tests/` | A browser test that clicks through every example. |
@@ -75,7 +80,7 @@ Open `examples/basic/index.html` in a browser. There's no build step and no serv
 | `jx-trigger` | The event that starts the request. Any event name works, including custom events. Add `delay:300ms` to wait until events stop (good for search boxes), or `from:#other` to listen on another element. Use `keydown[key=Enter]` to fire only for one key. Use `load` to run once on page load. List several with commas. | depends on the element, see below |
 | `jx-template` | Selector of a `<script type="text/ejs">` that turns the JSON into HTML. The JSON is available as `data`. An element with a template is a region. | the region's template |
 | `jx-target` | Where the result goes: a CSS selector, `this`, or `closest <selector>`. | the region, or else the element itself |
-| `jx-swap` | How the result goes in: `innerHTML`, `outerHTML`, `beforeend`, `afterbegin`, `beforebegin`, `afterend`, `delete` (remove the target), `none`, or `prop:<name>` (set a property on the target). | `innerHTML` |
+| `jx-swap` | How the result goes in: `morph` (change only what's different, needs idiomorph), `innerHTML`, `outerHTML`, `beforeend`, `afterbegin`, `beforebegin`, `afterend`, `delete` (remove the target), `none`, or `prop:<name>` (set a property on the target). A region's `jx-swap` applies to the buttons inside it. | `morph` if idiomorph is loaded, otherwise `innerHTML` |
 | `jx-include` | Also send the values of other elements, e.g. `jx-include="#filter"`. | none |
 | `jx-vals` | Extra JSON to send, e.g. `jx-vals='{"toggle": true}'`. | none |
 
@@ -102,8 +107,33 @@ The template's `type` picks the engine, so one page can even mix them:
 |---|---|---|---|
 | `text/ejs` | [EJS](https://ejs.co) (load `vendor/ejs.min.js`) | `data`, e.g. `<%= data.title %>` | `<%- include("#todo-item", { data: todo }) %>` |
 | `text/mustache` | [Mustache](https://mustache.github.io) (load `vendor/mustache.min.js`) | the top level, e.g. `{{title}}` | `{{> todo-item}}` |
+| `text/mustache-lit` | Mustache syntax, rendered by [Lit](https://lit.dev) (load `jsonx-lit.js` as a module) | the top level, e.g. `{{title}}` | `{{> todo-item}}` |
 
 **Which one?** EJS lets templates run JavaScript, which is handy for small bits of display logic. Mustache has no logic at all, so the API has to send everything ready to show. That fits the regions approach well: compare [the EJS todo](examples/todo/index.html) with [the Mustache todo](examples/todo-mustache/index.html). They share one mock API, which sends ready-made filter buttons so the Mustache template has nothing to work out.
+
+### Mustache rendered by Lit
+
+EJS and Mustache produce an HTML string, which the browser has to parse on every update before jsonx swaps or morphs it in. `text/mustache-lit` instead turns your Mustache template into a [Lit](https://lit.dev) template once. After that, an update only touches the values that changed: no HTML parsing, no comparing trees, and unchanged elements (including web components) are left completely alone. Lists whose items have an `id` are keyed by it, so adding or removing one todo only adds or removes that row.
+
+```html
+<script type="module" src="jsonx-lit.js"></script>
+
+<script type="text/mustache-lit" id="todo-item">
+  <li class="{{#done}}done{{/done}}">
+    <wa-checkbox .checked="{{done}}" jx-post="api/todos/{{id}}/toggle">{{title}}</wa-checkbox>
+  </li>
+</script>
+```
+
+**Lit's one rule:** a `{{tag}}` must sit between tags or inside an attribute value, never loose inside a tag. So `<wa-checkbox {{#done}}checked{{/done}}>` gives a clear error; write it with one of Lit's attribute prefixes instead:
+
+| You write | What it does |
+|---|---|
+| `class="{{#done}}done{{/done}}"` | A normal attribute: text, sections allowed |
+| `?checked="{{done}}"` | Adds the attribute when the value is true, removes it when false |
+| `.value="{{draft}}"` | Sets the element's live property. Use this for form controls: it compares with what's on screen right now, so typing never confuses it |
+
+Everything else is plain Mustache: `{{name}}`, `{{a.b}}`, `{{{raw html}}}`, `{{#section}}`, `{{^empty}}`, `{{> partial}}` and `{{! comments}}`. Compare [the Lit todo](examples/todo-lit/index.html) with [the Mustache one](examples/todo-mustache/index.html): only the script type and those two prefixes changed. No idiomorph is needed.
 
 **Add your own** with `jsonx.engine(type, compile)`. `compile(text, lookup)` gets the template's text and returns a function that turns data into HTML. `lookup(selector)` returns another template's text, for includes. For example, [Handlebars](https://handlebarsjs.com):
 
