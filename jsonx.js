@@ -18,7 +18,7 @@
  *
  *   <script type="module" src="jsonx.js"></script>
  */
-import { compileTemplate } from "./templates.js?v=2";
+import { compileTemplate } from "./templates.js?v=3";
 
 var METHODS = ["get", "post", "put", "patch", "delete"];
 var SELECTOR = METHODS.map(function (m) { return "[jx-" + m + "]"; }).join(",");
@@ -228,9 +228,25 @@ function addValues(values, el) {
 // Works for <input> and for any web component with a `value` property.
 function addValue(values, el) {
   var name = el.getAttribute("name");
-  if (!name || el.value === undefined || el.value === null || el.disabled) return;
+  if (!name || el.value === undefined || el.disabled) return;
   if ((el.type === "checkbox" || el.type === "radio") && !el.checked) return;
-  values[name] = el.value;
+  values[name] = el.value === null ? "" : el.value; // an untouched <wa-input> has null
+}
+
+// Dotted names build nested JSON, so name="user.email" and name="user.password"
+// send { "user": { "email": ..., "password": ... } }. (A query string keeps them flat.)
+function nest(values) {
+  var result = {};
+  Object.keys(values).forEach(function (key) {
+    var parts = key.split(".");
+    var place = result;
+    parts.slice(0, -1).forEach(function (part) {
+      if (typeof place[part] !== "object" || place[part] === null) place[part] = {};
+      place = place[part];
+    });
+    place[parts[parts.length - 1]] = values[key];
+  });
+  return result;
 }
 
 function issueRequest(el) {
@@ -245,8 +261,13 @@ function issueRequest(el) {
     if (query) url += (url.indexOf("?") === -1 ? "?" : "&") + query;
   } else {
     options.headers["Content-Type"] = "application/json";
-    options.body = JSON.stringify(values);
+    options.body = JSON.stringify(nest(values));
   }
+
+  // jsonx.headers adds headers to every request, e.g. a sign-in token.
+  // It can be an object, or a function that returns one.
+  var extra = typeof api.headers === "function" ? api.headers(el) : api.headers;
+  if (extra) Object.assign(options.headers, extra);
 
   // Let page code inspect or cancel the request: listen for "jx:beforeRequest"
   // and call event.preventDefault() to stop it.
@@ -265,6 +286,8 @@ function issueRequest(el) {
     })
     .catch(function (error) {
       console.error("[jsonx]", error);
+      // If the server explained what went wrong, show it in the region too.
+      if (error.data && el.isConnected) renderError(el, error);
       fire(el.isConnected ? el : document, "jx:error", { error: error });
     })
     .finally(function () {
@@ -276,12 +299,34 @@ function issueRequest(el) {
 // { "error": "Title is required" }, that message is used.
 function failed(response, what) {
   return response.json().catch(function () { return null; }).then(function (body) {
-    var message = (body && (body.error || body.message)) || what + " failed with status " + response.status;
+    var errors = errorList(body);
+    var message = (body && (body.error || body.message)) ||
+      (errors.length ? errors.map(function (e) { return e.text; }).join(", ") : what + " failed with status " + response.status);
     var error = new Error(message);
     error.status = response.status;
     error.data = body;
+    error.errors = errors;
     throw error;
   });
+}
+
+// Many APIs (RealWorld, Rails, ...) send errors per field:
+//   { "errors": { "email": ["can't be blank"], "password": ["is too short"] } }
+// That becomes a list a template can loop over:
+//   [{ field: "email", message: "can't be blank", text: "email can't be blank" }, ...]
+function errorList(body) {
+  var errors = body && body.errors;
+  if (!errors || typeof errors !== "object") return [];
+  if (Array.isArray(errors)) {
+    return errors.map(function (e) { var m = typeof e === "string" ? e : e.message; return { field: "", message: m, text: m }; });
+  }
+  var list = [];
+  Object.keys(errors).forEach(function (field) {
+    [].concat(errors[field]).forEach(function (message) {
+      list.push({ field: field, message: message, text: field + " " + message });
+    });
+  });
+  return list;
 }
 
 // ---------------------------------------------------------------------------
@@ -305,12 +350,34 @@ function render(el, data) {
   var owner = el.hasAttribute("jx-template") ? el : (target.hasAttribute && target.hasAttribute("jx-template") ? target : region);
   if (swap !== "none" && owner) {
     var firstTime = !target.__jxRendered;
+    target.__jxView = data; // remembered, so an error can be shown on top of it
     getTemplate(owner)(data, target);
     process(target); // wire up any new elements; existing ones stay wired
     if (firstTime) focusAutofocus(target);
   }
 
   fire(el.isConnected ? el : target, "jx:afterRender", { data: data, target: target, source: el });
+}
+
+// When a request fails, the region is redrawn with its last view plus:
+//   error        one message for the whole thing
+//   errors       the list from errorList(), for jx-each
+//   fieldErrors  { email: "can't be blank" }, to show a message under each field
+// The next successful answer replaces the view, so the errors go away by themselves.
+function renderError(el, error) {
+  var swap = el.getAttribute("jx-swap") || "";
+  if (swap === "none" || swap.indexOf("prop:") === 0) return;
+  var region = findRegion(el);
+  var target = el.hasAttribute("jx-target") ? findTarget(el) : (region || el);
+  var owner = el.hasAttribute("jx-template") ? el : (target.hasAttribute && target.hasAttribute("jx-template") ? target : region);
+  if (!owner) return;
+  var fieldErrors = {};
+  error.errors.forEach(function (e) {
+    if (e.field) fieldErrors[e.field] = fieldErrors[e.field] ? fieldErrors[e.field] + ", " + e.message : e.message;
+  });
+  var view = Object.assign({}, target.__jxView, { error: error.message, errors: error.errors, fieldErrors: fieldErrors });
+  getTemplate(owner)(view, target);
+  process(target);
 }
 
 // jx-target can be a CSS selector, "this", or "closest <selector>".
@@ -362,7 +429,9 @@ function fire(el, name, detail) {
 // ---------------------------------------------------------------------------
 
 // A small public API, for page code and web components.
-window.jsonx = { process: process, request: issueRequest, render: render };
+// Set jsonx.headers to add headers to every request (see issueRequest).
+var api = { process: process, request: issueRequest, render: render, headers: null };
+window.jsonx = api;
 
 // Modules run once the page has been parsed, so we can start straight away.
 process(document.body);

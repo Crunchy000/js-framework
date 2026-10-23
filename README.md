@@ -21,6 +21,7 @@ The card loads `api/todos` when the page opens and draws it with the template in
 
 - [Todo app](https://crunchy000.github.io/js-framework/examples/todo/), built with [Web Awesome](https://webawesome.com) components
 - [Feature tour](https://crunchy000.github.io/js-framework/examples/basic/), every attribute plus three web component patterns
+- [Conduit sign-in](https://crunchy000.github.io/js-framework/examples/conduit/), signing in to a [RealWorld](https://github.com/realworld-apps/realworld) API with a token
 - [Benchmark](https://crunchy000.github.io/js-framework/examples/benchmark/), drawing and updating 10, 100 and 1,000 todos
 
 ## The idea: regions
@@ -82,6 +83,7 @@ Serve the folder with any static server, for example `npx serve .`, and open `ex
 | `vendor/lit-html/` | lit-html 3.3.1 and its `repeat` directive (BSD-3-Clause, see `vendor/lit-html/LICENSE.txt`). |
 | `examples/todo/` | The Web Awesome todo app, with its mock API. |
 | `examples/basic/` | The feature tour, with three demo web components in `components.js`. |
+| `examples/conduit/` | Sign-in against the RealWorld API, with a mock of its two sign-in endpoints. |
 | `examples/benchmark/` | Times jsonx against rebuilding the list with `innerHTML`. |
 | `index.html` | The GitHub Pages home page. |
 | `.github/workflows/pages.yml` | Publishes the site to GitHub Pages on every push to `main`. |
@@ -112,6 +114,33 @@ In short: things you click get `click`, things you change get `change`, and thin
 Writing a trigger for the element itself replaces the default. Triggers with `from:` listen to *other* elements, so they're added on top of the default. For example, `<ul jx-get="/api/todos" jx-trigger="change from:#filter">` loads with the page **and** reloads when the filter changes.
 
 **What gets sent:** the named controls in the element's region (or the fields of its `<form>`), then the element's own `name` and `value`, then the values of any `jx-include` elements, then `jx-vals`. Later ones win, so `jx-vals='{"filter": "done"}'` on a button overrides the hidden filter for that one request. GET and DELETE send them as a query string; POST, PUT and PATCH send a JSON body.
+
+**Dotted names build nested JSON.** `name="user.email"` and `name="user.password"` send `{"user": {"email": …, "password": …}}`, which is what APIs like RealWorld expect.
+
+## Errors
+
+When a request fails and the server sends JSON, jsonx redraws the region with its last view plus three fields, so the template can show what went wrong:
+
+| Field | What it holds |
+|---|---|
+| `error` | One message for the whole thing: the server's `error` or `message`, or the field errors joined up. |
+| `errors` | A list for `jx-each`. `{"errors": {"email": ["can't be blank"]}}` becomes `[{field: "email", message: "can't be blank", text: "email can't be blank"}]`. |
+| `fieldErrors` | The same by field, e.g. `{{fieldErrors.email}}`, to show a message next to its input. |
+
+The next successful answer replaces the view, so the errors go away by themselves. What you typed stays, because the inputs aren't bound to the view. jsonx also fires `jx:error`, for page code.
+
+## Signing in, and headers
+
+Set `jsonx.headers` to add headers to every request. It can be an object, or a function that's asked each time:
+
+```js
+jsonx.headers = function () {
+  var token = localStorage.getItem("jwtToken");
+  return token ? { Authorization: "Token " + token } : {};
+};
+```
+
+[The Conduit example](examples/conduit/index.html) signs in to a RealWorld API this way. The sign-in button posts the form, the answer `{user: {token, …}}` redraws the card as "Signed in", and a `jx:afterRender` listener saves the token. Signing out just forgets the token and calls `jsonx.render(card, {})`.
 
 **While a request runs**, the element has the class `jx-loading`, so you can style it.
 
