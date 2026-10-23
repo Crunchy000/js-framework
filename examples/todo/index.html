@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en" class="wa-cloak">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>jsonx todos</title>
+
+  <!-- Web Awesome: theme, utilities and the component autoloader -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/styles/webawesome.css">
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
+
+  <!-- jsonx and its one dependency, EJS -->
+  <script src="../../vendor/ejs.min.js"></script>
+  <script src="mock-api.js"></script>
+  <script src="../../jsonx.js"></script>
+
+  <!-- Follow the visitor's light/dark setting -->
+  <script>
+    if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("wa-dark");
+  </script>
+
+  <style>
+    body { margin: 0; min-height: 100vh; background: var(--wa-color-surface-lowered); }
+    main { max-width: 640px; margin: 0 auto; padding: var(--wa-space-2xl) 16px; }
+    header p { margin: 0; color: var(--wa-color-text-quiet); }
+    form wa-input { flex: 1 1 200px; }
+
+    #list { list-style: none; margin: 0; padding: 0; }
+    #list li {
+      display: flex; align-items: center; gap: var(--wa-space-s);
+      padding: var(--wa-space-xs) 0;
+      border-bottom: var(--wa-border-width-s) solid var(--wa-color-surface-border);
+    }
+    #list li:last-child { border-bottom: 0; }
+    #list li wa-checkbox { flex: 1; }
+    #list li.done wa-checkbox::part(label) { text-decoration: line-through; color: var(--wa-color-text-quiet); }
+    /* The "nothing here" row hides itself as soon as a real todo is added. */
+    #list li.empty { color: var(--wa-color-text-quiet); justify-content: center; padding: var(--wa-space-l) 0; }
+    #list li.empty:not(:only-child) { display: none; }
+
+    /* jsonx adds .jx-loading while a request is running */
+    .jx-loading { opacity: .6; transition: opacity .2s; }
+    footer { text-align: center; color: var(--wa-color-text-quiet); font-size: var(--wa-font-size-s); }
+  </style>
+</head>
+<body>
+  <main class="wa-stack wa-gap-l">
+    <header class="wa-stack wa-gap-2xs">
+      <h1 class="wa-heading-2xl">Todos</h1>
+      <p>Built with <a href="../../">jsonx</a> and <a href="https://webawesome.com">Web Awesome</a>. The server speaks JSON; EJS templates draw it in the browser.</p>
+    </header>
+
+    <!-- Everything that changes todos lives in #todos, so the stats can listen to it. -->
+    <wa-card id="todos">
+      <div class="wa-stack wa-gap-m">
+
+        <!-- Add a todo. <wa-input> is a form-associated web component, so its value
+             is sent like a normal input. The new item is appended to the list. -->
+        <form class="wa-cluster wa-gap-s"
+              jx-post="api/todos" jx-target="#list" jx-swap="beforeend" jx-template="#todo-item">
+          <wa-input name="title" placeholder="What needs doing?" aria-label="New todo" autocomplete="off" with-clear></wa-input>
+          <wa-button type="submit" variant="brand">
+            <wa-icon slot="start" name="plus"></wa-icon>
+            Add
+          </wa-button>
+        </form>
+
+        <!-- Filter. <wa-radio-group> fires "change" and has a `value`, so jsonx sends
+             ?filter=all|active|done. It also loads the list when the page opens,
+             and reloads it after "Clear completed". -->
+        <div class="wa-split">
+          <wa-radio-group name="filter" value="all" orientation="horizontal" size="s"
+                          jx-get="api/todos" jx-trigger="load, change, jx:afterRender from:#clear"
+                          jx-target="#list" jx-template="#todo-list">
+            <wa-radio appearance="button" value="all">All</wa-radio>
+            <wa-radio appearance="button" value="active">Active</wa-radio>
+            <wa-radio appearance="button" value="done">Done</wa-radio>
+          </wa-radio-group>
+
+          <wa-button id="clear" size="s" appearance="plain" jx-delete="api/todos/completed" jx-swap="none">
+            Clear completed
+          </wa-button>
+        </div>
+
+        <wa-callout id="error" variant="danger" size="s" hidden>
+          <wa-icon slot="icon" name="circle-exclamation"></wa-icon>
+          <span></span>
+        </wa-callout>
+
+        <ul id="list">
+          <li class="empty"><wa-spinner></wa-spinner></li>
+        </ul>
+      </div>
+    </wa-card>
+
+    <!-- Stats reload whenever anything inside #todos finishes rendering. -->
+    <wa-card id="stats" jx-get="api/stats" jx-trigger="load, jx:afterRender from:#todos" jx-template="#stats-template">
+      <wa-skeleton effect="sheen"></wa-skeleton>
+    </wa-card>
+
+    <footer>Your todos are saved in this browser only.</footer>
+  </main>
+
+  <!-- ===================== Templates ===================== -->
+
+  <!-- The whole list. Reuses the single-item template for each todo. -->
+  <script type="text/ejs" id="todo-list">
+    <li class="empty">Nothing here yet</li>
+    <% data.forEach(function (todo) { %>
+      <%- include("#todo-item", { data: todo }) %>
+    <% }) %>
+  </script>
+
+  <!-- One todo. Ticking the checkbox PUTs a toggle and swaps in the updated item.
+       The delete button removes the row once the server says OK. -->
+  <script type="text/ejs" id="todo-item">
+    <li class="<%= data.done ? 'done' : '' %>">
+      <wa-checkbox <%= data.done ? 'checked' : '' %>
+                   jx-put="api/todos/<%= data.id %>" jx-vals='{"toggle": true}' jx-trigger="change"
+                   jx-target="closest li" jx-swap="outerHTML" jx-template="#todo-item"><%= data.title %></wa-checkbox>
+      <wa-button size="s" appearance="plain" variant="danger"
+                 jx-delete="api/todos/<%= data.id %>" jx-target="closest li" jx-swap="delete">
+        <wa-icon name="trash" label="Delete <%= data.title %>"></wa-icon>
+      </wa-button>
+    </li>
+  </script>
+
+  <script type="text/ejs" id="stats-template">
+    <div class="wa-stack wa-gap-xs">
+      <div class="wa-split">
+        <span><strong><%= data.done %></strong> of <%= data.total %> done</span>
+        <span class="wa-cluster wa-gap-2xs">
+          <wa-badge variant="neutral"><%= data.open %> open</wa-badge>
+          <wa-badge variant="success"><%= data.done %> done</wa-badge>
+        </span>
+      </div>
+      <wa-progress-bar value="<%= data.percent %>" label="Progress"></wa-progress-bar>
+    </div>
+  </script>
+
+  <script>
+    var errorBox = document.querySelector("#error");
+
+    // Clear the input after a todo is added.
+    document.querySelector("form").addEventListener("jx:afterRender", function (event) {
+      event.currentTarget.reset();
+    });
+
+    // Show failed requests (e.g. adding an empty todo), and hide the message after the next success.
+    document.addEventListener("jx:error", function (event) {
+      errorBox.querySelector("span").textContent = event.detail.error.message;
+      errorBox.hidden = false;
+    });
+    document.addEventListener("jx:afterRender", function () { errorBox.hidden = true; });
+  </script>
+</body>
+</html>

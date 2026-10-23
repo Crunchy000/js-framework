@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en" class="wa-cloak">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>jsonx</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/styles/webawesome.css">
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
+  <script>
+    if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("wa-dark");
+  </script>
+  <style>
+    body { margin: 0; min-height: 100vh; background: var(--wa-color-surface-lowered); }
+    main { max-width: 720px; margin: 0 auto; padding: var(--wa-space-2xl) 16px; }
+    pre { overflow-x: auto; }
+    .wa-grid wa-card { height: 100%; }
+  </style>
+</head>
+<body>
+  <main class="wa-stack wa-gap-xl">
+    <header class="wa-stack wa-gap-xs">
+      <h1 class="wa-heading-3xl">jsonx</h1>
+      <p class="wa-body-l">A tiny htmx-style framework for JSON APIs. HTML attributes call your API, EJS templates turn the JSON into HTML in the browser, and it plays nicely with web components.</p>
+    </header>
+
+<pre><code>&lt;button jx-get="/api/todos" jx-template="#todo-list" jx-target="#todos"&gt;Load&lt;/button&gt;
+&lt;ul id="todos"&gt;&lt;/ul&gt;
+
+&lt;script type="text/ejs" id="todo-list"&gt;
+  &lt;% data.forEach(function (todo) { %&gt;
+    &lt;li&gt;&lt;%= todo.title %&gt;&lt;/li&gt;
+  &lt;% }) %&gt;
+&lt;/script&gt;</code></pre>
+
+    <div class="wa-grid" style="--min-column-size: 240px;">
+      <wa-card>
+          <h2 class="wa-heading-l">Todo app</h2>
+          <p>A Web Awesome todo list: add, tick off, filter, delete and clear. Saved in your browser.</p>
+          <wa-button slot="footer" variant="brand" href="examples/todo/">Open <wa-icon slot="end" name="arrow-right"></wa-icon></wa-button>
+        </wa-card>
+      <wa-card>
+          <h2 class="wa-heading-l">Feature tour</h2>
+          <p>Every attribute in one page, plus three patterns for using jsonx with your own web components.</p>
+          <wa-button slot="footer" href="examples/basic/">Open <wa-icon slot="end" name="arrow-right"></wa-icon></wa-button>
+        </wa-card>
+    </div>
+
+    <p><a href="https://github.com/Crunchy000/js-framework">Source and docs on GitHub</a></p>
+  </main>
+</body>
+</html>
