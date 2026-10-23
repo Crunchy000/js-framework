@@ -11,81 +11,55 @@
     code { background: #f3f4f6; padding: 1px 4px; border-radius: 4px; }
     ul { padding-left: 0; list-style: none; }
     li { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
-    li.done span { text-decoration: line-through; color: #9ca3af; }
-    li button { margin-left: auto; }
+    li.pioneer strong::after { content: " ★"; color: #e0a800; }
     .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
     .error { color: #b91c1c; }
     /* jsonx adds this class to an element while its request is running */
     .jx-loading { opacity: .5; cursor: progress; }
   </style>
 
-  <!-- 1. EJS (turns templates + data into HTML) -->
-  <script src="../../vendor/ejs.min.js"></script>
-  <!-- 2. The fake API. Remove this when you have a real server. -->
+  <!-- 1. The fake API. Remove this when you have a real server. -->
   <script src="mock-api.js"></script>
-  <!-- 3. The framework itself -->
-  <script src="../../jsonx.js"></script>
-  <!-- 4. Demo web components -->
-  <script src="components.js"></script>
+  <!-- 2. The framework itself -->
+  <script type="module" src="../../jsonx.js"></script>
+  <!-- 3. Demo web components (modules run in order, so jsonx is ready) -->
+  <script type="module" src="components.js"></script>
 </head>
 <body>
-  <h1>jsonx demo</h1>
-  <p>htmx-style attributes, but the server sends JSON and EJS templates turn it into HTML in the browser.</p>
+  <h1>jsonx feature tour</h1>
+  <p>Every feature in one page. The server sends JSON shaped for the page, and templates turn it into HTML in the browser. For a full app, see the <a href="../todo/">todo app</a>.</p>
 
   <!-- ===================================================================== -->
   <section>
-    <h2>1. Todo list</h2>
-    <p>The list loads by itself: a <code>&lt;ul&gt;</code> can't be clicked, so its default trigger is <code>load</code>. Adding a todo POSTs the form and appends one item with <code>jx-swap="beforeend"</code>.</p>
+    <h2>1. A region</h2>
+    <p>This box has a <code>&lt;template&gt;</code> inside, so it's a region. Its <code>jx-get</code> loads the view when the page opens. The button inside it calls <code>jx-post</code>, and the answer redraws the region.</p>
 
-    <ul id="todo-items" jx-get="/api/todos" jx-template="#todo-list">
-      <li>Loading…</li>
-    </ul>
-
-    <form jx-post="/api/todos" jx-target="#todo-items" jx-swap="beforeend" jx-template="#todo-item">
-      <input name="title" placeholder="What needs doing?" required>
-      <button>Add</button>
-    </form>
-    <p id="todo-error" class="error"></p>
+    <div id="likes" jx-get="/api/likes">
+      Loading…
+      <template>
+        <p>This page has <strong>{{label}}</strong>.</p>
+        <button jx-post="/api/likes">Like it</button>
+        <button jx-post="/api/broken">Break the server</button>
+      </template>
+    </div>
+    <p id="error" class="error"></p>
   </section>
-
-  <!-- A whole list: loops over the array and reuses the single-item template. -->
-  <script type="text/ejs" id="todo-list">
-    <% data.forEach(function (todo) { %>
-      <%- include("#todo-item", { data: todo }) %>
-    <% }) %>
-  </script>
-
-  <!-- One item. The checkbox and button inside it have their own jx- attributes,
-       which jsonx wires up automatically after the HTML is added. -->
-  <script type="text/ejs" id="todo-item">
-    <li class="<%= data.done ? 'done' : '' %>">
-      <input type="checkbox" <%= data.done ? 'checked' : '' %>
-             jx-put="/api/todos/<%= data.id %>" jx-vals='{"toggle": true}'
-             jx-target="closest li" jx-swap="outerHTML" jx-template="#todo-item">
-      <span><%= data.title %></span>
-      <button jx-delete="/api/todos/<%= data.id %>" jx-target="closest li" jx-swap="delete">Delete</button>
-    </li>
-  </script>
 
   <!-- ===================================================================== -->
   <section>
     <h2>2. Live search</h2>
-    <p><code>jx-trigger="input delay:300ms"</code> waits until you stop typing, then sends <code>?q=...</code>.</p>
+    <p><code>jx-trigger="input delay:300ms"</code> waits until you stop typing, then sends <code>?q=...</code>. The results go into another element with <code>jx-target</code>. The template uses <code>jx-each</code>, <code>jx-if</code> and <code>class:pioneer</code>.</p>
 
     <input type="search" name="q" placeholder="Search people…"
            jx-get="/api/users" jx-trigger="input delay:300ms"
            jx-target="#results" jx-template="#user-results">
     <ul id="results"></ul>
-  </section>
 
-  <script type="text/ejs" id="user-results">
-    <% if (data.length === 0) { %>
-      <li><em>No matches</em></li>
-    <% } %>
-    <% data.forEach(function (user) { %>
-      <li><strong><%= user.name %></strong> — <%= user.role %></li>
-    <% }) %>
-  </script>
+    <template id="user-results">
+      <li jx-each="users" class:pioneer="{{pioneer}}"><strong>{{name}}</strong> — {{role}}</li>
+      <li jx-if="!users"><em>No one matches "{{query}}"</em></li>
+    </template>
+  </section>
 
   <!-- ===================================================================== -->
   <section>
@@ -98,12 +72,10 @@
                  jx-target="#feedback" jx-template="#thanks"></star-rating>
     <p id="feedback"></p>
 
-    <script type="text/ejs" id="thanks">
-      <%= data.message %> You gave <%= data.stars %> star<%= data.stars === 1 ? '' : 's' %>.
-    </script>
+    <template id="thanks">{{message}}</template>
 
     <h3>b) A component that receives JSON as a property</h3>
-    <p><code>jx-swap="prop:stats"</code> sets <code>todoStats.stats = data</code> instead of rendering HTML.</p>
+    <p><code>jx-swap="prop:stats"</code> sets <code>todoStats.stats = data</code> instead of drawing a template.</p>
     <todo-stats id="stats"></todo-stats>
     <button jx-get="/api/stats" jx-target="#stats" jx-swap="prop:stats">Refresh stats</button>
 
@@ -119,10 +91,10 @@
   <script>
     // Listening to jsonx's events from page code.
     document.addEventListener("jx:error", function (event) {
-      document.querySelector("#todo-error").textContent = event.detail.error.message;
+      document.querySelector("#error").textContent = event.detail.error.message;
     });
     document.addEventListener("jx:afterRender", function () {
-      document.querySelector("#todo-error").textContent = "";
+      document.querySelector("#error").textContent = "";
     });
   </script>
 </body>

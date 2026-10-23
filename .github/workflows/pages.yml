@@ -44,7 +44,7 @@ jobs:
       - name: Collect site files
         run: |
           mkdir _site
-          cp -r index.html jsonx.js jsonx-lit.js vendor examples _site/
+          cp -r index.html jsonx.js templates.js vendor examples _site/
       - uses: actions/configure-pages@v5
         with:
           enablement: true

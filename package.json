@@ -1,7 +1,7 @@
 {
   "name": "jsonx",
   "version": "0.1.0",
-  "description": "A tiny htmx-style framework for JSON APIs, rendered with EJS templates in the browser. Web component friendly.",
+  "description": "A tiny htmx-style framework for JSON APIs, rendered in the browser with simple HTML templates compiled to Lit. Web component friendly.",
   "main": "jsonx.js",
   "private": true,
   "scripts": {

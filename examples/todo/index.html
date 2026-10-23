@@ -9,12 +9,9 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/styles/webawesome.css">
   <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
 
-  <!-- jsonx and its one dependency, EJS -->
-  <script src="../../vendor/ejs.min.js"></script>
+  <!-- A pretend JSON server (remove it when you have a real one), then jsonx -->
   <script src="mock-api.js"></script>
-  <!-- idiomorph: lets jsonx update only what changed (the default when it's loaded) -->
-  <script src="../../vendor/idiomorph.min.js"></script>
-  <script src="../../jsonx.js"></script>
+  <script type="module" src="../../jsonx.js"></script>
 
   <!-- Follow the visitor's light/dark setting -->
   <script>
@@ -47,91 +44,82 @@
   <main class="wa-stack wa-gap-l">
     <header class="wa-stack wa-gap-2xs">
       <h1 class="wa-heading-2xl">Todos</h1>
-      <p>Built with <a href="../../">jsonx</a> and <a href="https://webawesome.com">Web Awesome</a>. The server sends the whole view as JSON; one EJS template draws it.</p>
+      <p>Built with <a href="../../">jsonx</a> and <a href="https://webawesome.com">Web Awesome</a>. The server sends the whole view as JSON, and one template draws it.</p>
     </header>
 
-    <!-- This is the whole app. It's a "region": it has a template, so it loads
-         itself when the page opens, and every button inside it re-renders it. -->
-    <wa-card id="app" jx-get="api/todos" jx-template="#todo-app">
+    <!--
+      This card is the whole app. It's a "region": it has a <template> inside, so it
+      loads its view when the page opens (jx-get), and every button inside it calls
+      the API and redraws it. The view looks like:
+
+        { filter, filters: [{ name, label, variant, appearance }],
+          todos: [{ id, title, done }], stats: { total, done, open, percent },
+          draft, error }
+
+      Template rules: {{name}} prints a value, jx-each repeats an element,
+      jx-if shows or hides one, and class:done="{{done}}" toggles a class.
+    -->
+    <wa-card id="app" jx-get="api/todos">
       <wa-skeleton effect="sheen"></wa-skeleton>
+
+      <template>
+        <div class="wa-stack wa-gap-m">
+          <!-- Named controls are sent with every request from the region -->
+          <input type="hidden" name="filter" value="{{filter}}">
+
+          <!-- Add: click the button, or press Enter in the input -->
+          <div class="add wa-cluster wa-gap-s">
+            <wa-input name="title" value="{{draft}}" placeholder="What needs doing?" aria-label="New todo"
+                      autocomplete="off" autofocus jx-post="api/todos" jx-trigger="keydown[key=Enter]"></wa-input>
+            <wa-button variant="brand" jx-post="api/todos">
+              <wa-icon slot="start" name="plus"></wa-icon>
+              Add
+            </wa-button>
+          </div>
+
+          <wa-callout variant="danger" size="s" jx-if="error">
+            <wa-icon slot="icon" name="circle-exclamation"></wa-icon>
+            {{error}}
+          </wa-callout>
+
+          <div class="wa-split">
+            <wa-button-group label="Filter">
+              <!-- jx-vals overrides the hidden filter for this one request -->
+              <wa-button jx-each="filters" size="s" variant="{{variant}}" appearance="{{appearance}}"
+                         jx-get="api/todos" jx-vals='{"filter": "{{name}}"}'>{{label}}</wa-button>
+            </wa-button-group>
+
+            <wa-button size="s" appearance="plain" jx-delete="api/todos/completed">Clear completed</wa-button>
+          </div>
+
+          <ul class="todos">
+            <li jx-each="todos" class:done="{{done}}">
+              <!-- A form control, so its default trigger is "change" -->
+              <wa-checkbox checked="{{done}}" jx-post="api/todos/{{id}}/toggle">{{title}}</wa-checkbox>
+              <wa-button size="s" appearance="plain" variant="danger" jx-delete="api/todos/{{id}}">
+                <wa-icon name="trash" label="Delete {{title}}"></wa-icon>
+              </wa-button>
+            </li>
+            <li class="empty" jx-if="!todos">Nothing here yet</li>
+          </ul>
+
+          <wa-divider></wa-divider>
+
+          <div class="wa-stack wa-gap-xs">
+            <div class="wa-split">
+              <span><strong>{{stats.done}}</strong> of {{stats.total}} done</span>
+              <span class="wa-cluster wa-gap-2xs">
+                <wa-badge variant="neutral">{{stats.open}} open</wa-badge>
+                <wa-badge variant="success">{{stats.done}} done</wa-badge>
+              </span>
+            </div>
+            <wa-progress-bar value="{{stats.percent}}" label="Progress"></wa-progress-bar>
+          </div>
+        </div>
+      </template>
     </wa-card>
 
     <footer>Your todos are saved in this browser only.</footer>
   </main>
-
-  <!--
-    The one template. `data` is the view the server sent:
-      { filter, todos: [{ id, title, done }], stats: { total, done, open, percent }, draft, error }
-
-    Every request from inside the region automatically sends the region's named
-    controls: here that's the new todo's `title` and the hidden `filter`. So the
-    buttons only need to say which URL to call.
-  -->
-  <script type="text/ejs" id="todo-app">
-    <div class="wa-stack wa-gap-m">
-      <input type="hidden" name="filter" value="<%= data.filter %>">
-
-      <!-- Add: click the button, or press Enter in the input. -->
-      <div class="add wa-cluster wa-gap-s">
-        <wa-input name="title" placeholder="What needs doing?" aria-label="New todo" autocomplete="off" value="<%= data.draft %>"
-                  autofocus jx-post="api/todos" jx-trigger="keydown[key=Enter]"></wa-input>
-        <wa-button variant="brand" jx-post="api/todos">
-          <wa-icon slot="start" name="plus"></wa-icon>
-          Add
-        </wa-button>
-      </div>
-
-      <% if (data.error) { %>
-        <wa-callout variant="danger" size="s">
-          <wa-icon slot="icon" name="circle-exclamation"></wa-icon>
-          <%= data.error %>
-        </wa-callout>
-      <% } %>
-
-      <!-- Filters. jx-vals overrides the hidden filter for this one request. -->
-      <div class="wa-split">
-        <wa-button-group label="Filter">
-          <% ["all", "active", "done"].forEach(function (filter) { %>
-            <wa-button size="s"
-                       variant="<%= filter === data.filter ? 'brand' : 'neutral' %>"
-                       appearance="<%= filter === data.filter ? 'accent' : 'outlined' %>"
-                       jx-get="api/todos" jx-vals='{"filter": "<%= filter %>"}'>
-              <%= filter[0].toUpperCase() + filter.slice(1) %>
-            </wa-button>
-          <% }) %>
-        </wa-button-group>
-
-        <wa-button size="s" appearance="plain" jx-delete="api/todos/completed">Clear completed</wa-button>
-      </div>
-
-      <ul class="todos">
-        <% if (data.todos.length === 0) { %>
-          <li class="empty">Nothing here yet</li>
-        <% } %>
-        <% data.todos.forEach(function (todo) { %>
-          <li id="todo-<%= todo.id %>" class="<%= todo.done ? 'done' : '' %>">
-            <!-- A form control, so its default trigger is "change" -->
-            <wa-checkbox <%= todo.done ? 'checked' : '' %> jx-post="api/todos/<%= todo.id %>/toggle"><%= todo.title %></wa-checkbox>
-            <wa-button size="s" appearance="plain" variant="danger" jx-delete="api/todos/<%= todo.id %>">
-              <wa-icon name="trash" label="Delete <%= todo.title %>"></wa-icon>
-            </wa-button>
-          </li>
-        <% }) %>
-      </ul>
-
-      <wa-divider></wa-divider>
-
-      <div class="wa-stack wa-gap-xs">
-        <div class="wa-split">
-          <span><strong><%= data.stats.done %></strong> of <%= data.stats.total %> done</span>
-          <span class="wa-cluster wa-gap-2xs">
-            <wa-badge variant="neutral"><%= data.stats.open %> open</wa-badge>
-            <wa-badge variant="success"><%= data.stats.done %> done</wa-badge>
-          </span>
-        </div>
-        <wa-progress-bar value="<%= data.stats.percent %>" label="Progress"></wa-progress-bar>
-      </div>
-    </div>
-  </script>
 </body>
 </html>

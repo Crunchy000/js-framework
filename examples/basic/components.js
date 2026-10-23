@@ -1,6 +1,7 @@
 /*
  * components.js — three small web components that show how jsonx and
  * web components fit together. Each one shows a different pattern.
+ * Loaded as a module after jsonx.js, so `jsonx` exists when they start.
  */
 
 // Pattern 1: a component that FIRES a custom event and has a `value`.
@@ -44,7 +45,7 @@ customElements.define("star-rating", StarRating);
 
 // Pattern 2: a component that RECEIVES JSON as a property.
 // jx-swap="prop:stats" sets element.stats = data, and the component draws itself.
-// No EJS template needed: the component owns its own rendering.
+// No template needed: the component owns its own rendering.
 class TodoStats extends HTMLElement {
   constructor() {
     super();
@@ -86,10 +87,10 @@ class UserCard extends HTMLElement {
         .jx-loading { opacity: .5; }
       </style>
 
-      <script type="text/ejs" id="card">
-        <h3><%= data.name %></h3>
-        <div><%= data.role %></div>
-      </script>
+      <template id="card">
+        <h3>{{name}}</h3>
+        <div>{{role}}</div>
+      </template>
 
       <div id="body">User #${id}</div>
       <button jx-get="/api/users/${id}" jx-target="#body" jx-template="#card">Load user</button>`;

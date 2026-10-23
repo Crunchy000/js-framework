@@ -36,41 +36,39 @@ async function basicExample(browser, base) {
   console.log('\n# examples/basic');
   const p = await newPage(browser);
   await p.goto(base + '/examples/basic/');
-  await p.waitForSelector('#todo-items li input');
-  check('loads 3 todos', await p.locator('#todo-items li').count() === 3);
-  await p.fill('input[name=title]', 'New <b>thing</b>');
-  await p.click('form button');
-  await until(p, () => document.querySelectorAll('#todo-items li').length === 4);
-  check('adds a todo, with HTML escaped', (await p.locator('#todo-items li').nth(3).innerText()).includes('New <b>thing</b>'));
-  await p.locator('#todo-items li').nth(3).locator('input').check();
-  await until(p, () => document.querySelector('#todo-items li:nth-child(4)').classList.contains('done'));
-  await p.locator('#todo-items li').nth(3).locator('input').uncheck();
-  await until(p, () => !document.querySelector('#todo-items li:nth-child(4)').classList.contains('done'));
-  check('toggles twice (swapped-in HTML is re-wired)', true);
-  await p.locator('#todo-items li').nth(0).locator('button').click();
-  await until(p, () => document.querySelectorAll('#todo-items li').length === 3);
-  check('deletes a todo', true);
-  await p.fill('input[name=title]', '   ');
-  await p.evaluate(() => document.querySelector('form').requestSubmit());
-  await until(p, () => document.querySelector('#todo-error').textContent.includes('Title is required'));
-  check('shows jx:error', true);
+  await until(p, () => document.querySelector('#likes').textContent.includes('0 likes'));
+  check('a region with an inline <template> loads itself', true);
+  await p.click('text=Like it');
+  await until(p, () => document.querySelector('#likes').textContent.includes('1 like'));
+  check('a button inside the region redraws it', true);
+  await p.click('text=Break the server');
+  await until(p, () => document.querySelector('#error').textContent.includes('on purpose'));
+  check('jx:error carries the server\'s message', true);
+  await p.click('text=Like it');
+  await until(p, () => document.querySelector('#likes').textContent.includes('2 likes') && !document.querySelector('#error').textContent);
+  check('jx:afterRender clears the error', true);
+
   await p.type('input[name=q]', 'gr');
   await until(p, () => document.querySelector('#results').textContent.includes('Grace'));
-  check('live search', await p.locator('#results li').count() === 1);
+  check('live search with jx-target and jx-each', await p.locator('#results li').count() === 1);
+  check('class:pioneer toggles a class', await p.locator('#results li.pioneer').count() === 1);
+  await p.fill('input[name=q]', 'zzz');
+  await until(p, () => document.querySelector('#results').textContent.includes('No one matches "zzz"'));
+  check('jx-if="!users" shows the empty message', true);
+
   await p.locator('star-rating button[data-value="4"]').click();
   await until(p, () => document.querySelector('#feedback').textContent.includes('4 stars'));
   check('custom event + component value', true);
   await p.click('text=Refresh stats');
-  await until(p, () => document.querySelector('#stats').shadowRoot.textContent.includes('of 3 done'));
+  await until(p, () => document.querySelector('#stats').shadowRoot.textContent.includes('of 5 done'));
   check('prop: swap into a component', true);
   await p.locator('user-card').nth(1).locator('button').click();
   await until(p, () => document.querySelectorAll('user-card')[1].shadowRoot.querySelector('#body').textContent.includes('Grace Hopper'));
-  check('jsonx inside shadow DOM', true);
+  check('jsonx inside shadow DOM, with the component\'s own template', true);
   check('no page errors', p.errors.length === 0);
   if (p.errors.length) console.log(p.errors);
 }
 
-// The EJS and Mustache todo demos share an API and must behave the same.
 async function todoExample(browser, base, folder) {
   console.log('\n# examples/' + folder + ' (Web Awesome)');
   const p = await newPage(browser);
@@ -136,26 +134,36 @@ async function todoExample(browser, base, folder) {
   await p.reload();
   await count(3);
   check('todos survive a reload (localStorage)', true);
-  if (folder === 'todo-lit') {
+  if (folder === 'todo') {
     const results = await p.evaluate(() => {
-      const make = (id, text) => {
-        const node = document.createElement('script');
-        node.type = 'text/mustache-lit'; node.id = id; node.textContent = text;
+      const make = (id, html) => {
+        const node = document.createElement('template');
+        node.id = id; node.innerHTML = html;
         document.body.append(node);
       };
-      make('bad', '<wa-checkbox {{#done}}checked{{/done}}></wa-checkbox>');
-      make('xss', '<p class="{{cls}}">{{text}}</p>');
+      make('xss', '<p class="{{cls}}" title="x {{cls}}">{{text}}</p>');
+      make('rules', '<b jx-if="!items">none</b><i jx-each="items" class:on="{{on}}">{{name}}</i><textarea name="t">{{body}}</textarea>');
       const host = document.createElement('div');
-      host.setAttribute('jx-template', '#bad');
-      document.body.append(host);
-      let message = '';
-      try { jsonx.render(host, { done: true }); } catch (e) { message = e.message; }
       host.setAttribute('jx-template', '#xss');
+      document.body.append(host);
       jsonx.render(host, { cls: '"><img src=x onerror=alert(1)>', text: '<b>hi</b>' });
-      return { message, img: !!host.querySelector('img'), b: !!host.querySelector('b'), text: host.textContent.trim() };
+      const escaped = !host.querySelector('img') && !host.querySelector('b') && host.textContent.trim() === '<b>hi</b>';
+
+      const host2 = document.createElement('div');
+      host2.setAttribute('jx-template', '#rules');
+      document.body.append(host2);
+      jsonx.render(host2, { items: [], body: 'hello' });
+      const empty = host2.querySelectorAll('b').length === 1 && host2.querySelectorAll('i').length === 0;
+      jsonx.render(host2, { items: [{ id: 1, name: 'a', on: true }, { id: 2, name: 'b', on: false }], body: 'hello' });
+      const list = host2.querySelectorAll('b').length === 0 &&
+        Array.from(host2.querySelectorAll('i')).map((i) => i.textContent + i.className).join(',') === 'aon,b';
+      const textarea = host2.querySelector('textarea').value === 'hello';
+      return { escaped, empty, list, textarea };
     });
-    check('a tag loose inside an element gives a clear error', results.message.includes('loose inside a tag'));
-    check('values are escaped, not run as HTML', !results.img && !results.b && results.text === '<b>hi</b>');
+    check('values are escaped, not run as HTML', results.escaped);
+    check('jx-if="!items" shows only for an empty list', results.empty);
+    check('jx-each repeats, class:on toggles a class', results.list);
+    check('{{x}} inside a <textarea> sets its value', results.textarea);
   }
   if (process.env.SCREENSHOT) await p.screenshot({ path: process.env.SCREENSHOT, fullPage: true });
   check('no page errors', p.errors.length === 0);
@@ -168,8 +176,6 @@ async function todoExample(browser, base, folder) {
   try {
     await basicExample(browser, server.url);
     await todoExample(browser, server.url, 'todo');
-    await todoExample(browser, server.url, 'todo-mustache');
-    await todoExample(browser, server.url, 'todo-lit');
   } catch (e) {
     console.log('FAIL', e.message);
     failures++;

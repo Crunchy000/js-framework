@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en" class="wa-cloak">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>jsonx benchmark</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/styles/webawesome.css">
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
+  <script type="module" src="../../jsonx.js"></script>
+  <script>
+    if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("wa-dark");
+  </script>
+  <style>
+    body { margin: 0; background: var(--wa-color-surface-lowered); }
+    main { max-width: 800px; margin: 0 auto; padding: var(--wa-space-2xl) 16px; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+    th, td { text-align: right; padding: var(--wa-space-2xs) var(--wa-space-s); border-bottom: 1px solid var(--wa-color-surface-border); white-space: nowrap; }
+    th:first-child, td:first-child { text-align: left; }
+    td.faster { color: var(--wa-color-success-on-quiet); font-weight: 600; }
+    #stage { max-height: 200px; overflow: auto; }
+    #stage:not(:has(*)) { display: none; }
+    #stage ul { list-style: none; margin: 0; padding: 0; }
+  </style>
+</head>
+<body>
+  <main class="wa-stack wa-gap-l">
+    <header class="wa-stack wa-gap-xs">
+      <h1 class="wa-heading-2xl">Rendering benchmark</h1>
+      <p>How long it takes to draw a todo list of Web Awesome components, and to update it after ticking one todo. Each number is the median of several runs, timed from the start of the render until the browser has drawn the next frame. No network is involved.</p>
+      <p><strong>jsonx</strong> renders the list with a jsonx template, which Lit updates in place. <strong>innerHTML</strong> is the simple approach for comparison: build the HTML as a string and replace the whole list, every time.</p>
+    </header>
+
+    <div class="wa-cluster">
+      <wa-button id="run" variant="brand">Run benchmark</wa-button>
+      <span id="status"></span>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Todos</th><th>First draw, jsonx</th><th>First draw, innerHTML</th><th>Tick one, jsonx</th><th>Tick one, innerHTML</th></tr>
+        </thead>
+        <tbody id="results"></tbody>
+      </table>
+    </div>
+
+    <wa-card id="stage"></wa-card>
+
+    <!-- Web Awesome loads each component the first time it sees one on the page.
+         These make sure both are loaded before any timing starts. -->
+    <div hidden><wa-checkbox></wa-checkbox><wa-button></wa-button></div>
+  </main>
+
+  <!-- The same markup, written as a jsonx template... -->
+  <template id="bench-list">
+    <ul>
+      <li jx-each="todos" class:done="{{done}}">
+        <wa-checkbox checked="{{done}}">{{title}}</wa-checkbox>
+        <wa-button size="s" appearance="plain">Delete</wa-button>
+      </li>
+    </ul>
+  </template>
+
+  <script type="module">
+    // ...and as a string, for the innerHTML comparison.
+    function escape(s) {
+      return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+    function innerHTMLRender(container, data) {
+      container.innerHTML = "<ul>" + data.todos.map(function (todo) {
+        return '<li class="' + (todo.done ? "done" : "") + '">' +
+          "<wa-checkbox" + (todo.done ? " checked" : "") + ">" + escape(todo.title) + "</wa-checkbox>" +
+          '<wa-button size="s" appearance="plain">Delete</wa-button></li>';
+      }).join("") + "</ul>";
+    }
+    function jsonxRender(container, data) {
+      jsonx.render(container, data);
+    }
+
+    function makeView(n) {
+      var todos = [];
+      for (var i = 1; i <= n; i++) todos.push({ id: i, title: "Todo number " + i, done: i % 3 === 0 });
+      return { todos: todos };
+    }
+    // The same view with the middle todo ticked, as the server would send it.
+    function tickMiddle(view) {
+      var middle = Math.ceil(view.todos.length / 2);
+      return { todos: view.todos.map(function (t) { return t.id === middle ? Object.assign({}, t, { done: !t.done }) : t; }) };
+    }
+
+    // Waits until the browser has drawn the next frame, so layout and the
+    // components' own (asynchronous) rendering are included in the time.
+    function nextFrame() {
+      return new Promise(function (resolve) { requestAnimationFrame(function () { setTimeout(resolve); }); });
+    }
+    async function time(fn) {
+      var start = performance.now();
+      fn();
+      await nextFrame();
+      return performance.now() - start;
+    }
+    function median(list) {
+      var sorted = list.slice().sort(function (a, b) { return a - b; });
+      return sorted[Math.floor(sorted.length / 2)];
+    }
+
+    var stage = document.querySelector("#stage");
+
+    async function measure(n, renderer, runs) {
+      var first = [], tick = [];
+      for (var r = 0; r < runs; r++) {
+        var view = makeView(n);
+        var container = document.createElement("div");
+        container.setAttribute("jx-template", "#bench-list");
+        stage.replaceChildren(container);
+        await nextFrame();
+        first.push(await time(function () { renderer(container, view); }));
+        var ticked = tickMiddle(view);
+        tick.push(await time(function () { renderer(container, ticked); }));
+      }
+      return { first: median(first), tick: median(tick) };
+    }
+
+    async function run() {
+      var button = document.querySelector("#run");
+      var status = document.querySelector("#status");
+      var results = document.querySelector("#results");
+      button.disabled = true;
+      results.replaceChildren();
+      window.benchResults = [];
+      await customElements.whenDefined("wa-checkbox");
+      await customElements.whenDefined("wa-button");
+
+      var sizes = [10, 100, 1000];
+      for (var i = 0; i < sizes.length; i++) {
+        var n = sizes[i];
+        var runs = n >= 1000 ? 3 : 7;
+        status.textContent = "Drawing " + n + " todos…";
+        await measure(n, jsonxRender, 1); // warm-up: compile the template once
+        var x = await measure(n, jsonxRender, runs);
+        var h = await measure(n, innerHTMLRender, runs);
+        var row = { todos: n, firstJsonx: x.first, firstInnerHTML: h.first, tickJsonx: x.tick, tickInnerHTML: h.tick };
+        window.benchResults.push(row);
+
+        var tr = document.createElement("tr");
+        [[n], [x.first, h.first], [h.first, x.first], [x.tick, h.tick], [h.tick, x.tick]].forEach(function (pair, column) {
+          var td = document.createElement("td");
+          td.textContent = column === 0 ? pair[0] : pair[0].toFixed(1) + " ms";
+          if (column > 0 && pair[0] < pair[1]) td.className = "faster";
+          tr.append(td);
+        });
+        results.append(tr);
+      }
+      stage.replaceChildren();
+      status.textContent = "Done. Faster numbers are in green.";
+      button.disabled = false;
+      window.benchDone = true;
+    }
+
+    document.querySelector("#run").addEventListener("click", run);
+  </script>
+</body>
+</html>

@@ -17,8 +17,8 @@
  *   }
  *
  * So the page never has to work anything out: it just draws what it's given.
- * That's what lets the same API drive both the EJS and the Mustache todo demos:
- * Mustache templates can't contain logic, so everything they show is in here.
+ * jsonx templates have no logic beyond jx-if and jx-each, so everything the page
+ * shows, like which filter button is highlighted, is worked out here.
  */
 (function () {
   "use strict";

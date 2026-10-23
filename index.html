@@ -20,38 +20,35 @@
   <main class="wa-stack wa-gap-xl">
     <header class="wa-stack wa-gap-xs">
       <h1 class="wa-heading-3xl">jsonx</h1>
-      <p class="wa-body-l">A tiny htmx-style framework for JSON APIs. HTML attributes call your API, templates (EJS, Mustache or your own) turn the JSON into HTML in the browser, and it plays nicely with web components.</p>
+      <p class="wa-body-l">A tiny htmx-style framework for JSON APIs. Your server sends JSON shaped for the page, a plain HTML template draws it in the browser, and only what changed is updated. It plays nicely with web components.</p>
     </header>
 
-<pre><code>&lt;button jx-get="/api/todos" jx-template="#todo-list" jx-target="#todos"&gt;Load&lt;/button&gt;
-&lt;ul id="todos"&gt;&lt;/ul&gt;
+<pre><code>&lt;wa-card jx-get="api/todos"&gt;
+  &lt;template&gt;
+    &lt;ul&gt;
+      &lt;li jx-each="todos" class:done="{{done}}"&gt;
+        &lt;wa-checkbox checked="{{done}}" jx-post="api/todos/{{id}}/toggle"&gt;{{title}}&lt;/wa-checkbox&gt;
+      &lt;/li&gt;
+    &lt;/ul&gt;
+    &lt;p jx-if="!todos"&gt;Nothing to do.&lt;/p&gt;
+  &lt;/template&gt;
+&lt;/wa-card&gt;</code></pre>
 
-&lt;script type="text/ejs" id="todo-list"&gt;
-  &lt;% data.forEach(function (todo) { %&gt;
-    &lt;li&gt;&lt;%= todo.title %&gt;&lt;/li&gt;
-  &lt;% }) %&gt;
-&lt;/script&gt;</code></pre>
-
-    <div class="wa-grid" style="--min-column-size: 240px;">
+    <div class="wa-grid" style="--min-column-size: 200px;">
       <wa-card>
           <h2 class="wa-heading-l">Todo app</h2>
           <p>A Web Awesome todo list: add, tick off, filter, delete and clear. Saved in your browser.</p>
           <wa-button slot="footer" variant="brand" href="examples/todo/">Open <wa-icon slot="end" name="arrow-right"></wa-icon></wa-button>
         </wa-card>
       <wa-card>
-          <h2 class="wa-heading-l">Todo app, Mustache</h2>
-          <p>The same app and API, drawn with a logic-less Mustache template instead of EJS.</p>
-          <wa-button slot="footer" href="examples/todo-mustache/">Open <wa-icon slot="end" name="arrow-right"></wa-icon></wa-button>
-        </wa-card>
-      <wa-card>
-          <h2 class="wa-heading-l">Todo app, Mustache + Lit</h2>
-          <p>The same Mustache template, rendered by Lit, so each update only touches what changed.</p>
-          <wa-button slot="footer" href="examples/todo-lit/">Open <wa-icon slot="end" name="arrow-right"></wa-icon></wa-button>
-        </wa-card>
-      <wa-card>
           <h2 class="wa-heading-l">Feature tour</h2>
           <p>Every attribute in one page, plus three patterns for using jsonx with your own web components.</p>
           <wa-button slot="footer" href="examples/basic/">Open <wa-icon slot="end" name="arrow-right"></wa-icon></wa-button>
+        </wa-card>
+      <wa-card>
+          <h2 class="wa-heading-l">Benchmark</h2>
+          <p>How fast jsonx draws and updates 10, 100 and 1,000 todos, compared with rebuilding the HTML each time.</p>
+          <wa-button slot="footer" href="examples/benchmark/">Open <wa-icon slot="end" name="arrow-right"></wa-icon></wa-button>
         </wa-card>
     </div>
 

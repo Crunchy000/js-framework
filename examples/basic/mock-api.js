@@ -10,53 +10,42 @@
 (function () {
   "use strict";
 
-  var todos = [
-    { id: 1, title: "Read the jsonx source", done: true },
-    { id: 2, title: "Write an EJS template", done: false },
-    { id: 3, title: "Build a web component", done: false }
-  ];
-  var nextId = 4;
+  var likes = 0;
+
+  // Changes every time it's asked, so "Refresh stats" visibly does something.
+  var stats = { total: 5, done: 1 };
 
   var users = [
-    { id: 1, name: "Ada Lovelace", role: "Mathematician" },
-    { id: 2, name: "Alan Turing", role: "Computer scientist" },
-    { id: 3, name: "Grace Hopper", role: "Rear admiral" },
-    { id: 4, name: "Linus Torvalds", role: "Kernel hacker" },
-    { id: 5, name: "Margaret Hamilton", role: "Apollo software lead" },
-    { id: 6, name: "Tim Berners-Lee", role: "Inventor of the web" }
+    { id: 1, name: "Ada Lovelace", role: "Mathematician", pioneer: true },
+    { id: 2, name: "Alan Turing", role: "Computer scientist", pioneer: true },
+    { id: 3, name: "Grace Hopper", role: "Rear admiral", pioneer: true },
+    { id: 4, name: "Linus Torvalds", role: "Kernel hacker", pioneer: false },
+    { id: 5, name: "Margaret Hamilton", role: "Apollo software lead", pioneer: true },
+    { id: 6, name: "Tim Berners-Lee", role: "Inventor of the web", pioneer: false }
   ];
 
-  // Each route: [method, url pattern, handler(match, body, query)] -> data or [status, data]
+  // Each route: [method, url pattern, handler(match, body, query)] -> data or [status, data].
+  // Like the todo app, each answer is shaped for the page that shows it.
   var routes = [
-    ["GET", /^\/api\/todos$/, function () { return todos; }],
-
-    ["POST", /^\/api\/todos$/, function (m, body) {
-      if (!body.title || !body.title.trim()) return [400, { error: "Title is required" }];
-      var todo = { id: nextId++, title: body.title.trim(), done: false };
-      todos.push(todo);
-      return [201, todo];
+    ["GET", /^\/api\/likes$/, function () {
+      return { likes: likes, label: likes === 1 ? "1 like" : likes + " likes" };
     }],
 
-    ["PUT", /^\/api\/todos\/(\d+)$/, function (m, body) {
-      var todo = todos.find(function (t) { return t.id === Number(m[1]); });
-      if (!todo) return [404, { error: "Not found" }];
-      if (body.toggle) todo.done = !todo.done;
-      return todo;
+    ["POST", /^\/api\/likes$/, function () {
+      likes++;
+      return { likes: likes, label: likes === 1 ? "1 like" : likes + " likes" };
     }],
 
-    ["DELETE", /^\/api\/todos\/(\d+)$/, function (m) {
-      todos = todos.filter(function (t) { return t.id !== Number(m[1]); });
-      return [204, null];
-    }],
-
-    ["GET", /^\/api\/stats$/, function () {
-      var done = todos.filter(function (t) { return t.done; }).length;
-      return { total: todos.length, done: done, open: todos.length - done };
+    ["POST", /^\/api\/broken$/, function () {
+      return [500, { error: "The server had a problem (on purpose)" }];
     }],
 
     ["GET", /^\/api\/users$/, function (m, body, query) {
       var q = (query.get("q") || "").toLowerCase();
-      return users.filter(function (u) { return u.name.toLowerCase().indexOf(q) !== -1; });
+      return {
+        query: q,
+        users: users.filter(function (u) { return u.name.toLowerCase().indexOf(q) !== -1; })
+      };
     }],
 
     ["GET", /^\/api\/users\/(\d+)$/, function (m) {
@@ -64,8 +53,14 @@
       return user || [404, { error: "Not found" }];
     }],
 
+    ["GET", /^\/api\/stats$/, function () {
+      stats.done = (stats.done % stats.total) + 1;
+      return { total: stats.total, done: stats.done, open: stats.total - stats.done };
+    }],
+
     ["POST", /^\/api\/feedback$/, function (m, body) {
-      return { stars: Number(body.stars), message: "Thanks for the feedback!" };
+      var stars = Number(body.stars);
+      return { stars: stars, message: "Thanks! You gave " + stars + (stars === 1 ? " star." : " stars.") };
     }]
   ];
 
