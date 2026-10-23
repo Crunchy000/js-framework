@@ -12,6 +12,8 @@
   <!-- jsonx and its one dependency, EJS -->
   <script src="../../vendor/ejs.min.js"></script>
   <script src="mock-api.js"></script>
+  <!-- idiomorph: lets jsonx update only what changed (the default when it's loaded) -->
+  <script src="../../vendor/idiomorph.min.js"></script>
   <script src="../../jsonx.js"></script>
 
   <!-- Follow the visitor's light/dark setting -->
@@ -59,7 +61,7 @@
 
   <!--
     The one template. `data` is the view the server sent:
-      { filter, todos: [{ id, title, done }], stats: { total, done, open, percent }, error }
+      { filter, todos: [{ id, title, done }], stats: { total, done, open, percent }, draft, error }
 
     Every request from inside the region automatically sends the region's named
     controls: here that's the new todo's `title` and the hidden `filter`. So the
@@ -71,7 +73,7 @@
 
       <!-- Add: click the button, or press Enter in the input. -->
       <div class="add wa-cluster wa-gap-s">
-        <wa-input name="title" placeholder="What needs doing?" aria-label="New todo" autocomplete="off"
+        <wa-input name="title" placeholder="What needs doing?" aria-label="New todo" autocomplete="off" value="<%= data.draft %>"
                   autofocus jx-post="api/todos" jx-trigger="keydown[key=Enter]"></wa-input>
         <wa-button variant="brand" jx-post="api/todos">
           <wa-icon slot="start" name="plus"></wa-icon>
@@ -107,7 +109,7 @@
           <li class="empty">Nothing here yet</li>
         <% } %>
         <% data.todos.forEach(function (todo) { %>
-          <li class="<%= todo.done ? 'done' : '' %>">
+          <li id="todo-<%= todo.id %>" class="<%= todo.done ? 'done' : '' %>">
             <!-- A form control, so its default trigger is "change" -->
             <wa-checkbox <%= todo.done ? 'checked' : '' %> jx-post="api/todos/<%= todo.id %>/toggle"><%= todo.title %></wa-checkbox>
             <wa-button size="s" appearance="plain" variant="danger" jx-delete="api/todos/<%= todo.id %>">

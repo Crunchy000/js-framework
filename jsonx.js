@@ -292,7 +292,8 @@
   function render(el, data) {
     var region = findRegion(el);
     var target = el.hasAttribute("jx-target") ? findTarget(el) : (region || el);
-    var swap = el.getAttribute("jx-swap") || "innerHTML";
+    var swap = el.getAttribute("jx-swap") ||
+      (target === region && region.getAttribute("jx-swap")) || defaultSwap();
 
     // "prop:items" skips HTML entirely: it sets target.items = data.
     // This is the natural way to feed JSON to a web component.
@@ -398,8 +399,16 @@
     return cache[selector];
   }
 
+  // Morphing (see below) is the default when idiomorph is loaded; otherwise we
+  // replace the target's contents.
+  function defaultSwap() {
+    return window.Idiomorph ? "morph" : "innerHTML";
+  }
+
   // Puts `html` into the page. Returns the elements that are new, so we can wire them up.
   function swapContent(target, html, swap) {
+    if (swap === "morph") return morph(target, html);
+
     var fragment = document.createRange().createContextualFragment(html);
     var newNodes = Array.from(fragment.children);
 
@@ -415,6 +424,40 @@
       default: throw new Error('[jsonx] unknown jx-swap "' + swap + '"');
     }
     return newNodes;
+  }
+
+  // jx-swap="morph" updates the target's contents to match the new HTML, but only
+  // changes what's different, using idiomorph (vendor/idiomorph.min.js).
+  // Elements that didn't change stay exactly as they are: web components aren't
+  // rebuilt, and focus and scroll position survive. Give list items an id so
+  // they're matched up correctly when items are added, removed or reordered.
+  function morph(target, html) {
+    if (!window.Idiomorph) throw new Error('[jsonx] jx-swap="morph" needs idiomorph loaded first');
+    var added = [];
+    Idiomorph.morph(target, html, {
+      morphStyle: "innerHTML",
+      callbacks: {
+        afterNodeAdded: function (node) {
+          if (node.nodeType === 1) added.push(node);
+        },
+        // Components often set attributes on themselves (aria-*, tabindex, ...).
+        // Those aren't in the template, so don't let the morph strip them off.
+        beforeAttributeUpdated: function (name, element, type) {
+          if (type === "remove" && element.localName.indexOf("-") !== -1) return false;
+        },
+        // The server's view is the truth. Native inputs get their value and checked
+        // state synced by idiomorph; do the same for form-control web components,
+        // whose current state lives in properties, not attributes.
+        afterNodeMorphed: function (oldNode, newNode) {
+          if (oldNode.nodeType !== 1 || !oldNode.constructor.formAssociated) return;
+          if ("checked" in oldNode) oldNode.checked = newNode.hasAttribute("checked");
+          if ("value" in oldNode && !/-button$/.test(oldNode.localName)) {
+            oldNode.value = newNode.getAttribute("value") || "";
+          }
+        }
+      }
+    });
+    return added;
   }
 
   // Dispatches a custom DOM event. `composed: true` lets it escape a shadow root,

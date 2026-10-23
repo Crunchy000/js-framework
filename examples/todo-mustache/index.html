@@ -12,6 +12,8 @@
   <!-- jsonx, with Mustache as its template engine. The mock API is shared with the EJS demo. -->
   <script src="../../vendor/mustache.min.js"></script>
   <script src="../todo/mock-api.js"></script>
+  <!-- idiomorph: lets jsonx update only what changed (the default when it's loaded) -->
+  <script src="../../vendor/idiomorph.min.js"></script>
   <script src="../../jsonx.js"></script>
 
   <!-- Follow the visitor's light/dark setting -->
@@ -60,7 +62,7 @@
     type="text/mustache" tells jsonx to use Mustache for this template.
     Mustache has no logic: no comparisons, no ternaries, no string functions.
     So the API sends everything ready to show (see ../todo/mock-api.js):
-      { filter, filters: [{ name, label, variant, appearance }], todos, stats, error }
+      { filter, filters: [{ name, label, variant, appearance }], todos, stats, draft, error }
 
     {{x}}           print x, HTML-escaped
     {{#list}}...{{/list}}   repeat for each item (or show once if x is true)
@@ -72,7 +74,7 @@
       <input type="hidden" name="filter" value="{{filter}}">
 
       <div class="add wa-cluster wa-gap-s">
-        <wa-input name="title" placeholder="What needs doing?" aria-label="New todo" autocomplete="off"
+        <wa-input name="title" placeholder="What needs doing?" aria-label="New todo" autocomplete="off" value="{{draft}}"
                   autofocus jx-post="api/todos" jx-trigger="keydown[key=Enter]"></wa-input>
         <wa-button variant="brand" jx-post="api/todos">
           <wa-icon slot="start" name="plus"></wa-icon>
@@ -124,7 +126,7 @@
 
   <!-- One todo, used as a partial above. Inside {{#todos}}, names refer to the current todo. -->
   <script type="text/mustache" id="todo-item">
-    <li class="{{#done}}done{{/done}}">
+    <li id="todo-{{id}}" class="{{#done}}done{{/done}}">
       <wa-checkbox {{#done}}checked{{/done}} jx-post="api/todos/{{id}}/toggle">{{title}}</wa-checkbox>
       <wa-button size="s" appearance="plain" variant="danger" jx-delete="api/todos/{{id}}">
         <wa-icon name="trash" label="Delete {{title}}"></wa-icon>

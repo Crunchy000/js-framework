@@ -12,6 +12,7 @@
  *     filters: [{ name, label, selected, variant, appearance }, ...],  // ready-made buttons
  *     todos:  [{ id, title, done }, ...],           // already filtered
  *     stats:  { total, done, open, percent },       // already counted
+ *     draft:  "Buy mi"                              // what's typed in the new-todo box
  *     error:  "Title is required"                   // only when something went wrong
  *   }
  *
@@ -39,7 +40,11 @@
   }
 
   // Builds the view the page renders.
-  function view(filter, error) {
+  // `values` is what the page sent: the region's controls, so `filter` and `title`.
+  // Echoing the typed title back as `draft` means a re-render never wipes it,
+  // and after a successful add we send an empty draft to clear the box.
+  function view(values, error, draft) {
+    var filter = values.filter;
     if (FILTERS.indexOf(filter) === -1) filter = "all";
     var done = todos.filter(function (t) { return t.done; }).length;
     var result = {
@@ -64,6 +69,7 @@
         percent: todos.length ? Math.round((done / todos.length) * 100) : 0
       }
     };
+    result.draft = draft === undefined ? (values.title || "") : draft;
     if (error) result.error = error;
     return result;
   }
@@ -72,35 +78,35 @@
   // `values` holds the query string (GET/DELETE) or JSON body (POST).
   var routes = [
     ["GET", /^\/api\/todos$/, function (m, values) {
-      return view(values.filter);
+      return view(values);
     }],
 
     ["POST", /^\/api\/todos$/, function (m, values) {
       var title = (values.title || "").trim();
       // A problem is just part of the view: the page shows `error` like anything else.
-      if (!title) return view(values.filter, "Title is required");
+      if (!title) return view(values, "Title is required");
       var id = todos.reduce(function (max, t) { return Math.max(max, t.id); }, 0) + 1;
       todos.push({ id: id, title: title, done: false });
       save();
-      return view(values.filter);
+      return view(values, null, "");
     }],
 
     ["POST", /^\/api\/todos\/(\d+)\/toggle$/, function (m, values) {
       todos.forEach(function (t) { if (t.id === Number(m[1])) t.done = !t.done; });
       save();
-      return view(values.filter);
+      return view(values);
     }],
 
     ["DELETE", /^\/api\/todos\/completed$/, function (m, values) {
       todos = todos.filter(function (t) { return !t.done; });
       save();
-      return view(values.filter);
+      return view(values);
     }],
 
     ["DELETE", /^\/api\/todos\/(\d+)$/, function (m, values) {
       todos = todos.filter(function (t) { return t.id !== Number(m[1]); });
       save();
-      return view(values.filter);
+      return view(values);
     }]
   ];
 

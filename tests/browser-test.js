@@ -99,9 +99,14 @@ async function todoExample(browser, base, folder) {
   await until(p, () => document.activeElement && document.activeElement.matches('wa-input[name=title]'));
   check('input keeps focus after re-render (autofocus)', true);
 
+  await p.evaluate(() => { window.firstRow = document.querySelector('#app .todos li:not(.empty) wa-checkbox'); });
+  await p.locator('wa-input[name=title] input').fill('Half-typ');
   await p.locator(items).nth(3).locator('wa-checkbox').click();
   await statsSay('2 of 5 done');
   check('<wa-checkbox> toggles a todo', await p.locator('#app .todos li.done').count() === 2);
+  check('morph keeps unchanged components (same element)', await p.evaluate(() => window.firstRow === document.querySelector('#app .todos li:not(.empty) wa-checkbox')));
+  check('morph keeps half-typed text (echoed back as draft)', await p.evaluate(() => document.querySelector('wa-input[name=title]').value === 'Half-typ'));
+  await p.locator('wa-input[name=title] input').fill('');
 
   await filterButton('Done').click();
   await count(2);

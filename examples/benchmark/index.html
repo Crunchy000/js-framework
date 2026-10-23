@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en" class="wa-cloak">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>jsonx rendering benchmark</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/styles/webawesome.css">
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
+  <script src="../../vendor/ejs.min.js"></script>
+  <script src="../../vendor/idiomorph.min.js"></script>
+  <script src="../../jsonx.js"></script>
+  <script>
+    if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("wa-dark");
+  </script>
+  <style>
+    body { margin: 0; background: var(--wa-color-surface-lowered); }
+    main { max-width: 760px; margin: 0 auto; padding: var(--wa-space-2xl) 16px; }
+    table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+    th, td { text-align: right; padding: var(--wa-space-2xs) var(--wa-space-s); border-bottom: 1px solid var(--wa-color-surface-border); }
+    th:first-child, td:first-child { text-align: left; }
+    #stage { max-height: 240px; overflow: auto; }
+    #stage ul { list-style: none; margin: 0; padding: 0; }
+  </style>
+</head>
+<body>
+  <main class="wa-stack wa-gap-l">
+    <header class="wa-stack wa-gap-xs">
+      <h1 class="wa-heading-2xl">Rendering benchmark</h1>
+      <p>Times how long jsonx takes to show a todo list of Web Awesome components, and to update it after ticking one todo. Each number is the median of several runs, from the request starting until the browser has drawn the next frame. The fake API answers instantly, so network time isn't included.</p>
+      <p><strong>innerHTML</strong> throws the old list away and builds a new one. <strong>morph</strong> uses idiomorph to change only what's different.</p>
+    </header>
+
+    <div class="wa-cluster">
+      <wa-button id="run" variant="brand">Run benchmark</wa-button>
+      <span id="status"></span>
+    </div>
+
+    <table>
+      <thead>
+        <tr><th>Todos</th><th>First render, innerHTML</th><th>First render, morph</th><th>Tick one, innerHTML</th><th>Tick one, morph</th></tr>
+      </thead>
+      <tbody id="results"></tbody>
+    </table>
+
+    <wa-card id="stage">
+      <!-- The region under test. The benchmark sets jx-swap on it before each run. -->
+      <div id="bench" jx-get="api/bench" jx-template="#bench-list" jx-trigger="bench-run"></div>
+    </wa-card>
+  </main>
+
+  <script type="text/ejs" id="bench-list">
+    <ul>
+      <% data.todos.forEach(function (todo) { %>
+        <li id="todo-<%= todo.id %>">
+          <wa-checkbox <%= todo.done ? 'checked' : '' %> jx-post="api/bench/<%= todo.id %>/toggle"><%= todo.title %></wa-checkbox>
+          <wa-button size="s" appearance="plain" jx-delete="api/bench/<%= todo.id %>">Delete</wa-button>
+        </li>
+      <% }) %>
+    </ul>
+  </script>
+
+  <script>
+    // A fake API that answers instantly with N todos.
+    var todos = [];
+    var realFetch = window.fetch.bind(window);
+    window.fetch = function (input, options) {
+      var url = new URL(input, location.href);
+      if (url.pathname.indexOf("/api/bench") === -1) return realFetch(input, options);
+      var toggle = url.pathname.match(/\/(\d+)\/toggle$/);
+      if (toggle) todos.forEach(function (t) { if (t.id === Number(toggle[1])) t.done = !t.done; });
+      return Promise.resolve(new Response(JSON.stringify({ todos: todos }), { headers: { "Content-Type": "application/json" } }));
+    };
+
+    function makeTodos(n) {
+      todos = [];
+      for (var i = 1; i <= n; i++) todos.push({ id: i, title: "Todo number " + i, done: i % 3 === 0 });
+    }
+
+    // Waits until the browser has drawn the next frame, so layout and the
+    // components' own (asynchronous) rendering are included in the time.
+    function nextFrame() {
+      return new Promise(function (resolve) { requestAnimationFrame(function () { setTimeout(resolve); }); });
+    }
+
+    async function time(fn) {
+      var start = performance.now();
+      await fn();
+      await nextFrame();
+      return performance.now() - start;
+    }
+
+    function median(list) {
+      var sorted = list.slice().sort(function (a, b) { return a - b; });
+      return sorted[Math.floor(sorted.length / 2)];
+    }
+
+    var region = document.querySelector("#bench");
+
+    async function measure(n, swap, runs) {
+      var first = [], tick = [];
+      for (var r = 0; r < runs; r++) {
+        makeTodos(n);
+        region.setAttribute("jx-swap", swap);
+        region.replaceChildren();
+        await nextFrame();
+        first.push(await time(function () { return jsonx.request(region); }));
+        // Tick the todo in the middle of the list.
+        var checkbox = region.querySelector("#todo-" + Math.ceil(n / 2) + " wa-checkbox");
+        tick.push(await time(function () { return jsonx.request(checkbox); }));
+      }
+      return { first: median(first), tick: median(tick) };
+    }
+
+    async function run() {
+      var sizes = [10, 100, 1000];
+      var results = document.querySelector("#results");
+      var status = document.querySelector("#status");
+      results.replaceChildren();
+      window.benchResults = [];
+      await customElements.whenDefined("wa-checkbox");
+      for (var i = 0; i < sizes.length; i++) {
+        var n = sizes[i];
+        var runs = n >= 1000 ? 3 : 7;
+        status.textContent = "Running " + n + " todos…";
+        var swap = await measure(n, "innerHTML", runs);
+        var morph = await measure(n, "morph", runs);
+        var row = { todos: n, firstInnerHTML: swap.first, firstMorph: morph.first, tickInnerHTML: swap.tick, tickMorph: morph.tick };
+        window.benchResults.push(row);
+        var tr = document.createElement("tr");
+        [n, swap.first, morph.first, swap.tick, morph.tick].forEach(function (value, column) {
+          var td = document.createElement("td");
+          td.textContent = column === 0 ? value : value.toFixed(1) + " ms";
+          tr.append(td);
+        });
+        results.append(tr);
+      }
+      status.textContent = "Done.";
+      window.benchDone = true;
+    }
+
+    document.querySelector("#run").addEventListener("click", run);
+  </script>
+</body>
+</html>
