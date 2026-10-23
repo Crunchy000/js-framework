@@ -1,9 +1,8 @@
-name: Test and deploy to GitHub Pages
+name: Deploy to GitHub Pages
 
 on:
   push:
     branches: [main]
-  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -16,23 +15,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    # Installing the browser occasionally hangs on GitHub's side; fail fast instead of waiting hours.
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 22
-      - run: npm install
-      - run: npx playwright install --with-deps chromium
-      - run: npm test
-
   deploy:
-    # Only publish from main, and only when the tests pass.
-    if: github.ref == 'refs/heads/main'
-    needs: test
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment:

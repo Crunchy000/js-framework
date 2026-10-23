@@ -55,7 +55,7 @@ That's the whole language. There's no other logic on purpose: if the page needs 
 
 ## Benchmark
 
-[The benchmark](examples/benchmark/) draws a list of Web Awesome todos, then ticks one, and times each until the browser has drawn the next frame. It compares jsonx with the simple approach of rebuilding the list's HTML with `innerHTML`. One run in headless Chromium:
+[The benchmark](examples/benchmark/) draws a list of Web Awesome todos, then ticks one, and times each until the browser has drawn the next frame. It compares jsonx with the simple approach of rebuilding the list's HTML with `innerHTML`. One run in headless Chrome:
 
 | Todos | First draw, jsonx | First draw, innerHTML | Tick one, jsonx | Tick one, innerHTML |
 |---|---|---|---|---|
@@ -84,8 +84,7 @@ Serve the folder with any static server, for example `npx serve .`, and open `ex
 | `examples/basic/` | The feature tour, with three demo web components in `components.js`. |
 | `examples/benchmark/` | Times jsonx against rebuilding the list with `innerHTML`. |
 | `index.html` | The GitHub Pages home page. |
-| `tests/` | A browser test that clicks through every example. |
-| `.github/workflows/pages.yml` | Runs the tests, then publishes the site to GitHub Pages on every push to `main`. |
+| `.github/workflows/pages.yml` | Publishes the site to GitHub Pages on every push to `main`. |
 
 ## Attributes
 
@@ -166,14 +165,6 @@ There are three ways jsonx and web components work together. The feature tour ha
 - Polling: `jx-trigger="every 5s"`.
 - Publishing to npm.
 
-## Running the tests
-
-```sh
-npm install
-npx playwright install chromium
-npm test
-```
-
 ## Publishing
 
-Every push to `main` runs the tests and, if they pass, publishes the site to GitHub Pages using `.github/workflows/pages.yml`. There's no build step: the workflow just copies `index.html`, `jsonx.js`, `templates.js`, `vendor/` and `examples/`.
+Every push to `main` publishes the site to GitHub Pages using `.github/workflows/pages.yml`. There's no build step: the workflow just copies `index.html`, `jsonx.js`, `templates.js`, `vendor/` and `examples/`.

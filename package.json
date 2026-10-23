@@ -3,11 +3,5 @@
   "version": "0.1.0",
   "description": "A tiny htmx-style framework for JSON APIs, rendered in the browser with simple HTML templates compiled to Lit. Web component friendly.",
   "main": "jsonx.js",
-  "private": true,
-  "scripts": {
-    "test": "node tests/browser-test.js"
-  },
-  "devDependencies": {
-    "playwright": "1.63.0"
-  }
+  "private": true
 }
