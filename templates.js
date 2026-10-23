@@ -67,11 +67,15 @@ function text(value) {
 // ---------------------------------------------------------------------------
 
 // Rule 3: a whole-value attribute like checked="{{done}}" or value="{{draft}}".
+// While an error is drawn on top of a view, form controls keep what you typed.
+var keepTyping = false;
+
 class SmartAttribute extends Directive {
   update(part, [value]) {
     var el = part.element;
     var name = part.name;
     if (name in el && !name.startsWith("aria")) {
+      if (keepTyping) return noChange;
       // A property: compare with the element's live value, so typing or
       // clicking never leaves it out of step with the view.
       var next = value == null ? (typeof el[name] === "boolean" ? false : "") : value;
@@ -291,13 +295,19 @@ export function compileTemplate(templateElement, find) {
   };
   var template = compileNodes(Array.from(templateElement.content.childNodes), ctx);
 
-  return function renderInto(data, target) {
+  // `keepInputs`: leave form controls' values alone (used when showing an error).
+  return function renderInto(data, target, keepInputs) {
     // The first time, clear any placeholder (like a loading skeleton).
     // After that, Lit owns the target and updates it in place.
     if (!target.__jxRendered) {
       target.replaceChildren();
       target.__jxRendered = true;
     }
-    render(template([data]), target);
+    keepTyping = !!keepInputs;
+    try {
+      render(template([data]), target);
+    } finally {
+      keepTyping = false;
+    }
   };
 }

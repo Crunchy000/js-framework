@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en" class="wa-cloak">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Settings — Conduit</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/styles/webawesome.css">
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
+  <link rel="stylesheet" href="style.css?v=4">
+
+  <!-- The pretend RealWorld server (remove it to use a real one), the page code, then jsonx.
+       app.js is deferred so it runs after the page is parsed, but before jsonx. -->
+  <script src="mock-api.js?v=4"></script>
+  <script defer src="app.js?v=4"></script>
+  <script type="module" src="../../jsonx.js?v=4"></script>
+  <script>if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("wa-dark");</script>
+</head>
+<body data-needs-sign-in>
+  <conduit-nav></conduit-nav>
+
+  <main class="narrow">
+    <h1>Your settings</h1>
+    <div id="settings" class="wa-stack" style="margin-top: var(--wa-space-l)" jx-get="/api/user">
+      <template>
+        <wa-callout jx-if="error" variant="danger">
+          <ul class="wa-stack wa-gap-3xs" style="margin: 0; padding-left: 1em;"><li jx-each="errors">{{text}}</li></ul>
+        </wa-callout>
+        <wa-input name="user.image" placeholder="URL of profile picture" value="{{user.image}}"></wa-input>
+        <wa-input name="user.username" placeholder="Username" size="l" value="{{user.username}}"></wa-input>
+        <wa-textarea name="user.bio" placeholder="Short bio about you" rows="5" value="{{user.bio}}"></wa-textarea>
+        <wa-input name="user.email" type="email" placeholder="Email" size="l" value="{{user.email}}"></wa-input>
+        <wa-input name="user.password" type="password" placeholder="New password (leave empty to keep it)" size="l"></wa-input>
+        <div><wa-button variant="success" size="l" jx-put="/api/user" jx-swap="none" data-then="profile">Update settings</wa-button></div>
+        <wa-divider></wa-divider>
+        <div class="wa-split">
+          <wa-button variant="danger" appearance="outlined" data-sign-out>Or click here to sign out.</wa-button>
+          <wa-button appearance="plain" size="s" onclick="resetConduitData()" data-sign-out>Reset demo data</wa-button>
+        </div>
+      </template>
+    </div>
+  </main>
+</body>
+</html>

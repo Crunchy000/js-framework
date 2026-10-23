@@ -3,104 +3,80 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Conduit sign-in</title>
-
+  <title>Home — Conduit</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/styles/webawesome.css">
   <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
+  <link rel="stylesheet" href="style.css?v=4">
 
-  <!-- A pretend RealWorld server. Remove it to use a real one. -->
-  <script src="mock-api.js?v=3"></script>
-  <script type="module" src="../../jsonx.js?v=3"></script>
-
-  <script>
-    if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("wa-dark");
-  </script>
-  <style>
-    body { margin: 0; min-height: 100vh; background: var(--wa-color-surface-lowered); }
-    main { max-width: 480px; margin: 0 auto; padding: var(--wa-space-2xl) 16px; }
-    header p { margin: 0; color: var(--wa-color-text-quiet); }
-    .jx-loading { opacity: .6; transition: opacity .2s; }
-  </style>
+  <!-- The pretend RealWorld server (remove it to use a real one), the page code, then jsonx.
+       app.js is deferred so it runs after the page is parsed, but before jsonx. -->
+  <script src="mock-api.js?v=4"></script>
+  <script defer src="app.js?v=4"></script>
+  <script type="module" src="../../jsonx.js?v=4"></script>
+  <script>if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("wa-dark");</script>
 </head>
 <body>
-  <main class="wa-stack wa-gap-xl">
-    <header class="wa-stack wa-gap-2xs">
-      <h1 class="wa-heading-2xl">Sign in to Conduit</h1>
-      <p>The sign-in from the <a href="https://github.com/realworld-apps/realworld">RealWorld</a> spec, with jsonx. Try <code>demo@conduit.dev</code> and <code>password123</code>, or a wrong password.</p>
-    </header>
+  <conduit-nav></conduit-nav>
+  <header class="banner">
+    <h1>conduit</h1>
+    <p>A place to share your knowledge.</p>
+  </header>
 
-    <!-- The account region. It asks the API who you are (GET /api/user), but only
-         when the script below says so: "manual" is an event nobody fires. -->
-    <wa-card id="account" jx-get="/api/user" jx-trigger="manual">
+  <div class="layout">
+    <!-- The feed. Each tab and page button loads a different list into this region.
+         (When you're signed in, app.js starts it on "Your feed".) -->
+    <main id="feed" data-home jx-get="/api/articles?limit=10">
+      <p class="empty">Loading articles...</p>
       <template>
-        <!-- Signed out: the form. Dotted names send { "user": { "email", "password" } }. -->
-        <div jx-if="!user" class="wa-stack">
-          <wa-callout jx-if="error" variant="danger">
-            <wa-icon slot="icon" name="circle-exclamation"></wa-icon>
-            <ul class="wa-stack wa-gap-3xs" style="margin: 0; padding-left: 1em;">
-              <li jx-each="errors">{{text}}</li>
-            </ul>
-          </wa-callout>
-
-          <wa-input name="user.email" type="email" label="Email" autofocus></wa-input>
-
-          <wa-input name="user.password" type="password" label="Password" password-toggle
-                    jx-post="/api/users/login" jx-trigger="keydown[key=Enter]"></wa-input>
-
-          <wa-button variant="brand" jx-post="/api/users/login">Sign in</wa-button>
+        <div class="tabs">
+          <wa-button jx-if="me" appearance="plain" jx-get="/api/articles/feed?limit=10" class:active="{{tab.feed}}">Your feed</wa-button>
+          <wa-button appearance="plain" jx-get="/api/articles?limit=10" class:active="{{tab.global}}">Global feed</wa-button>
+          <wa-button jx-if="tab.tag" appearance="plain" class="active"># {{tab.tag}}</wa-button>
         </div>
-
-        <!-- Signed in: the answer was { user: {...} }, so this part shows instead. -->
-        <div jx-if="user" class="wa-stack">
-          <wa-callout jx-if="error" variant="danger">{{error}}</wa-callout>
-          <div class="wa-cluster">
-            <wa-avatar label="{{user.username}}"></wa-avatar>
-            <div class="wa-stack wa-gap-3xs">
-              <strong>Signed in as {{user.username}}</strong>
-              <span>{{user.bio}}</span>
-            </div>
-          </div>
-          <div class="wa-cluster">
-            <!-- Sends the saved token, so the server knows who's asking. -->
-            <wa-button jx-get="/api/user">Ask the server who I am</wa-button>
-            <wa-button id="sign-out" appearance="plain">Sign out</wa-button>
-          </div>
-        </div>
+        <template jx-use="#article-list"></template>
       </template>
-    </wa-card>
-  </main>
+    </main>
 
-  <script type="module">
-    var account = document.querySelector("#account");
+    <aside>
+      <wa-card id="tags" jx-get="/api/tags">
+        <template>
+          <h2>Popular tags</h2>
+          <div class="wa-cluster wa-gap-2xs">
+            <!-- A tag loads its articles into the feed. -->
+            <a jx-each="tags" href="#" jx-get="/api/articles?tag={{.}}&amp;limit=10" jx-target="#feed"><wa-tag size="s" pill>{{.}}</wa-tag></a>
+          </div>
+        </template>
+      </wa-card>
+    </aside>
+  </div>
 
-    // Every request sends the saved token, the way the RealWorld spec asks.
-    jsonx.headers = function () {
-      var token = localStorage.getItem("jwtToken");
-      return token ? { Authorization: "Token " + token } : {};
-    };
-
-    // Any answer with a user in it carries a fresh token: keep it.
-    document.addEventListener("jx:afterRender", function (event) {
-      var data = event.detail.data;
-      if (data && data.user && data.user.token) localStorage.setItem("jwtToken", data.user.token);
-    });
-
-    // A token the server turns down is no use any more, so forget it.
-    document.addEventListener("jx:error", function (event) {
-      if (event.detail.error.status === 401) localStorage.removeItem("jwtToken");
-    });
-
-    // Signing out is only forgetting the token, so it's plain page code.
-    account.addEventListener("click", function (event) {
-      if (event.target.closest("#sign-out")) {
-        localStorage.removeItem("jwtToken");
-        jsonx.render(account, {});
-      }
-    });
-
-    // On page load: if we have a token, ask who we are. Otherwise show the form.
-    if (localStorage.getItem("jwtToken")) jsonx.request(account);
-    else jsonx.render(account, {});
-  </script>
+  <!-- One list of article previews, used by the feed's template below. -->
+  <template id="article-list">
+    <p class="empty" jx-if="!articles">No articles are here... yet.</p>
+    <article class="preview" jx-each="articles">
+      <div class="wa-split">
+        <a class="author" href="profile.html?username={{author.username}}">
+          <wa-avatar initials="{{author.initial}}" image="{{author.image}}" label="{{author.username}}"></wa-avatar>
+          <span><strong>{{author.username}}</strong><br><small>{{date}}</small></span>
+        </a>
+        <!-- Favouriting answers with just the article, so we reload the list after. -->
+        <wa-button jx-if="favorited" size="s" variant="success" jx-delete="/api/articles/{{slug}}/favorite"
+                   jx-swap="none" jx-refresh="closest [jx-template]"><wa-icon slot="start" name="heart"></wa-icon>{{favoritesCount}}</wa-button>
+        <wa-button jx-if="!favorited" size="s" variant="success" appearance="outlined" jx-post="/api/articles/{{slug}}/favorite"
+                   jx-swap="none" jx-refresh="closest [jx-template]"><wa-icon slot="start" name="heart" variant="regular"></wa-icon>{{favoritesCount}}</wa-button>
+      </div>
+      <a class="title" href="article.html?slug={{slug}}">
+        <h2>{{title}}</h2>
+        <p>{{description}}</p>
+      </a>
+      <div class="wa-split">
+        <small>Read more...</small>
+        <div class="wa-cluster wa-gap-2xs"><wa-tag size="s" appearance="outlined" jx-each="tagList">{{.}}</wa-tag></div>
+      </div>
+    </article>
+    <div class="pages wa-cluster wa-gap-2xs" jx-if="pages">
+      <wa-button jx-each="pages" size="s" appearance="outlined" jx-get="{{url}}" class:current="{{current}}">{{number}}</wa-button>
+    </div>
+  </template>
 </body>
 </html>

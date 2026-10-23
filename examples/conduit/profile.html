@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en" class="wa-cloak">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Profile — Conduit</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/styles/webawesome.css">
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
+  <link rel="stylesheet" href="style.css?v=4">
+
+  <!-- The pretend RealWorld server (remove it to use a real one), the page code, then jsonx.
+       app.js is deferred so it runs after the page is parsed, but before jsonx. -->
+  <script src="mock-api.js?v=4"></script>
+  <script defer src="app.js?v=4"></script>
+  <script type="module" src="../../jsonx.js?v=4"></script>
+  <script>if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("wa-dark");</script>
+</head>
+<body>
+  <conduit-nav></conduit-nav>
+
+  <!-- profile.html?username=... -->
+  <div id="profile" class="profile-banner" jx-get="/api/profiles/:username">
+    <template>
+      <wa-avatar initials="{{profile.initial}}" image="{{profile.image}}" label="{{profile.username}}"></wa-avatar>
+      <h1>{{profile.username}}</h1>
+      <p>{{profile.bio}}</p>
+      <wa-button jx-if="profile.mine" size="s" appearance="outlined" href="settings.html"><wa-icon slot="start" name="gear"></wa-icon>Edit profile settings</wa-button>
+      <!-- Following answers with the profile itself, so it simply redraws. -->
+      <span jx-if="!profile.mine">
+        <wa-button jx-if="profile.following" size="s" jx-delete="/api/profiles/{{profile.username}}/follow"><wa-icon slot="start" name="minus"></wa-icon>Unfollow {{profile.username}}</wa-button>
+        <wa-button jx-if="!profile.following" size="s" appearance="outlined" jx-post="/api/profiles/{{profile.username}}/follow"><wa-icon slot="start" name="plus"></wa-icon>Follow {{profile.username}}</wa-button>
+      </span>
+    </template>
+  </div>
+
+  <main class="narrow" style="padding-top: var(--wa-space-l)">
+    <div id="feed" jx-get="/api/articles?author=:username&amp;limit=5">
+      <template>
+        <div class="tabs">
+          <wa-button appearance="plain" jx-get="/api/articles?author={{params.username}}&amp;limit=5" class:active="{{tab.author}}">My articles</wa-button>
+          <wa-button appearance="plain" jx-get="/api/articles?favorited={{params.username}}&amp;limit=5" class:active="{{tab.favorited}}">Favorited articles</wa-button>
+        </div>
+        <template jx-use="#article-list"></template>
+      </template>
+    </div>
+  </main>
+
+  <!-- One list of article previews, used by the feed's template below. -->
+  <template id="article-list">
+    <p class="empty" jx-if="!articles">No articles are here... yet.</p>
+    <article class="preview" jx-each="articles">
+      <div class="wa-split">
+        <a class="author" href="profile.html?username={{author.username}}">
+          <wa-avatar initials="{{author.initial}}" image="{{author.image}}" label="{{author.username}}"></wa-avatar>
+          <span><strong>{{author.username}}</strong><br><small>{{date}}</small></span>
+        </a>
+        <!-- Favouriting answers with just the article, so we reload the list after. -->
+        <wa-button jx-if="favorited" size="s" variant="success" jx-delete="/api/articles/{{slug}}/favorite"
+                   jx-swap="none" jx-refresh="closest [jx-template]"><wa-icon slot="start" name="heart"></wa-icon>{{favoritesCount}}</wa-button>
+        <wa-button jx-if="!favorited" size="s" variant="success" appearance="outlined" jx-post="/api/articles/{{slug}}/favorite"
+                   jx-swap="none" jx-refresh="closest [jx-template]"><wa-icon slot="start" name="heart" variant="regular"></wa-icon>{{favoritesCount}}</wa-button>
+      </div>
+      <a class="title" href="article.html?slug={{slug}}">
+        <h2>{{title}}</h2>
+        <p>{{description}}</p>
+      </a>
+      <div class="wa-split">
+        <small>Read more...</small>
+        <div class="wa-cluster wa-gap-2xs"><wa-tag size="s" appearance="outlined" jx-each="tagList">{{.}}</wa-tag></div>
+      </div>
+    </article>
+    <div class="pages wa-cluster wa-gap-2xs" jx-if="pages">
+      <wa-button jx-each="pages" size="s" appearance="outlined" jx-get="{{url}}" class:current="{{current}}">{{number}}</wa-button>
+    </div>
+  </template>
+</body>
+</html>

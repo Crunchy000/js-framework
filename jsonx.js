@@ -18,10 +18,10 @@
  *
  *   <script type="module" src="jsonx.js"></script>
  */
-import { compileTemplate } from "./templates.js?v=3";
+import { compileTemplate } from "./templates.js?v=4";
 
 var METHODS = ["get", "post", "put", "patch", "delete"];
-var SELECTOR = METHODS.map(function (m) { return "[jx-" + m + "]"; }).join(",");
+var SELECTOR = METHODS.map(function (m) { return "[jx-" + m + "]"; }).join(",") + ",[jx-region]";
 
 // Remember which elements already have listeners, so we never attach twice.
 var processed = new WeakSet();
@@ -30,7 +30,7 @@ var processed = new WeakSet();
 // 1. Finding elements and wiring up their events
 // ---------------------------------------------------------------------------
 
-// Look inside `root` for any element with a jx-get/jx-post/... attribute and wire it up.
+// Look inside `root` for any element with a jx-get/jx-post/... (or jx-region) attribute and wire it up.
 // `root` can be the document body, any element, or a web component's shadowRoot.
 function process(root) {
   root = root || document.body;
@@ -69,6 +69,13 @@ function wire(el) {
 }
 
 function attachTriggers(el) {
+  // <div jx-region> has no URL: it draws its template once, with an empty view.
+  // Good for a sign-in form, which has nothing to load.
+  if (!getMethodAndUrl(el)) {
+    render(el, {});
+    return;
+  }
+
   parseTriggers(el).forEach(function (trigger) {
     // "load" means: run once, right now.
     if (trigger.event === "load") {
@@ -249,9 +256,11 @@ function nest(values) {
   return result;
 }
 
-function issueRequest(el) {
-  var info = getMethodAndUrl(el);
-  var values = collectValues(el);
+// `override` ({ method, url }) repeats a request exactly, without collecting values.
+// jx-refresh uses it.
+function issueRequest(el, override) {
+  var info = override || getMethodAndUrl(el);
+  var values = override ? {} : collectValues(el);
   var url = info.url;
   var options = { method: info.method, headers: { Accept: "application/json" } };
 
@@ -282,7 +291,11 @@ function issueRequest(el) {
       return response.status === 204 ? null : response.json();
     })
     .then(function (data) {
-      render(el, data);
+      render(el, data, info.method === "GET" ? url : null);
+      // jx-refresh="#comments": once this worked, reload those regions the way
+      // they were last loaded. For APIs that answer with one thing, not the view.
+      var refresh = el.getAttribute("jx-refresh");
+      if (refresh) refresh.split(",").forEach(function (selector) { reload(findElement(el, selector.trim())); });
     })
     .catch(function (error) {
       console.error("[jsonx]", error);
@@ -333,10 +346,17 @@ function errorList(body) {
 // 3. Drawing the view
 // ---------------------------------------------------------------------------
 
-function render(el, data) {
+// `url` is the address the data came from, for GET requests.
+function render(el, data, url) {
   var region = findRegion(el);
   var target = el.hasAttribute("jx-target") ? findTarget(el) : (region || el);
   var swap = el.getAttribute("jx-swap") || "";
+
+  // Page code can reshape the data first: listen for "jx:beforeRender" and set
+  // event.detail.data. That's how to adapt an API you don't control.
+  var detail = { data: data, url: url || null, source: el, target: target };
+  fire(el, "jx:beforeRender", detail);
+  data = detail.data;
 
   // jx-swap="prop:items" skips templates: it sets target.items = data.
   // This is the natural way to feed JSON to a web component.
@@ -351,6 +371,7 @@ function render(el, data) {
   if (swap !== "none" && owner) {
     var firstTime = !target.__jxRendered;
     target.__jxView = data; // remembered, so an error can be shown on top of it
+    if (url && swap !== "none") target.__jxUrl = url; // and for jx-refresh
     getTemplate(owner)(data, target);
     process(target); // wire up any new elements; existing ones stay wired
     if (firstTime) focusAutofocus(target);
@@ -365,8 +386,8 @@ function render(el, data) {
 //   fieldErrors  { email: "can't be blank" }, to show a message under each field
 // The next successful answer replaces the view, so the errors go away by themselves.
 function renderError(el, error) {
-  var swap = el.getAttribute("jx-swap") || "";
-  if (swap === "none" || swap.indexOf("prop:") === 0) return;
+  // (Even with jx-swap="none": "draw nothing" is for success.)
+  if ((el.getAttribute("jx-swap") || "").indexOf("prop:") === 0) return;
   var region = findRegion(el);
   var target = el.hasAttribute("jx-target") ? findTarget(el) : (region || el);
   var owner = el.hasAttribute("jx-template") ? el : (target.hasAttribute && target.hasAttribute("jx-template") ? target : region);
@@ -376,20 +397,30 @@ function renderError(el, error) {
     if (e.field) fieldErrors[e.field] = fieldErrors[e.field] ? fieldErrors[e.field] + ", " + e.message : e.message;
   });
   var view = Object.assign({}, target.__jxView, { error: error.message, errors: error.errors, fieldErrors: fieldErrors });
-  getTemplate(owner)(view, target);
+  getTemplate(owner)(view, target, true); // true: keep what was typed
   process(target);
 }
 
 // jx-target can be a CSS selector, "this", or "closest <selector>".
+function findTarget(el) {
+  return findElement(el, el.getAttribute("jx-target"));
+}
+
 // Selectors are looked up in the element's own root first: inside a web
 // component that's its shadow root, so "#list" means the component's #list.
-function findTarget(el) {
-  var value = el.getAttribute("jx-target");
+function findElement(el, value) {
   if (!value || value === "this") return el;
   if (value.indexOf("closest ") === 0) return el.closest(value.slice(8));
-  var target = el.getRootNode().querySelector(value) || document.querySelector(value);
-  if (!target) throw new Error('[jsonx] jx-target "' + value + '" matched nothing');
-  return target;
+  var found = el.getRootNode().querySelector(value) || document.querySelector(value);
+  if (!found) throw new Error('[jsonx] "' + value + '" matched nothing');
+  return found;
+}
+
+// Loads a region again from wherever it was last loaded (a tab or page button
+// may have changed that), or else with its own jx-get.
+function reload(region) {
+  if (region.__jxUrl) issueRequest(region, { method: "GET", url: region.__jxUrl });
+  else if (getMethodAndUrl(region)) issueRequest(region);
 }
 
 // The compiled template for an element with jx-template: either the <template>
@@ -430,7 +461,13 @@ function fire(el, name, detail) {
 
 // A small public API, for page code and web components.
 // Set jsonx.headers to add headers to every request (see issueRequest).
-var api = { process: process, request: issueRequest, render: render, headers: null };
+// Page code that runs before jsonx can set window.jsonx = { headers: ... } first.
+var api = Object.assign({ headers: null }, window.jsonx, {
+  process: process,
+  request: function (el) { return issueRequest(el); },
+  reload: reload,
+  render: function (el, data) { render(el, data); }
+});
 window.jsonx = api;
 
 // Modules run once the page has been parsed, so we can start straight away.

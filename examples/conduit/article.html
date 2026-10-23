@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en" class="wa-cloak">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Article — Conduit</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/styles/webawesome.css">
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
+  <link rel="stylesheet" href="style.css?v=4">
+
+  <!-- The pretend RealWorld server (remove it to use a real one), the page code, then jsonx.
+       app.js is deferred so it runs after the page is parsed, but before jsonx. -->
+  <script src="mock-api.js?v=4"></script>
+  <script defer src="app.js?v=4"></script>
+  <script type="module" src="../../jsonx.js?v=4"></script>
+  <script>if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("wa-dark");</script>
+</head>
+<body>
+  <conduit-nav></conduit-nav>
+
+  <!-- The article. app.js fills :slug from the address, article.html?slug=... -->
+  <div id="article" jx-get="/api/articles/:slug">
+    <template>
+      <header class="banner dark">
+        <h1>{{article.title}}</h1>
+        <template jx-use="#meta"></template>
+      </header>
+      <div class="article-body">
+        <p jx-each="article.paragraphs">{{text}}</p>
+        <div class="wa-cluster wa-gap-2xs"><wa-tag size="s" appearance="outlined" jx-each="article.tagList">{{.}}</wa-tag></div>
+        <hr>
+        <template jx-use="#meta"></template>
+      </div>
+    </template>
+  </div>
+
+  <!-- Who wrote it, and the buttons to follow, favourite, edit or delete. -->
+  <template id="meta">
+    <div class="meta wa-cluster">
+      <a class="author" href="profile.html?username={{article.author.username}}">
+        <wa-avatar initials="{{article.author.initial}}" image="{{article.author.image}}" label="{{article.author.username}}"></wa-avatar>
+        <span><strong>{{article.author.username}}</strong><br><small>{{article.date}}</small></span>
+      </a>
+      <div class="wa-cluster wa-gap-xs" jx-if="article.mine">
+        <wa-button size="s" appearance="outlined" href="editor.html?slug={{article.slug}}"><wa-icon slot="start" name="pen"></wa-icon>Edit article</wa-button>
+        <wa-button size="s" variant="danger" appearance="outlined" jx-delete="/api/articles/{{article.slug}}"
+                   jx-swap="none" data-then="home"><wa-icon slot="start" name="trash"></wa-icon>Delete article</wa-button>
+      </div>
+      <div class="wa-cluster wa-gap-xs" jx-if="!article.mine">
+        <!-- Following answers with a profile, not the article, so reload the article after. -->
+        <wa-button jx-if="article.author.following" size="s" jx-delete="/api/profiles/{{article.author.username}}/follow"
+                   jx-swap="none" jx-refresh="#article"><wa-icon slot="start" name="minus"></wa-icon>Unfollow {{article.author.username}}</wa-button>
+        <wa-button jx-if="!article.author.following" size="s" appearance="outlined" jx-post="/api/profiles/{{article.author.username}}/follow"
+                   jx-swap="none" jx-refresh="#article"><wa-icon slot="start" name="plus"></wa-icon>Follow {{article.author.username}}</wa-button>
+        <!-- Favouriting answers with the article itself, so it simply redraws. -->
+        <wa-button jx-if="article.favorited" size="s" variant="success" jx-delete="/api/articles/{{article.slug}}/favorite"><wa-icon slot="start" name="heart"></wa-icon>Unfavorite ({{article.favoritesCount}})</wa-button>
+        <wa-button jx-if="!article.favorited" size="s" variant="success" appearance="outlined" jx-post="/api/articles/{{article.slug}}/favorite"><wa-icon slot="start" name="heart" variant="regular"></wa-icon>Favorite ({{article.favoritesCount}})</wa-button>
+      </div>
+    </div>
+  </template>
+
+  <section id="comments" class="comments wa-stack" jx-get="/api/articles/:slug/comments">
+    <template>
+      <div jx-if="me" class="wa-stack wa-gap-s">
+        <wa-callout jx-if="error" variant="danger">{{error}}</wa-callout>
+        <!-- value="{{draft}}": there's never a draft in the view, so the box empties after posting. -->
+        <wa-textarea name="comment.body" placeholder="Write a comment..." rows="3" value="{{draft}}"></wa-textarea>
+        <div><wa-button variant="success" jx-post="/api/articles/{{params.slug}}/comments"
+                        jx-swap="none" jx-refresh="#comments">Post comment</wa-button></div>
+      </div>
+      <p jx-if="!me"><a href="login.html">Sign in</a> or <a href="register.html">sign up</a> to add comments on this article.</p>
+
+      <wa-card jx-each="comments">
+        <p>{{body}}</p>
+        <div slot="footer" class="wa-split">
+          <a class="author" href="profile.html?username={{author.username}}">
+            <wa-avatar initials="{{author.initial}}" image="{{author.image}}" label="{{author.username}}" style="--size: 1.5rem"></wa-avatar>
+            <strong>{{author.username}}</strong> <small>{{date}}</small>
+          </a>
+          <wa-button jx-if="mine" size="s" appearance="plain" variant="danger" label="Delete comment"
+                     jx-delete="/api/articles/{{params.slug}}/comments/{{id}}" jx-swap="none" jx-refresh="#comments"><wa-icon name="trash"></wa-icon></wa-button>
+        </div>
+      </wa-card>
+    </template>
+  </section>
+</body>
+</html>

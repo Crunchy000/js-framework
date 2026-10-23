@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en" class="wa-cloak">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign up — Conduit</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/styles/webawesome.css">
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
+  <link rel="stylesheet" href="style.css?v=4">
+
+  <!-- The pretend RealWorld server (remove it to use a real one), the page code, then jsonx.
+       app.js is deferred so it runs after the page is parsed, but before jsonx. -->
+  <script src="mock-api.js?v=4"></script>
+  <script defer src="app.js?v=4"></script>
+  <script type="module" src="../../jsonx.js?v=4"></script>
+  <script>if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("wa-dark");</script>
+</head>
+<body>
+  <conduit-nav></conduit-nav>
+
+  <main class="narrow">
+    <h1>Sign up</h1>
+    <p class="switch"><a href="login.html">Have an account?</a></p>
+
+    <div class="wa-stack" jx-region>
+      <template>
+        <wa-callout jx-if="error" variant="danger">
+          <ul class="wa-stack wa-gap-3xs" style="margin: 0; padding-left: 1em;"><li jx-each="errors">{{text}}</li></ul>
+        </wa-callout>
+        <wa-input name="user.username" placeholder="Username" size="l" autofocus></wa-input>
+        <wa-input name="user.email" type="email" placeholder="Email" size="l"></wa-input>
+        <wa-input name="user.password" type="password" placeholder="Password" size="l" password-toggle></wa-input>
+        <div><wa-button variant="success" size="l" jx-post="/api/users" jx-swap="none" data-then="home">Sign up</wa-button></div>
+      </template>
+    </div>
+  </main>
+</body>
+</html>

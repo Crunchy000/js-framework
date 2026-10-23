@@ -21,7 +21,7 @@ The card loads `api/todos` when the page opens and draws it with the template in
 
 - [Todo app](https://crunchy000.github.io/js-framework/examples/todo/), built with [Web Awesome](https://webawesome.com) components
 - [Feature tour](https://crunchy000.github.io/js-framework/examples/basic/), every attribute plus three web component patterns
-- [Conduit sign-in](https://crunchy000.github.io/js-framework/examples/conduit/), signing in to a [RealWorld](https://github.com/realworld-apps/realworld) API with a token
+- [Conduit](https://crunchy000.github.io/js-framework/examples/conduit/), the [RealWorld](https://github.com/realworld-apps/realworld) Medium clone: feeds, articles, comments, profiles and sign-in, against an API that isn't shaped for the page
 - [Benchmark](https://crunchy000.github.io/js-framework/examples/benchmark/), drawing and updating 10, 100 and 1,000 todos
 
 ## The idea: regions
@@ -83,7 +83,7 @@ Serve the folder with any static server, for example `npx serve .`, and open `ex
 | `vendor/lit-html/` | lit-html 3.3.1 and its `repeat` directive (BSD-3-Clause, see `vendor/lit-html/LICENSE.txt`). |
 | `examples/todo/` | The Web Awesome todo app, with its mock API. |
 | `examples/basic/` | The feature tour, with three demo web components in `components.js`. |
-| `examples/conduit/` | Sign-in against the RealWorld API, with a mock of its two sign-in endpoints. |
+| `examples/conduit/` | The RealWorld app: one HTML file per page, `app.js` to adapt the API, and a mock of the whole RealWorld API. |
 | `examples/benchmark/` | Times jsonx against rebuilding the list with `innerHTML`. |
 | `index.html` | The GitHub Pages home page. |
 | `.github/workflows/pages.yml` | Publishes the site to GitHub Pages on every push to `main`. |
@@ -99,6 +99,8 @@ Serve the folder with any static server, for example `npx serve .`, and open `ex
 | `jx-swap` | `prop:<name>` sets a property on the target instead of drawing a template (good for components that take data). `none` calls the API and draws nothing. | draw the template |
 | `jx-include` | Also send the values of other elements, e.g. `jx-include="#filter"`. | none |
 | `jx-vals` | Extra JSON to send, e.g. `jx-vals='{"filter": "{{name}}"}'`. | none |
+| `jx-refresh` | After the request works, reload these regions the way they were last loaded, e.g. `jx-refresh="#comments"` or `jx-refresh="closest [jx-template]"`. For APIs that answer with one thing instead of the whole view. | none |
+| `jx-region` | Makes an element a region with no URL: it draws its template once, with an empty view. Good for a sign-in form. | |
 
 **Default triggers.** You usually don't need `jx-trigger`, because jsonx picks one from the kind of element:
 
@@ -129,22 +131,24 @@ When a request fails and the server sends JSON, jsonx redraws the region with it
 
 The next successful answer replaces the view, so the errors go away by themselves. What you typed stays, because the inputs aren't bound to the view. jsonx also fires `jx:error`, for page code.
 
-## Signing in, and headers
+## APIs that aren't shaped for the page
 
-Set `jsonx.headers` to add headers to every request. It can be an object, or a function that's asked each time:
+The todo app's API sends the whole view on every answer. Most real APIs don't: they're about things (articles, comments), and favouriting an article answers with just that article. [Conduit](examples/conduit/), the RealWorld app, shows how jsonx handles that with a little page code (`app.js`):
+
+- **Reload after a change.** `<wa-button jx-post="/api/articles/{{slug}}/favorite" jx-swap="none" jx-refresh="closest [jx-template]">` favourites the article, then reloads the list it's in, on the same tab and page.
+- **Reshape the data before it's drawn.** Listen for `jx:beforeRender` and set `event.detail.data`. Conduit adds dates, "is this mine?", which tab is selected and the page buttons there, so the templates stay logic-free.
+- **Add headers to every request.** Set `jsonx.headers`, to an object or a function that's asked each time. Page code that runs before jsonx can set `window.jsonx = { headers: … }` first.
 
 ```js
-jsonx.headers = function () {
-  var token = localStorage.getItem("jwtToken");
-  return token ? { Authorization: "Token " + token } : {};
+window.jsonx = {
+  headers: function () {
+    var token = localStorage.getItem("jwtToken");
+    return token ? { Authorization: "Token " + token } : {};
+  }
 };
 ```
 
-[The Conduit example](examples/conduit/index.html) signs in to a RealWorld API this way. The sign-in button posts the form, the answer `{user: {token, …}}` redraws the card as "Signed in", and a `jx:afterRender` listener saves the token. Signing out just forgets the token and calls `jsonx.render(card, {})`.
-
-**While a request runs**, the element has the class `jx-loading`, so you can style it.
-
-**Focus survives re-renders:** after a render, jsonx focuses the first new element with `autofocus`. That's how the todo input stays ready for the next todo. (Only on a region's first render: after that, Lit leaves focus where it is.)
+Each Conduit page is its own HTML file, like `article.html?slug=hello`. `app.js` fills `:slug` in `jx-get="/api/articles/:slug"` from the address before jsonx starts, saves the token after signing in, and moves to the next page after some actions (`data-then="article"`). It's about 200 lines, mostly comments. Article bodies are Markdown, but they're shown as plain paragraphs: templates never insert raw HTML, so an article can't inject anything into the page.
 
 ## Events
 
@@ -153,6 +157,7 @@ jsonx fires DOM events you can listen to from page code. They bubble and cross s
 | Event | When | `event.detail` |
 |---|---|---|
 | `jx:beforeRequest` | Just before `fetch`. Call `event.preventDefault()` to cancel. | `{ url, options }` |
+| `jx:beforeRender` | Just before drawing. Set `event.detail.data` to change what's drawn. | `{ data, url, target, source }` |
 | `jx:afterRender` | After the page is updated. If the swap removed the element that made the request, this fires on the target's parent instead. | `{ data, target, source }` |
 | `jx:error` | The request failed or returned an error status. If the server's JSON has an `error` field, that's the message. | `{ error }` (with `error.status` and `error.data`) |
 
