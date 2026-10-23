@@ -35,9 +35,9 @@
   <!-- ===================================================================== -->
   <section>
     <h2>1. Todo list</h2>
-    <p>The list loads with <code>jx-trigger="load"</code>. Adding a todo POSTs the form and appends one item with <code>jx-swap="beforeend"</code>.</p>
+    <p>The list loads by itself: a <code>&lt;ul&gt;</code> can't be clicked, so its default trigger is <code>load</code>. Adding a todo POSTs the form and appends one item with <code>jx-swap="beforeend"</code>.</p>
 
-    <ul id="todo-items" jx-get="/api/todos" jx-trigger="load" jx-template="#todo-list">
+    <ul id="todo-items" jx-get="/api/todos" jx-template="#todo-list">
       <li>Loading…</li>
     </ul>
 

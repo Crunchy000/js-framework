@@ -26,7 +26,7 @@ Open `examples/basic/index.html` in a browser. There's no build step and no serv
 
 | File | What it is |
 |---|---|
-| `jsonx.js` | The framework (about 330 lines, heavily commented). Read this first. |
+| `jsonx.js` | The framework (about 380 lines, heavily commented). Read this first. |
 | `vendor/ejs.min.js` | EJS 3.1.10's browser build (Apache-2.0, see `vendor/ejs-LICENSE.txt`). |
 | `examples/todo/` | The Web Awesome todo app, with its own mock API. |
 | `examples/basic/` | The feature tour, with three demo web components in `components.js`. |
@@ -39,13 +39,27 @@ Open `examples/basic/index.html` in a browser. There's no build step and no serv
 | Attribute | What it does | Default |
 |---|---|---|
 | `jx-get`, `jx-post`, `jx-put`, `jx-patch`, `jx-delete` | The URL to call, and with which HTTP method. | (required) |
-| `jx-trigger` | The event that starts the request. Any event name works, including custom events. Add `delay:300ms` to wait until events stop (good for search boxes), or `from:#other` to listen on another element. Use `load` to run once on page load. List several with commas: `load, change`. | `submit` for forms, `change` for inputs, `click` for everything else |
+| `jx-trigger` | The event that starts the request. Any event name works, including custom events. Add `delay:300ms` to wait until events stop (good for search boxes), or `from:#other` to listen on another element. Use `load` to run once on page load. List several with commas. | depends on the element, see below |
 | `jx-template` | Selector of a `<script type="text/ejs">` that turns the JSON into HTML. The JSON is available as `data`. | none (nothing is rendered) |
 | `jx-target` | Where the result goes: a CSS selector, `this`, or `closest <selector>`. | the element itself |
 | `jx-swap` | How the result goes in: `innerHTML`, `outerHTML`, `beforeend`, `afterbegin`, `beforebegin`, `afterend`, `delete` (remove the target), `none`, or `prop:<name>` (set a property on the target). | `innerHTML` |
+| `jx-include` | Also send the values of other elements, e.g. `jx-include="#filter"`. | none |
 | `jx-vals` | Extra JSON to send, e.g. `jx-vals='{"toggle": true}'`. | none |
 
-**What gets sent:** the fields of the closest `<form>`, or the element's own `name` and `value`, plus `jx-vals`. GET and DELETE send them as a query string; POST, PUT and PATCH send a JSON body.
+**Default triggers.** You usually don't need `jx-trigger`, because jsonx picks one from the kind of element:
+
+| Element | Default trigger |
+|---|---|
+| `<form>` | `submit` |
+| `<button>`, `<a>`, and button components like `<wa-button>` | `click` |
+| `<input>`, `<select>`, `<textarea>`, and form-control components like `<wa-checkbox>` or `<wa-select>` | `change` |
+| Anything else: `<div>`, `<ul>`, `<wa-card>`… | `load` |
+
+In short: things you click get `click`, things you change get `change`, and things you can't interact with fill themselves in when the page loads. (A component counts as a form control if it's [form-associated](https://developer.mozilla.org/en-US/docs/Web/API/ElementInternals), which all Web Awesome form controls are.)
+
+Writing a trigger for the element itself replaces the default. Triggers with `from:` listen to *other* elements, so they're added on top of the default. For example, `<ul jx-get="/api/todos" jx-trigger="change from:#filter">` loads with the page **and** reloads when the filter changes.
+
+**What gets sent:** the fields of the closest `<form>`, or the element's own `name` and `value`, plus the values of any `jx-include` elements, plus `jx-vals`. GET and DELETE send them as a query string; POST, PUT and PATCH send a JSON body.
 
 **Templates can include each other:** `<%- include("#todo-item", { data: todo }) %>`.
 
@@ -65,8 +79,6 @@ jsonx fires DOM events you can listen to from page code. They bubble and cross s
 
 There are three ways jsonx and web components work together. The feature tour has one of each, and the todo app uses Web Awesome's form controls (`<wa-input>`, `<wa-checkbox>`, `<wa-radio-group>`) the same way you'd use native ones.
 
-One tip: jsonx only knows the default event for native elements, so give a component an explicit trigger, like `jx-trigger="change"` on a `<wa-checkbox>`.
-
 1. **Components that fire events.** `jx-trigger` accepts any event name, so `<star-rating jx-post="/api/feedback" jx-trigger="rating-changed">` works. jsonx reads the component's `name` attribute and `value` property, like an `<input>`. Components inside a form that are [form-associated](https://developer.mozilla.org/en-US/docs/Web/API/ElementInternals) are picked up by the form automatically.
 2. **Components that take JSON as a property.** `jx-swap="prop:stats"` skips templates and does `target.stats = data`. The component decides how to draw itself. This is often the cleanest fit, because components usually want data, not HTML.
 3. **Components that use jsonx inside their shadow DOM.** Call `jsonx.process(this.shadowRoot)` once in `connectedCallback`. After that, `jx-target` and `jx-template` look inside the component's shadow root first (then fall back to the page), so a component can ship its own private templates. jsonx also watches that shadow root for new elements.
@@ -75,7 +87,7 @@ One tip: jsonx only knows the default event for native elements, so give a compo
 
 The whole framework is four steps, and `jsonx.js` is laid out in the same order:
 
-1. **Find and wire.** On page load, find every element with a `jx-<method>` attribute and add an event listener for its trigger. A `MutationObserver` does the same for elements added later. A `WeakSet` remembers which elements are already wired so nothing is wired twice.
+1. **Find and wire.** On page load, find every element with a `jx-<method>` attribute and add an event listener for its trigger. A `MutationObserver` does the same for elements added later. A `WeakSet` remembers which elements are already wired so nothing is wired twice. For a web component whose code hasn't loaded yet, jsonx waits for `customElements.whenDefined()` first, so it can tell whether the component is a button or a form control.
 2. **Request.** When the event fires, collect the values, build the `fetch` call, and send it.
 3. **Render.** Pass the JSON to the EJS template as `data`. Compiled templates are cached, so each one is compiled only once.
 4. **Swap.** Put the HTML into the target using the swap style, then run step 1 on the new HTML so any `jx-` attributes inside it work too. This is how the checkbox and Delete button on each todo work, even though they arrive from a template.

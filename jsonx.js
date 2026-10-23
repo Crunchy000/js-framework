@@ -50,7 +50,18 @@
     if (processed.has(el)) return;
     processed.add(el);
 
-    // jx-trigger can list several triggers, separated by commas: "load, click".
+    // A web component's tag can appear before its code has loaded (Web Awesome
+    // loads components on demand). We can only tell what kind of element it is
+    // once it's defined, so wait for that first.
+    var tag = el.localName;
+    if (tag.indexOf("-") !== -1 && !customElements.get(tag)) {
+      customElements.whenDefined(tag).then(function () { attachTriggers(el); });
+    } else {
+      attachTriggers(el);
+    }
+  }
+
+  function attachTriggers(el) {
     parseTriggers(el).forEach(function (trigger) {
       // "load" means: run once, right now.
       if (trigger.event === "load") {
@@ -82,17 +93,29 @@
     });
   }
 
+  // The trigger you get when you don't write one, based on what the element is:
+  //   <form>                                        -> submit
+  //   <button>, <a>, and buttons like <wa-button>   -> click
+  //   inputs, and form controls like <wa-checkbox>  -> change
+  //   anything else (<div>, <ul>, <wa-card>, ...)   -> load
+  // The idea: things you click get "click", things you change get "change",
+  // and things you can't interact with just fill themselves in.
+  function defaultTrigger(el) {
+    if (el.tagName === "FORM") return "submit";
+    if (el.matches("button, a, [role=button]") || /-button$/.test(el.localName)) return "click";
+    if (el.matches("input, select, textarea") || el.constructor.formAssociated) return "change";
+    return "load";
+  }
+
   // Turns jx-trigger="input delay:300ms, jx:afterRender from:#list" into
   //   [{ event: "input", delay: 300 }, { event: "jx:afterRender", from: "#list" }]
-  // With no jx-trigger we pick a sensible default for the element type.
+  //
+  // Writing a trigger for the element itself replaces the default.
+  // Triggers with "from:" listen to *other* elements, so they're added on top of
+  // the default instead: jx-trigger="change from:#filter" on a <ul> still loads.
   function parseTriggers(el) {
-    var raw = el.getAttribute("jx-trigger");
-    if (!raw) {
-      if (el.tagName === "FORM") raw = "submit";
-      else if (el.matches("input, select, textarea")) raw = "change";
-      else raw = "click";
-    }
-    return raw.split(",").map(function (one) {
+    var raw = el.getAttribute("jx-trigger") || "";
+    var triggers = raw.split(",").filter(function (one) { return one.trim(); }).map(function (one) {
       var parts = one.trim().split(/\s+/);
       var trigger = { event: parts[0], delay: 0, from: null };
       parts.slice(1).forEach(function (p) {
@@ -102,6 +125,10 @@
       });
       return trigger;
     });
+
+    var hasOwnTrigger = triggers.some(function (t) { return !t.from; });
+    if (!hasOwnTrigger) triggers.unshift({ event: defaultTrigger(el), delay: 0, from: null });
+    return triggers;
   }
 
   // Where to listen for a trigger: the element itself, "document", "window",
@@ -139,21 +166,36 @@
   }
 
   // Collects the values to send: the closest form's fields (or the element's own
-  // name/value), plus anything in jx-vals='{"key": "value"}'.
+  // name/value), the values of any elements named in jx-include="#a, #b",
+  // plus anything in jx-vals='{"key": "value"}'.
   function collectValues(el) {
     var values = {};
     var form = el.tagName === "FORM" ? el : el.closest("form");
-    var name = el.getAttribute("name");
-    if (form) {
-      // FormData also picks up form-associated custom elements.
-      new FormData(form).forEach(function (value, key) { values[key] = value; });
-    } else if (name && el.value !== undefined) {
-      // Works for <input> and for any web component with a `value` property.
-      values[name] = el.value;
+    addValues(values, form || el);
+
+    var include = el.getAttribute("jx-include");
+    if (include) {
+      var root = el.getRootNode();
+      var found = root.querySelectorAll(include);
+      if (!found.length) found = document.querySelectorAll(include);
+      found.forEach(function (other) { addValues(values, other); });
     }
+
     var extra = el.getAttribute("jx-vals");
     if (extra) Object.assign(values, JSON.parse(extra));
     return values;
+  }
+
+  // Adds one element's values: every field if it's a form, otherwise its name and value.
+  function addValues(values, el) {
+    if (el.tagName === "FORM") {
+      // FormData also picks up form-associated custom elements.
+      new FormData(el).forEach(function (value, key) { values[key] = value; });
+      return;
+    }
+    var name = el.getAttribute("name");
+    // Works for <input> and for any web component with a `value` property.
+    if (name && el.value !== undefined && el.value !== null) values[name] = el.value;
   }
 
   function issueRequest(el) {
