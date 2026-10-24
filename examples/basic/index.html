@@ -3,104 +3,366 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>jsonx demo</title>
+  <title>jsonx feature tour</title>
+  <link rel="stylesheet" href="../tutorial/style.css?v=14">
   <style>
-    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 16px; color: #1f2937; }
-    section { border-top: 1px solid #e5e7eb; padding: 1rem 0 1.5rem; }
-    h2 { font-size: 1.2rem; }
-    code { background: #f3f4f6; padding: 1px 4px; border-radius: 4px; }
-    ul { padding-left: 0; list-style: none; }
-    li { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
-    li.pioneer strong::after { content: " ★"; color: #e0a800; }
-    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
-    .error { color: #b91c1c; }
-    /* jsonx adds this class to an element while its request is running */
-    .jx-loading { opacity: .5; cursor: progress; }
+    .results li.pioneer strong::after { content: " ★"; color: #e0a800; }
+    .results { list-style: none; padding: 0 !important; }
+    pre.sent { margin: 8px 0 0; font-size: 13px; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+    #event-log { font: 12.5px/1.5 ui-monospace, Menlo, monospace; max-height: 220px; overflow: auto; }
   </style>
-
-  <!-- 1. The fake API. Remove this when you have a real server. -->
-  <script src="mock-api.js?v=13"></script>
-  <!-- 2. The framework itself -->
-  <script type="module" src="../../jsonx.js?v=13"></script>
-  <!-- 3. Demo web components (modules run in order, so jsonx is ready) -->
-  <script type="module" src="components.js"></script>
+  <!-- 1. A pretend server, so the page works without one. -->
+  <script src="mock-api.js?v=14"></script>
+  <!-- 2. Functions and shared data (feature 11) must exist before jsonx starts. -->
+  <script>
+    window.jsonx = {
+      data: { clicks: { count: 0 } },
+      functions: {
+        click: function () {
+          jsonx.update("clicks", function (clicks) { clicks.count++; });
+        },
+        shout: function (values) {
+          var word = (values.word || "").trim();
+          if (!word) throw { errors: { word: ["can't be blank"] } };
+          return { shouted: word.toUpperCase() + "!" };
+        }
+      }
+    };
+  </script>
+  <!-- 3. jsonx itself. -->
+  <script type="module" src="../../jsonx.js?v=14"></script>
+  <!-- 4. Two hand-written web components, for features 9 and 10. -->
+  <script type="module" src="components.js?v=14"></script>
 </head>
 <body>
-  <h1>jsonx feature tour</h1>
-  <p>Every feature in one page. The server sends JSON shaped for the page, and templates turn it into HTML in the browser. For a full app, see the <a href="../todo/">todo app</a>.</p>
+<header class="top">
+  <a href="../../">jsonx</a> / feature tour
+  <label class="switch"><input type="checkbox" id="outline" checked> Outline regions</label>
+</header>
+
+<main>
+  <h1>Feature tour</h1>
+  <p class="lead">Every jsonx feature, one small live example each, with its code and the data it sent and got back. For explanations, start with the <a href="../tutorial/">tutorial</a>. For whole apps, see the <a href="../todo/">todo app</a> and <a href="../conduit/">Conduit</a>.</p>
+
+  <nav class="toc">
+    <a href="#f1">Regions</a>
+    <a href="#f2">Triggers</a>
+    <a href="#f3">Live search</a>
+    <a href="#f4">Sending values</a>
+    <a href="#f5">Form controls</a>
+    <a href="#f6">Call, then refresh</a>
+    <a href="#f7">Self-loading templates and partials</a>
+    <a href="#f8">Errors</a>
+    <a href="#f9">Custom events</a>
+    <a href="#f10">JSON as a property</a>
+    <a href="#f11">Functions and shared data</a>
+    <a href="#f12">Components as templates</a>
+    <a href="#f13">Events</a>
+  </nav>
 
   <!-- ===================================================================== -->
-  <section>
-    <h2>1. A region</h2>
-    <p>This box has a <code>&lt;template&gt;</code> inside, so it's a region. Its <code>jx-get</code> loads the view when the page opens. The button inside it calls <code>jx-post</code>, and the answer redraws the region.</p>
-
-    <div id="likes" jx-get="/api/likes">
-      Loading…
-      <template>
-        <p>This page has <strong>{{label}}</strong>.</p>
-        <button jx-post="/api/likes">Like it</button>
-        <button jx-post="/api/broken">Break the server</button>
-      </template>
-    </div>
-    <p id="error" class="error"></p>
-  </section>
-
-  <!-- ===================================================================== -->
-  <section>
-    <h2>2. Live search</h2>
-    <p><code>jx-trigger="input delay:300ms"</code> waits until you stop typing, then sends <code>?q=...</code>. The results go into another element with <code>jx-target</code>. The template uses <code>&lt;jx-each&gt;</code>, <code>&lt;jx-if&gt;</code> and <code>class:pioneer</code>.</p>
-
-    <input type="search" name="q" placeholder="Search people…"
-           jx-get="/api/users" jx-trigger="input delay:300ms"
-           jx-target="#results" jx-template="#user-results">
-    <ul id="results"></ul>
-
-    <template id="user-results">
-      <jx-each items="users">
-        <li class:pioneer="{{pioneer}}"><strong>{{name}}</strong> — {{role}}</li>
-      </jx-each>
-      <jx-if test="!users">
-        <li><em>No one matches "{{query}}"</em></li>
-      </jx-if>
-    </template>
-  </section>
-
-  <!-- ===================================================================== -->
-  <section>
-    <h2>3. Web components</h2>
-
-    <h3>a) A component that fires a custom event</h3>
-    <p><code>&lt;star-rating&gt;</code> fires <code>rating-changed</code>. jsonx listens for it and POSTs the component's <code>value</code>.</p>
-    <star-rating name="stars" value="0"
-                 jx-post="/api/feedback" jx-trigger="rating-changed"
-                 jx-target="#feedback" jx-template="#thanks"></star-rating>
-    <p id="feedback"></p>
-
-    <template id="thanks">{{message}}</template>
-
-    <h3>b) A component that receives JSON as a property</h3>
-    <p><code>jx-swap="prop:stats"</code> sets <code>todoStats.stats = data</code> instead of drawing a template.</p>
-    <todo-stats id="stats"></todo-stats>
-    <button jx-get="/api/stats" jx-target="#stats" jx-swap="prop:stats">Refresh stats</button>
-
-    <h3>c) A component written as a jsonx template</h3>
-    <p><a href="user-card.jx">user-card.jx</a> defines <code>&lt;user-card&gt;</code> with <code>&lt;template jx-component="user-card" props="userId"&gt;</code>. It's a real web component (a LitElement): its template, target and styles live in its shadow DOM, and <code>user-id="3"</code> sets its <code>userId</code>. No JavaScript needed.</p>
-    <template src="user-card.jx"></template>
-    <div class="cards">
-      <user-card user-id="1"></user-card>
-      <user-card user-id="3"></user-card>
-      <user-card user-id="5"></user-card>
+  <section class="lesson" id="f1">
+    <h2>Regions</h2>
+    <p>An element with a <code>&lt;template&gt;</code> inside is a region. It loads its view, and buttons inside it redraw it. While a request runs, the element gets the class <code>jx-loading</code>.</p>
+    <div class="example">
+      <pre class="code" data-example="likes"></pre>
+      <div class="side">
+        <div class="result">
+          <!-- example:likes -->
+          <div id="likes" jx-get="/api/likes">
+            Loading…
+            <template>
+              <p>This page has <strong>{{label}}</strong>.</p>
+              <button jx-post="/api/likes">Like it</button>
+            </template>
+          </div>
+          <!-- /example:likes -->
+        </div>
+        <div class="data"><div class="data-title">Data</div><div class="data-log"><p class="data-empty">Waiting…</p></div></div>
+      </div>
     </div>
   </section>
 
-  <script>
-    // Listening to jsonx's events from page code.
-    document.addEventListener("jx:error", function (event) {
-      document.querySelector("#error").textContent = event.detail.error.message;
-    });
-    document.addEventListener("jx:afterRender", function () {
-      document.querySelector("#error").textContent = "";
-    });
-  </script>
+  <!-- ===================================================================== -->
+  <section class="lesson" id="f2">
+    <h2>Triggers</h2>
+    <p><code>jx-trigger</code> picks the event. Add <code>[key=Enter]</code> to filter it, <code>delay:300ms</code> to wait for a pause, and <code>from:#id</code> to listen to another element. Several triggers are separated by commas.</p>
+    <div class="example">
+      <pre class="code" data-example="triggers"></pre>
+      <div class="side">
+        <div class="result">
+          <!-- example:triggers -->
+          <button id="tick">Tick</button>
+
+          <p jx-get="/api/time" jx-trigger="load, click from:#tick">
+            <template>Server time: <strong>{{time}}</strong></template>
+          </p>
+          <!-- /example:triggers -->
+        </div>
+        <div class="data"><div class="data-title">Data</div><div class="data-log"><p class="data-empty">Waiting…</p></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <section class="lesson" id="f3">
+    <h2>Live search</h2>
+    <p>The input sends <code>?q=…</code> when you stop typing, and the answer goes into another element with <code>jx-target</code> and <code>jx-template</code>.</p>
+    <div class="example">
+      <pre class="code" data-example="search"></pre>
+      <div class="side">
+        <div class="result">
+          <!-- example:search -->
+          <input type="search" name="q" placeholder="Search people…"
+                 jx-get="/api/users" jx-trigger="input delay:300ms"
+                 jx-target="#results" jx-template="#user-results">
+          <ul id="results" class="results"></ul>
+
+          <template id="user-results">
+            <jx-each items="users">
+              <li class:pioneer="{{pioneer}}"><strong>{{name}}</strong> — {{role}}</li>
+            </jx-each>
+            <jx-if test="!users">
+              <li><em>No one matches "{{query}}"</em></li>
+            </jx-if>
+          </template>
+          <!-- /example:search -->
+        </div>
+        <div class="data"><div class="data-title">Data</div><div class="data-log"><p class="data-empty">Type a name…</p></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <section class="lesson" id="f4">
+    <h2>Sending values</h2>
+    <p>A region's named controls are always sent. <code>jx-include</code> adds controls from elsewhere, <code>jx-vals</code> adds fixed values, and dots in names build nested JSON. This server answers with exactly what it received.</p>
+    <div class="example">
+      <pre class="code" data-example="values"></pre>
+      <div class="side">
+        <div class="result">
+          <!-- example:values -->
+          <input id="note" name="note" placeholder="A note from outside the region">
+
+          <div jx-region>
+            <template>
+              <input name="user.name" placeholder="Name">
+              <input name="user.email" placeholder="Email">
+              <button jx-post="/api/echo" jx-include="#note" jx-vals='{"source": "tour"}'>Send</button>
+              <pre class="sent">{{sent}}</pre>
+            </template>
+          </div>
+          <!-- /example:values -->
+        </div>
+        <div class="data"><div class="data-title">Data</div><div class="data-log"><p class="data-empty">Click Send…</p></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <section class="lesson" id="f5">
+    <h2>Form controls show the view</h2>
+    <p>When an attribute's whole value is one <code>{{name}}</code> and the element has that property (<code>checked</code>, <code>value</code>…), jsonx sets the live property. A checkbox sends its value only when it's ticked.</p>
+    <div class="example">
+      <pre class="code" data-example="settings"></pre>
+      <div class="side">
+        <div class="result">
+          <!-- example:settings -->
+          <div jx-region>
+            <template>
+              <label>
+                <input type="checkbox" name="notify" checked="{{notify}}" jx-post="/api/settings">
+                Email me about replies
+              </label>
+              <p>{{label}}</p>
+            </template>
+          </div>
+          <!-- /example:settings -->
+        </div>
+        <div class="data"><div class="data-title">Data</div><div class="data-log"><p class="data-empty">Tick the box…</p></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <section class="lesson" id="f6">
+    <h2>Call, then refresh</h2>
+    <p>For APIs that don't answer with a view: <code>jx-swap="none"</code> draws nothing, and <code>jx-refresh</code> reloads other regions once the call works. (Watch the likes in the first example.)</p>
+    <div class="example">
+      <pre class="code" data-example="reset"></pre>
+      <div class="side">
+        <div class="result">
+          <!-- example:reset -->
+          <button jx-post="/api/likes/reset" jx-swap="none" jx-refresh="#likes">Reset the likes</button>
+          <!-- /example:reset -->
+        </div>
+        <div class="data"><div class="data-title">Data</div><div class="data-log"><p class="data-empty">Click it…</p></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <section class="lesson" id="f7">
+    <h2>Self-loading templates and partials</h2>
+    <p>A <code>&lt;template&gt;</code> with a request loads and draws where it stands, with no wrapper. <code>&lt;template jx-use="#id"&gt;</code> draws another template inside this one.</p>
+    <div class="example">
+      <pre class="code" data-example="partials"></pre>
+      <div class="side">
+        <div class="result">
+          <!-- example:partials -->
+          <template id="person">
+            <strong>{{name}}</strong> <small>{{role}}</small>
+          </template>
+
+          <template jx-get="/api/users?q=a">
+            <jx-each items="users">
+              <p><template jx-use="#person"></template></p>
+            </jx-each>
+          </template>
+          <!-- /example:partials -->
+        </div>
+        <div class="data"><div class="data-title">Data</div><div class="data-log"><p class="data-empty">Waiting…</p></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <section class="lesson" id="f8">
+    <h2>Errors</h2>
+    <p>When a request fails with a JSON answer, the region is drawn again with its last view plus <code>error</code>, <code>errors</code> and <code>fieldErrors</code>. The <code>jx:error</code> event fires too.</p>
+    <div class="example">
+      <pre class="code" data-example="errors"></pre>
+      <div class="side">
+        <div class="result">
+          <!-- example:errors -->
+          <div jx-get="/api/likes">
+            <template>
+              <jx-if test="error"><p class="error">{{error}}</p></jx-if>
+              <jx-else><p>All good: {{label}}.</p></jx-else>
+              <button jx-post="/api/broken">Break the server</button>
+              <button jx-get="/api/likes">Try again</button>
+            </template>
+          </div>
+          <!-- /example:errors -->
+        </div>
+        <div class="data"><div class="data-title">Data</div><div class="data-log"><p class="data-empty">Waiting…</p></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <section class="lesson" id="f9">
+    <h2>Web components that fire events</h2>
+    <p><code>jx-trigger</code> takes any event name, and jsonx sends a component's <code>name</code> and <code>value</code> like an input's. <code>&lt;star-rating&gt;</code> is hand-written in <a href="components.js">components.js</a>.</p>
+    <div class="example">
+      <pre class="code" data-example="stars"></pre>
+      <div class="side">
+        <div class="result">
+          <!-- example:stars -->
+          <star-rating name="stars" value="0"
+                       jx-post="/api/feedback" jx-trigger="rating-changed"
+                       jx-target="#feedback" jx-template="#thanks"></star-rating>
+          <p id="feedback"></p>
+
+          <template id="thanks">{{message}}</template>
+          <!-- /example:stars -->
+        </div>
+        <div class="data"><div class="data-title">Data</div><div class="data-log"><p class="data-empty">Pick a rating…</p></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <section class="lesson" id="f10">
+    <h2>JSON as a property</h2>
+    <p><code>jx-swap="prop:stats"</code> skips templates and sets <code>element.stats = data</code>. The component draws itself. Inside a template, <code>stats="{{stats}}"</code> does the same.</p>
+    <div class="example">
+      <pre class="code" data-example="stats"></pre>
+      <div class="side">
+        <div class="result">
+          <!-- example:stats -->
+          <todo-stats id="stats"></todo-stats>
+          <button jx-get="/api/stats" jx-target="#stats" jx-swap="prop:stats">Refresh stats</button>
+          <!-- /example:stats -->
+        </div>
+        <div class="data"><div class="data-title">Data</div><div class="data-log"><p class="data-empty">Click Refresh…</p></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <section class="lesson" id="f11">
+    <h2>Functions and shared data</h2>
+    <p><code>fn:name</code> calls <code>jsonx.functions.name(values)</code> instead of a server (defined in the page's head). <code>jx-data="clicks"</code> draws <code>jsonx.data.clicks</code>, and <code>jsonx.update("clicks", …)</code> redraws every region bound to it.</p>
+    <div class="example">
+      <pre class="code" data-example="functions"></pre>
+      <div class="side">
+        <div class="result">
+          <!-- example:functions -->
+          <p>Clicked <span jx-data="clicks"><template><strong>{{count}}</strong></template></span> times.</p>
+          <button jx-post="fn:click">Click</button>
+          <p jx-data="clicks"><template>Same data, another region: {{count}}</template></p>
+
+          <div jx-region>
+            <template>
+              <input name="word" placeholder="A word"> <small class="error">{{fieldErrors.word}}</small>
+              <button jx-post="fn:shout">Shout it</button>
+              <p>{{shouted}}</p>
+            </template>
+          </div>
+          <!-- /example:functions -->
+        </div>
+        <div class="data"><div class="data-title">Data</div><div class="data-log"><p class="data-empty">Click…</p></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <section class="lesson" id="f12">
+    <h2>Components written as templates</h2>
+    <p><a href="user-card.jx">user-card.jx</a> defines <code>&lt;user-card&gt;</code> with <code>&lt;template jx-component="user-card" props="userId"&gt;</code>: a real web component (a LitElement) with its own template, target and styles in its shadow DOM. <code>user-id="3"</code> sets its <code>userId</code>.</p>
+    <div class="example">
+      <pre class="code" data-example="cards"></pre>
+      <div class="side">
+        <div class="result">
+          <!-- example:cards -->
+          <template src="user-card.jx"></template>
+
+          <div class="cards">
+            <user-card user-id="1"></user-card>
+            <user-card user-id="3"></user-card>
+            <user-card user-id="5"></user-card>
+          </div>
+          <!-- /example:cards -->
+        </div>
+        <div class="data"><div class="data-title">Data</div><div class="data-log"><p class="data-empty">Click Load user…</p></div></div>
+      </div>
+    </div>
+    <p>Components can also fire events with <code>jx-emit</code>. See <a href="../tutorial/#s12">tutorial step 12</a>, and Conduit's shared <a href="../components/article-preview.jx">article-preview.jx</a>.</p>
+  </section>
+
+  <!-- ===================================================================== -->
+  <section class="lesson" id="f13">
+    <h2>Events</h2>
+    <p>jsonx fires <code>jx:beforeRequest</code>, <code>jx:beforeRender</code>, <code>jx:afterRender</code> and <code>jx:error</code>. They bubble, and cross shadow DOM. This log listens on the document, for everything on this page.</p>
+    <pre class="code" id="event-log"><code>Use the examples above…</code></pre>
+    <script>
+      ["jx:beforeRequest", "jx:afterRender", "jx:error"].forEach(function (name) {
+        document.addEventListener(name, function (event) {
+          var log = document.querySelector("#event-log code");
+          if (log.dataset.started !== "yes") { log.textContent = ""; log.dataset.started = "yes"; }
+          var el = event.composedPath()[0];
+          var what = el.localName + (el.id ? "#" + el.id : "");
+          var extra = name === "jx:beforeRequest" ? " " + event.detail.url
+            : name === "jx:error" ? " " + event.detail.error.message : "";
+          log.textContent = new Date().toLocaleTimeString() + "  " + name + "  <" + what + ">" + extra + "\n" + log.textContent;
+        });
+      });
+    </script>
+  </section>
+</main>
+
+<script src="../tutorial/tutorial.js?v=14"></script>
 </body>
 </html>

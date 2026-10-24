@@ -58,6 +58,25 @@
       return { total: stats.total, done: stats.done, open: stats.total - stats.done };
     }],
 
+    ["POST", /^\/api\/likes\/reset$/, function () {
+      likes = 0;
+      return [204, null];
+    }],
+
+    // Answers with what it was sent, so you can see how values are collected.
+    ["POST", /^\/api\/echo$/, function (m, body) {
+      return { sent: JSON.stringify(body, null, 2) };
+    }],
+
+    ["GET", /^\/api\/time$/, function () {
+      return { time: new Date().toLocaleTimeString() };
+    }],
+
+    ["POST", /^\/api\/settings$/, function (m, body) {
+      var on = body.notify === "on";
+      return { notify: on, label: on ? "You'll get emails." : "No emails." };
+    }],
+
     ["POST", /^\/api\/feedback$/, function (m, body) {
       var stars = Number(body.stars);
       return { stars: stars, message: "Thanks! You gave " + stars + (stars === 1 ? " star." : " stars.") };

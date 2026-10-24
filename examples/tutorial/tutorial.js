@@ -85,7 +85,12 @@
   var pending = new WeakMap();
 
   function log(source, entry) {
-    var lesson = source && source.closest && source.closest(".lesson");
+    // Step out of shadow roots, so a request from inside a component logs too.
+    var lesson = null, node = source;
+    while (node && node.closest && !(lesson = node.closest(".lesson"))) {
+      var root = node.getRootNode();
+      node = root && root.host;
+    }
     var panel = lesson && lesson.querySelector(".data-log");
     if (!panel) return;
     var item = document.createElement("div");
