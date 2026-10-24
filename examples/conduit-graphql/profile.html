@@ -6,19 +6,17 @@
   <title>Profile — Conduit GraphQL</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/styles/webawesome.css">
   <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
-  <link rel="stylesheet" href="style.css?v=7">
+  <link rel="stylesheet" href="style.css?v=8">
 
   <!-- Pretend servers: the RealWorld REST API, and a GraphQL server in front of it.
        In real life they run on a server, and these two lines go away. -->
-  <script src="../conduit/mock-api.js?v=7"></script>
-  <script type="module" src="graphql-server.js?v=7"></script>
-
-  <script src="nav.js?v=7"></script>
-  <script type="module" src="../../jsonx.js?v=7"></script>
+  <script src="../conduit/mock-api.js?v=8"></script>
+  <script type="module" src="graphql-server.js?v=8"></script>
+  <script type="module" src="../../jsonx.js?v=8"></script>
   <script>if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("wa-dark");</script>
 </head>
 <body>
-  <conduit-nav></conduit-nav>
+  <template src="nav.jx"></template>
 
   <script type="text/graphql" id="query">
     query Profile($username: String!, $filter: ProfileArticles, $offset: Int) { ...View }
@@ -82,44 +80,6 @@
     </template>
   </div>
 
-  <!-- Article previews, shared by the page's template. The heart buttons run this
-       page's #favorite or #unfavorite mutation, which asks for the page's #view again. -->
-  <template id="previews">
-    <p class="empty" jx-if="!articles.nodes">No articles are here... yet.</p>
-    <article class="preview" jx-each="articles.nodes">
-      <div class="wa-split">
-        <a class="author" href="profile.html?username={{author.username}}">
-          <wa-avatar image="{{author.image}}" label="{{author.username}}"></wa-avatar>
-          <span><strong>{{author.username}}</strong><br><small>{{createdAt}}</small></span>
-        </a>
-        <wa-button jx-if="viewerHasFavorited" size="s" variant="success"
-                   jx-query="#unfavorite, #view, #preview-fields" jx-select="unfavoriteArticle.query" jx-vals='{"slug": "{{slug}}"}'>
-          <wa-icon slot="start" name="heart"></wa-icon>{{favoritesCount}}</wa-button>
-        <wa-button jx-if="!viewerHasFavorited" size="s" variant="success" appearance="outlined"
-                   jx-query="#favorite, #view, #preview-fields" jx-select="favoriteArticle.query" jx-vals='{"slug": "{{slug}}"}'>
-          <wa-icon slot="start" name="heart" variant="regular"></wa-icon>{{favoritesCount}}</wa-button>
-      </div>
-      <a class="title" href="article.html?slug={{slug}}">
-        <h2>{{title}}</h2>
-        <p>{{description}}</p>
-      </a>
-      <div class="wa-split">
-        <small>Read more...</small>
-        <div class="wa-cluster wa-gap-2xs"><wa-tag size="s" appearance="outlined" jx-each="tagList">{{.}}</wa-tag></div>
-      </div>
-    </article>
-    <div class="pages wa-cluster wa-gap-2xs" jx-if="articles.pages">
-      <wa-button jx-each="articles.pages" size="s" appearance="outlined" class:current="{{current}}"
-                 jx-query="#query, #view, #preview-fields" jx-vals='{"offset": {{offset}}}'>{{number}}</wa-button>
-    </div>
-  </template>
-
-  <script type="text/graphql" id="preview-fields">
-    fragment Preview on Article {
-      slug title description tagList favoritesCount viewerHasFavorited
-      createdAt(format: LONG)
-      author { username image }
-    }
-  </script>
+  <template src="previews.jx"></template>
 </body>
 </html>

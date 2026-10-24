@@ -18,7 +18,7 @@
  *
  *   <script type="module" src="jsonx.js"></script>
  */
-import { compileTemplate } from "./templates.js?v=7";
+import { compileTemplate } from "./templates.js?v=8";
 
 var METHODS = ["get", "post", "put", "patch", "delete"];
 var SELECTOR = METHODS.map(function (m) { return "[jx-" + m + "]"; }).join(",") + ",[jx-region],[jx-query]";
@@ -34,6 +34,14 @@ var processed = new WeakSet();
 // `root` can be the document body, any element, or a web component's shadowRoot.
 function process(root) {
   root = root || document.body;
+
+  // <template src="nav.jx"> pulls in a file of HTML first (see include below).
+  // Nothing else is wired until they're all in, so their templates are there to use.
+  var includes = root.querySelectorAll("template[src]");
+  if (includes.length) {
+    Promise.all(Array.from(includes).map(include)).then(function () { process(root); });
+    return;
+  }
   var elements = Array.from(root.querySelectorAll(SELECTOR));
   if (root.matches && root.matches(SELECTOR)) elements.unshift(root);
   elements.forEach(wire);
@@ -45,6 +53,19 @@ function process(root) {
 function wire(el) {
   if (processed.has(el)) return;
   processed.add(el);
+
+  // <template jx-get="..."> loads and draws right where it is. It needs an
+  // element to draw into, so it's swapped for a <jx-view> (which takes no space
+  // in the layout) with the same attributes, holding the template inside.
+  if (el.localName === "template") {
+    var view = document.createElement("jx-view");
+    Array.from(el.attributes).forEach(function (a) { view.setAttribute(a.name, a.value); });
+    el.replaceWith(view);
+    view.append(el);
+    wire(view);
+    return;
+  }
+
   fillFromAddress(el);
 
   // A region can keep its template inside itself: <wa-card jx-get="..."><template>.
@@ -67,6 +88,36 @@ function wire(el) {
   } else {
     attachTriggers(el);
   }
+}
+
+// <template src="nav.jx"></template>: a reusable piece of HTML in its own file.
+// A plain one is replaced by the file's contents. One with jx-get (or another
+// request attribute) uses the file as its template instead.
+// Files are fetched once, however many pages or places use them.
+var files = {};
+
+function include(template) {
+  var src = template.getAttribute("src");
+  template.removeAttribute("src");
+  var url = new URL(src, location.href).href;
+  if (!files[url]) {
+    files[url] = fetch(url).then(function (response) {
+      if (!response.ok) throw new Error("[jsonx] couldn't load " + src + " (" + response.status + ")");
+      return response.text();
+    });
+  }
+  return files[url].then(function (html) {
+    if (getMethodAndUrl(template) || template.hasAttribute("jx-region")) {
+      template.innerHTML = html;
+    } else {
+      var holder = document.createElement("template");
+      holder.innerHTML = html;
+      template.replaceWith(holder.content);
+    }
+  }, function (error) {
+    console.error(error);
+    template.remove();
+  });
 }
 
 // On article.html?slug=hello, jx-get="/view/article/:slug" becomes
@@ -550,6 +601,12 @@ var api = Object.assign({ headers: null, graphql: "/graphql" }, window.jsonx, {
   render: function (el, data) { render(el, data); }
 });
 window.jsonx = api;
+
+// <jx-view> is the element a <template jx-get> draws into. It takes no space in
+// the layout, so the template's content sits in the page as if written there.
+customElements.define("jx-view", class extends HTMLElement {
+  connectedCallback() { this.style.display = "contents"; }
+});
 
 // Modules run once the page has been parsed, so we can start straight away.
 process(document.body);

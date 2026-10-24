@@ -1,0 +1,28 @@
+<!-- previews.jx: the list of article previews, shared by the home and profile pages. -->
+  <!-- A list of article previews, used by the page's template. -->
+  <template id="previews">
+    <p class="empty" jx-if="!articles">No articles are here... yet.</p>
+    <article class="preview" jx-each="articles">
+      <div class="wa-split">
+        <template jx-use="#author"></template>
+        <wa-button size="s" variant="success" appearance="{{favoriteAppearance}}" jx-post="{{favoriteUrl}}">
+          <wa-icon slot="start" name="heart"></wa-icon>{{favoritesCount}}
+        </wa-button>
+      </div>
+      <a class="title" href="{{url}}">
+        <h2>{{title}}</h2>
+        <p>{{description}}</p>
+      </a>
+      <div class="wa-split">
+        <small>Read more...</small>
+        <div class="wa-cluster wa-gap-2xs"><wa-tag size="s" appearance="outlined" jx-each="tagList">{{.}}</wa-tag></div>
+      </div>
+    </article>
+  </template>
+
+  <template id="author">
+    <a class="author" href="{{author.url}}">
+      <wa-avatar initials="{{author.initial}}" image="{{author.image}}" label="{{author.username}}"></wa-avatar>
+      <span><strong>{{author.username}}</strong><br><small>{{date}}</small></span>
+    </a>
+  </template>

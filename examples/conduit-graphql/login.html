@@ -6,19 +6,17 @@
   <title>Sign in — Conduit GraphQL</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/styles/webawesome.css">
   <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
-  <link rel="stylesheet" href="style.css?v=7">
+  <link rel="stylesheet" href="style.css?v=8">
 
   <!-- Pretend servers: the RealWorld REST API, and a GraphQL server in front of it.
        In real life they run on a server, and these two lines go away. -->
-  <script src="../conduit/mock-api.js?v=7"></script>
-  <script type="module" src="graphql-server.js?v=7"></script>
-
-  <script src="nav.js?v=7"></script>
-  <script type="module" src="../../jsonx.js?v=7"></script>
+  <script src="../conduit/mock-api.js?v=8"></script>
+  <script type="module" src="graphql-server.js?v=8"></script>
+  <script type="module" src="../../jsonx.js?v=8"></script>
   <script>if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("wa-dark");</script>
 </head>
 <body>
-  <conduit-nav></conduit-nav>
+  <template src="nav.jx"></template>
 
   <script type="text/graphql" id="mutation">
     mutation Login($email: String, $password: String) { login(email: $email, password: $password) { user { username } } }

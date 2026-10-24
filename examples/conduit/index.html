@@ -6,19 +6,17 @@
   <title>Home — Conduit</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/styles/webawesome.css">
   <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
-  <link rel="stylesheet" href="style.css?v=7">
+  <link rel="stylesheet" href="style.css?v=8">
 
   <!-- Pretend servers: the RealWorld API, and the view API in front of it.
        In real life both run on a server, and these two lines go away. -->
-  <script src="mock-api.js?v=7"></script>
-  <script src="view-api.js?v=7"></script>
-
-  <script src="nav.js?v=7"></script>
-  <script type="module" src="../../jsonx.js?v=7"></script>
+  <script src="mock-api.js?v=8"></script>
+  <script src="view-api.js?v=8"></script>
+  <script type="module" src="../../jsonx.js?v=8"></script>
   <script>if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("wa-dark");</script>
 </head>
 <body>
-  <conduit-nav></conduit-nav>
+  <template src="nav.jx"></template>
   <header class="banner">
     <h1>conduit</h1>
     <p>A place to share your knowledge.</p>
@@ -58,32 +56,6 @@
     </template>
   </div>
 
-  <!-- A list of article previews, used by the page's template. -->
-  <template id="previews">
-    <p class="empty" jx-if="!articles">No articles are here... yet.</p>
-    <article class="preview" jx-each="articles">
-      <div class="wa-split">
-        <template jx-use="#author"></template>
-        <wa-button size="s" variant="success" appearance="{{favoriteAppearance}}" jx-post="{{favoriteUrl}}">
-          <wa-icon slot="start" name="heart"></wa-icon>{{favoritesCount}}
-        </wa-button>
-      </div>
-      <a class="title" href="{{url}}">
-        <h2>{{title}}</h2>
-        <p>{{description}}</p>
-      </a>
-      <div class="wa-split">
-        <small>Read more...</small>
-        <div class="wa-cluster wa-gap-2xs"><wa-tag size="s" appearance="outlined" jx-each="tagList">{{.}}</wa-tag></div>
-      </div>
-    </article>
-  </template>
-
-  <template id="author">
-    <a class="author" href="{{author.url}}">
-      <wa-avatar initials="{{author.initial}}" image="{{author.image}}" label="{{author.username}}"></wa-avatar>
-      <span><strong>{{author.username}}</strong><br><small>{{date}}</small></span>
-    </a>
-  </template>
+  <template src="previews.jx"></template>
 </body>
 </html>

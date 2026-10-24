@@ -1,0 +1,19 @@
+<!-- nav.jx: the navigation bar, shared by every page with <template src="nav.jx">.
+     It's a template with its own query, so it loads and draws itself. -->
+<script type="text/graphql" id="nav-query">query Nav { viewer { username } }</script>
+
+<header class="conduit-nav">
+  <template jx-query="#nav-query">
+    <nav class="wa-split">
+      <a class="brand" href="index.html">conduit <small>graphql</small></a>
+      <div class="wa-cluster wa-gap-l">
+        <a href="index.html">Home</a>
+        <a jx-if="!viewer" href="login.html">Sign in</a>
+        <a jx-if="!viewer" href="register.html">Sign up</a>
+        <a jx-if="viewer" href="editor.html"><wa-icon name="pen-to-square"></wa-icon> New article</a>
+        <a jx-if="viewer" href="settings.html"><wa-icon name="gear"></wa-icon> Settings</a>
+        <a jx-if="viewer" href="profile.html?username={{viewer.username}}"><wa-icon name="user"></wa-icon> {{viewer.username}}</a>
+      </div>
+    </nav>
+  </template>
+</header>

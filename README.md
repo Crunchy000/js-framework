@@ -88,6 +88,35 @@ That's the whole language. There's no other logic on purpose: if the page needs 
 
 **How it's fast.** jsonx reads each template once and turns it into a [Lit](https://lit.dev) template, with a "hole" wherever a value goes. On every update Lit only touches the holes whose values changed: no HTML parsing, no comparing trees, and unchanged elements (including web components, focus and scroll position) are left completely alone. See [the benchmark](examples/benchmark/).
 
+
+### A template that loads itself
+
+Put the request on the `<template>` itself, and it loads and draws right where it is, with no wrapper element to write:
+
+```html
+<template jx-get="/api/stats">
+  <p>{{done}} of {{total}} done</p>
+</template>
+```
+
+(jsonx swaps the template for a `<jx-view>` element with the same attributes. It takes no space in the layout.)
+
+### Reusable HTML in .jx files
+
+`<template src="nav.jx"></template>` pulls in a file of plain HTML. Use it for anything shared between pages, like a navigation bar or a list partial. The file can hold anything a page can: templates that load themselves, partials for `jx-use`, and GraphQL queries.
+
+```html
+<!-- nav.jx -->
+<header class="site-nav">
+  <template jx-get="/view/nav">
+    <a href="index.html">Home</a>
+    <a jx-if="signedIn" href="settings.html">Settings</a>
+  </template>
+</header>
+```
+
+Each file is fetched once. Nothing on the page is wired until every file is in, so a page's templates can use partials from them straight away. `<template src="row.jx" jx-get="/api/rows">` uses the file as that template's content instead. Conduit and Conduit on GraphQL share their nav bar and article list this way.
+
 ## Benchmark
 
 [The benchmark](examples/benchmark/) draws a list of Web Awesome todos, then ticks one, and times each until the browser has drawn the next frame. It compares jsonx with the simple approach of rebuilding the list's HTML with `innerHTML`. One run in headless Chrome:
