@@ -18,8 +18,8 @@
  *
  *   <script type="module" src="jsonx.js"></script>
  */
-import { compileTemplate, compileView } from "./templates.js?v=16";
-import { defineComponent } from "./components.js?v=16";
+import { compileTemplate, compileView } from "./templates.js?v=17";
+import { defineComponent } from "./components.js?v=17";
 
 var METHODS = ["get", "post", "put", "patch", "delete"];
 var SELECTOR = METHODS.map(function (m) { return "[jx-" + m + "]"; }).join(",") + ",[jx-region],[jx-query],[jx-data],[jx-emit]";
@@ -467,7 +467,7 @@ function send(url, options, el) {
   if (typeof fn !== "function") return Promise.resolve(json(404, { error: "There's no function called " + name }));
   var values = options.body ? JSON.parse(options.body) : Object.fromEntries(address.searchParams);
   return Promise.resolve()
-    .then(function () { return fn(values, { method: options.method, element: el }); })
+    .then(function () { return fn(values); })
     .finally(function () {
       // The function may have changed shared data, so redraw what shows it.
       // <button jx-post="fn:add" jx-data="count"> says which data it changes,

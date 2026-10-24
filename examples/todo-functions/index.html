@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en" class="wa-cloak">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>jsonx todos, with functions</title>
+
+  <!-- Web Awesome: theme, utilities and the component autoloader -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/styles/webawesome.css">
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
+
+  <!--
+    The whole "server" is these plain functions. Each one gets the values the
+    page sent (the region's named controls, plus jx-vals) and returns the whole
+    view, exactly like a JSON endpoint would. A plain script, not a module, so
+    jsonx can find the functions by name.
+  -->
+  <script>
+    let todos = load() || [
+      { id: 1, title: "Try jsonx with plain functions", done: true },
+      { id: 2, title: "Add a todo of your own", done: false },
+      { id: 3, title: "Tick something off", done: false }
+    ];
+
+    // The view the card draws. `values.filter` comes from the hidden input.
+    function show(values, extra) {
+      let filter = ["all", "active", "done"].includes(values.filter) ? values.filter : "all";
+      let done = todos.filter((t) => t.done).length;
+      return Object.assign({
+        filter: filter,
+        filters: ["all", "active", "done"].map((name) => ({
+          name: name,
+          label: name[0].toUpperCase() + name.slice(1),
+          variant: name === filter ? "brand" : "neutral",
+          appearance: name === filter ? "accent" : "outlined"
+        })),
+        todos: todos.filter((t) => filter === "all" || (filter === "done" ? t.done : !t.done)),
+        stats: {
+          total: todos.length,
+          done: done,
+          open: todos.length - done,
+          percent: todos.length ? Math.round((done / todos.length) * 100) : 0
+        },
+        // Echo what's typed, so a redraw never wipes it.
+        draft: values.title || ""
+      }, extra);
+    }
+
+    function add(values) {
+      let title = (values.title || "").trim();
+      if (!title) return show(values, { error: "Title is required" });
+      let id = Math.max(0, ...todos.map((t) => t.id)) + 1;
+      todos.push({ id: id, title: title, done: false });
+      save();
+      return show(values, { draft: "" });
+    }
+
+    function toggle(values) {
+      let todo = todos.find((t) => t.id === values.id);
+      if (todo) todo.done = !todo.done;
+      save();
+      return show(values);
+    }
+
+    function remove(values) {
+      todos = todos.filter((t) => t.id !== values.id);
+      save();
+      return show(values);
+    }
+
+    function clearDone(values) {
+      todos = todos.filter((t) => !t.done);
+      save();
+      return show(values);
+    }
+
+    // Keep the todos in this browser.
+    function load() {
+      try { return JSON.parse(localStorage.getItem("jsonx-todo-functions")); } catch (e) { return null; }
+    }
+    function save() {
+      try { localStorage.setItem("jsonx-todo-functions", JSON.stringify(todos)); } catch (e) {}
+    }
+  </script>
+  <script type="module" src="../../jsonx.js?v=17"></script>
+
+  <!-- Follow the visitor's light/dark setting -->
+  <script>
+    if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("wa-dark");
+  </script>
+
+  <style>
+    body { margin: 0; min-height: 100vh; background: var(--wa-color-surface-lowered); }
+    main { max-width: 640px; margin: 0 auto; padding: var(--wa-space-2xl) 16px; }
+    header p { margin: 0; color: var(--wa-color-text-quiet); }
+    .add wa-input { flex: 1 1 200px; }
+
+    .todos { list-style: none; margin: 0; padding: 0; }
+    .todos li {
+      display: flex; align-items: center; gap: var(--wa-space-s);
+      padding: var(--wa-space-xs) 0;
+      border-bottom: var(--wa-border-width-s) solid var(--wa-color-surface-border);
+    }
+    .todos li:last-child { border-bottom: 0; }
+    .todos li wa-checkbox { flex: 1; }
+    .todos li.done wa-checkbox::part(label) { text-decoration: line-through; color: var(--wa-color-text-quiet); }
+    .todos li.empty { color: var(--wa-color-text-quiet); justify-content: center; padding: var(--wa-space-l) 0; }
+
+    /* jsonx adds .jx-loading to whatever made the request, while it runs */
+    .jx-loading { opacity: .6; transition: opacity .2s; }
+    footer { text-align: center; color: var(--wa-color-text-quiet); font-size: var(--wa-font-size-s); }
+  </style>
+</head>
+<body>
+  <main class="wa-stack wa-gap-l">
+    <header class="wa-stack wa-gap-2xs">
+      <h1 class="wa-heading-2xl">Todos</h1>
+      <p>The same <a href="../todo/">todo app</a>, with no server: plain functions in the page return the whole view, and one template draws it. Built with <a href="../../">jsonx</a> and <a href="https://webawesome.com">Web Awesome</a>.</p>
+    </header>
+
+    <!--
+      This card is the whole app: a region that draws what the functions return.
+      fn:show runs when the page opens, and each button calls a function and
+      redraws the card with its answer. Only the parts that changed are updated.
+    -->
+    <wa-card id="app" jx-get="fn:show">
+      <wa-skeleton effect="sheen"></wa-skeleton>
+
+      <template>
+        <div class="wa-stack wa-gap-m">
+          <!-- Named controls are sent with every request from the region -->
+          <input type="hidden" name="filter" value="{{filter}}">
+
+          <!-- Add: click the button, or press Enter in the input -->
+          <div class="add wa-cluster wa-gap-s">
+            <wa-input name="title" value="{{draft}}" placeholder="What needs doing?" aria-label="New todo"
+                      autocomplete="off" autofocus jx-post="fn:add" jx-trigger="keydown[key=Enter]"></wa-input>
+            <wa-button variant="brand" jx-post="fn:add">
+              <wa-icon slot="start" name="plus"></wa-icon>
+              Add
+            </wa-button>
+          </div>
+
+          <jx-if test="error">
+            <wa-callout variant="danger" size="s">
+              <wa-icon slot="icon" name="circle-exclamation"></wa-icon>
+              {{error}}
+            </wa-callout>
+          </jx-if>
+
+          <div class="wa-split">
+            <wa-button-group label="Filter">
+              <!-- jx-vals overrides the hidden filter for this one request -->
+              <jx-each items="filters">
+                <wa-button size="s" variant="{{variant}}" appearance="{{appearance}}"
+                           jx-get="fn:show" jx-vals='{"filter": "{{name}}"}'>{{label}}</wa-button>
+              </jx-each>
+            </wa-button-group>
+
+            <wa-button size="s" appearance="plain" jx-post="fn:clearDone">Clear completed</wa-button>
+          </div>
+
+          <ul class="todos">
+            <jx-each items="todos">
+              <li class:done="{{done}}">
+                <!-- A form control, so its default trigger is "change" -->
+                <wa-checkbox checked="{{done}}" jx-post="fn:toggle" jx-vals='{"id": {{id}}}'>{{title}}</wa-checkbox>
+                <wa-button size="s" appearance="plain" variant="danger" jx-post="fn:remove" jx-vals='{"id": {{id}}}'>
+                  <wa-icon name="trash" label="Delete {{title}}"></wa-icon>
+                </wa-button>
+              </li>
+            </jx-each>
+            <jx-if test="!todos">
+              <li class="empty">Nothing here yet</li>
+            </jx-if>
+          </ul>
+
+          <wa-divider></wa-divider>
+
+          <div class="wa-stack wa-gap-xs">
+            <div class="wa-split">
+              <span><strong>{{stats.done}}</strong> of {{stats.total}} done</span>
+              <span class="wa-cluster wa-gap-2xs">
+                <wa-badge variant="neutral">{{stats.open}} open</wa-badge>
+                <wa-badge variant="success">{{stats.done}} done</wa-badge>
+              </span>
+            </div>
+            <wa-progress-bar value="{{stats.percent}}" label="Progress"></wa-progress-bar>
+          </div>
+        </div>
+      </template>
+    </wa-card>
+
+    <footer>Your todos are saved in this browser only.</footer>
+  </main>
+</body>
+</html>

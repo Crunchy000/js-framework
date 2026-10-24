@@ -26,6 +26,7 @@ The card loads `api/todos` when the page opens and draws it with the template in
 **New to jsonx?** Start with the [tutorial](https://crunchy000.github.io/js-framework/examples/tutorial/): twelve live steps, from explicit ids to regions inside regions, with each request's JSON shown as it happens.
 
 - [Todo app](https://crunchy000.github.io/js-framework/examples/todo/), built with [Web Awesome](https://webawesome.com) components
+- [Todo app, with functions](https://crunchy000.github.io/js-framework/examples/todo-functions/), the same app with no server: plain functions return the view
 - [Feature tour](https://crunchy000.github.io/js-framework/examples/basic/), one live example per feature, with its code and data
 - [Conduit](https://crunchy000.github.io/js-framework/examples/conduit/), the [RealWorld](https://github.com/realworld-apps/realworld) Medium clone: feeds, articles, comments, profiles and sign-in, against an API that isn't shaped for the page
 - [Conduit on GraphQL](https://crunchy000.github.io/js-framework/examples/conduit-graphql/), the same app with no view API: each page sends its own GraphQL query
@@ -199,7 +200,7 @@ Views usually come from a server. Two opt-in features let the browser supply the
 <button jx-post="fn:add">Add</button>
 ```
 
-**`fn:name` in place of a URL** calls the function `name(values)`. It gets the values a request would send, and returns the view or a promise of one. Throw `{ error }` or `{ errors }` to fail, and it's shown like a server's error answer. Return nothing when there's nothing to draw. Templates can't tell the difference, so a region can move from a function to a real URL later.
+**`fn:name` in place of a URL** calls the function `name(values)`. It gets the values a request would send, and returns the view or a promise of one. Throw `{ error }` or `{ errors }` to fail, and it's shown like a server's error answer. Return nothing when there's nothing to draw. Templates can't tell the difference, so a region can move from a function to a real URL later. The [todo app with functions](examples/todo-functions/) is the whole todo app this way.
 
 **`jx-data="cart"`** makes a region that draws the variable `cart`. After any `fn:` call, every `jx-data` region is drawn again from its variable, so a function just changes (or replaces) the data. Regions and rows that didn't change are skipped, but each item still takes about a microsecond to check, so with big lists, name what the button changes: `<button jx-post="fn:add" jx-data="cart">` redraws only the `cart` regions. When other code changes the data, like a timer or a `fetch`, call `jsonx.update()` to redraw.
 
@@ -337,6 +338,7 @@ If you call `jsonx.render(el, data)` yourself, jsonx copies `data` first, so cha
 | `vendor/lit-element/` | LitElement 4.2.1, the base class for components (BSD-3-Clause). |
 | `vendor/react/`, `vendor/htmx/` | React 18.3.1, htmx 2.0.4 and idiomorph 0.3.0, for the benchmark only. |
 | `examples/todo/` | The Web Awesome todo app, with its mock API. |
+| `examples/todo-functions/` | The same app, with plain `fn:` functions in the page instead of a server. |
 | `examples/basic/` | The feature tour: one live example per feature. |
 | `examples/components/` | `article-preview.jx`, a component shared by both Conduit apps. |
 | `examples/tutorial/` | The tutorial. |
