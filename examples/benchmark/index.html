@@ -7,6 +7,9 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/styles/webawesome.css">
   <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
   <script type="module" src="../../jsonx.js?v=10"></script>
+  <!-- React 18.3.1, production builds, for comparison -->
+  <script src="../../vendor/react/react.production.min.js"></script>
+  <script src="../../vendor/react/react-dom.production.min.js"></script>
   <script>
     if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("wa-dark");
   </script>
@@ -28,7 +31,14 @@
     <header class="wa-stack wa-gap-xs">
       <h1 class="wa-heading-2xl">Rendering benchmark</h1>
       <p>How long it takes to draw a todo list of Web Awesome components, and to update it after ticking one todo. Each number is the median of several runs, timed from the start of the render until the browser has drawn the next frame. No network is involved.</p>
-      <p><strong>jsonx</strong> renders the list with a jsonx template, which Lit updates in place. <strong>innerHTML</strong> is the simple approach for comparison: build the HTML as a string and replace the whole list, every time.</p>
+      <p>Four ways to draw the same list:</p>
+      <ul>
+        <li><strong>jsonx</strong>: a jsonx template, which Lit updates in place.</li>
+        <li><strong>React</strong>: React 18.3.1 (production build). Every update re-renders all rows, and React diffs them. Rows have keys.</li>
+        <li><strong>React + memo</strong>: the same, with each row wrapped in <code>React.memo</code>, so unchanged rows are skipped. This is how you'd tune a React list.</li>
+        <li><strong>innerHTML</strong>: the simple approach. Build the HTML as a string and replace the whole list, every time.</li>
+      </ul>
+      <p>React renders with <code>flushSync</code>, so its work happens inside the timing, like the others. Download size, gzipped: React + ReactDOM is about 47&nbsp;KB minified. jsonx + lit-html is about 17&nbsp;KB, unminified with all its comments.</p>
     </header>
 
     <div class="wa-cluster">
@@ -36,12 +46,19 @@
       <span id="status"></span>
     </div>
 
+    <h2 class="wa-heading-l">First draw (startup)</h2>
     <div class="table-wrap">
       <table>
-        <thead>
-          <tr><th>Todos</th><th>First draw, jsonx</th><th>First draw, innerHTML</th><th>Tick one, jsonx</th><th>Tick one, innerHTML</th></tr>
-        </thead>
-        <tbody id="results"></tbody>
+        <thead><tr><th>Todos</th><th>jsonx</th><th>React</th><th>React + memo</th><th>innerHTML</th></tr></thead>
+        <tbody id="first-results"></tbody>
+      </table>
+    </div>
+
+    <h2 class="wa-heading-l">Update: tick one todo</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Todos</th><th>jsonx</th><th>React</th><th>React + memo</th><th>innerHTML</th></tr></thead>
+        <tbody id="tick-results"></tbody>
       </table>
     </div>
 
@@ -79,6 +96,32 @@
     function jsonxRender(container, data) {
       jsonx.render(container, data);
     }
+
+    // ...and as React components (no JSX, so no build step).
+    var h = React.createElement;
+    function Row(props) {
+      var todo = props.todo;
+      return h("li", { className: todo.done ? "done" : "" },
+        // A custom element: React 18 sets these as attributes, so leave
+        // `checked` off entirely when false.
+        h("wa-checkbox", todo.done ? { checked: "" } : null, todo.title),
+        h("wa-button", { size: "s", appearance: "plain" }, "Delete"));
+    }
+    var MemoRow = React.memo(Row);
+    function List(props) {
+      var RowType = props.memo ? MemoRow : Row;
+      return h("ul", null, props.todos.map(function (todo) { return h(RowType, { key: todo.id, todo: todo }); }));
+    }
+    var roots = new WeakMap();
+    function reactRenderer(memo) {
+      return function (container, data) {
+        if (!roots.has(container)) roots.set(container, ReactDOM.createRoot(container));
+        var root = roots.get(container);
+        ReactDOM.flushSync(function () { root.render(h(List, { todos: data.todos, memo: memo })); });
+      };
+    }
+    var reactRender = reactRenderer(false);
+    var reactMemoRender = reactRenderer(true);
 
     function makeView(n) {
       var todos = [];
@@ -120,16 +163,37 @@
         first.push(await time(function () { renderer(container, view); }));
         var ticked = tickMiddle(view);
         tick.push(await time(function () { renderer(container, ticked); }));
+        if (roots.has(container)) { roots.get(container).unmount(); roots.delete(container); }
       }
       return { first: median(first), tick: median(tick) };
+    }
+
+    var renderers = [jsonxRender, reactRender, reactMemoRender, innerHTMLRender];
+
+    // One table row: the fastest time is shown in green.
+    function addRow(tbody, n, times) {
+      var best = Math.min.apply(null, times);
+      var tr = document.createElement("tr");
+      var first = document.createElement("td");
+      first.textContent = n;
+      tr.append(first);
+      times.forEach(function (t) {
+        var td = document.createElement("td");
+        td.textContent = t.toFixed(1) + " ms";
+        if (t === best) td.className = "faster";
+        tr.append(td);
+      });
+      tbody.append(tr);
     }
 
     async function run() {
       var button = document.querySelector("#run");
       var status = document.querySelector("#status");
-      var results = document.querySelector("#results");
+      var firstResults = document.querySelector("#first-results");
+      var tickResults = document.querySelector("#tick-results");
       button.disabled = true;
-      results.replaceChildren();
+      firstResults.replaceChildren();
+      tickResults.replaceChildren();
       window.benchResults = [];
       await customElements.whenDefined("wa-checkbox");
       await customElements.whenDefined("wa-button");
@@ -139,23 +203,21 @@
         var n = sizes[i];
         var runs = n >= 1000 ? 3 : 7;
         status.textContent = "Drawing " + n + " todos…";
-        await measure(n, jsonxRender, 1); // warm-up: compile the template once
-        var x = await measure(n, jsonxRender, runs);
-        var h = await measure(n, innerHTMLRender, runs);
-        var row = { todos: n, firstJsonx: x.first, firstInnerHTML: h.first, tickJsonx: x.tick, tickInnerHTML: h.tick };
-        window.benchResults.push(row);
-
-        var tr = document.createElement("tr");
-        [[n], [x.first, h.first], [h.first, x.first], [x.tick, h.tick], [h.tick, x.tick]].forEach(function (pair, column) {
-          var td = document.createElement("td");
-          td.textContent = column === 0 ? pair[0] : pair[0].toFixed(1) + " ms";
-          if (column > 0 && pair[0] < pair[1]) td.className = "faster";
-          tr.append(td);
+        var results = [];
+        for (var r = 0; r < renderers.length; r++) {
+          await measure(n, renderers[r], 1); // warm-up: compile templates, warm the JIT
+          results.push(await measure(n, renderers[r], runs));
+        }
+        window.benchResults.push({
+          todos: n,
+          firstJsonx: results[0].first, firstReact: results[1].first, firstReactMemo: results[2].first, firstInnerHTML: results[3].first,
+          tickJsonx: results[0].tick, tickReact: results[1].tick, tickReactMemo: results[2].tick, tickInnerHTML: results[3].tick
         });
-        results.append(tr);
+        addRow(firstResults, n, results.map(function (x) { return x.first; }));
+        addRow(tickResults, n, results.map(function (x) { return x.tick; }));
       }
       stage.replaceChildren();
-      status.textContent = "Done. Faster numbers are in green.";
+      status.textContent = "Done. The fastest in each row is in green.";
       button.disabled = false;
       window.benchDone = true;
     }
