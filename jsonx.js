@@ -504,8 +504,7 @@ function render(el, data, url) {
     var firstTime = !target.__jxRendered;
     target.__jxView = data; // remembered, so an error can be shown on top of it
     if (url && swap !== "none") target.__jxUrl = url; // and for jx-refresh
-    getTemplate(owner)(data, target);
-    process(target); // wire up any new elements; existing ones stay wired
+    drawAndWire(target, function () { getTemplate(owner)(data, target); });
     if (firstTime) focusAutofocus(target);
   }
 
@@ -529,8 +528,28 @@ function renderError(el, error) {
     if (e.field) fieldErrors[e.field] = fieldErrors[e.field] ? fieldErrors[e.field] + ", " + e.message : e.message;
   });
   var view = Object.assign({}, target.__jxView, { error: error.message, errors: error.errors, fieldErrors: fieldErrors });
-  getTemplate(owner)(view, target, true); // true: keep what was typed
-  process(target);
+  drawAndWire(target, function () { getTemplate(owner)(view, target, true); }); // true: keep what was typed
+}
+
+// Draws, then wires up only the elements the draw added. (Scanning the whole
+// region every time would cost as much as a big list, even when one row changed.)
+// The observer only collects; takeRecords() reads what it saw, straight away.
+var newElements = new MutationObserver(function () {});
+
+function drawAndWire(target, draw) {
+  newElements.observe(target, { childList: true, subtree: true });
+  var records;
+  try {
+    draw();
+  } finally {
+    records = newElements.takeRecords();
+    newElements.disconnect();
+  }
+  records.forEach(function (record) {
+    record.addedNodes.forEach(function (node) {
+      if (node.nodeType === 1 && node.isConnected) process(node);
+    });
+  });
 }
 
 // jx-target can be a CSS selector, "this", or "closest <selector>".
