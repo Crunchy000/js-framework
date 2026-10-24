@@ -10,6 +10,9 @@
   <!-- React 18.3.1, production builds, for comparison -->
   <script src="../../vendor/react/react.production.min.js"></script>
   <script src="../../vendor/react/react-dom.production.min.js"></script>
+  <!-- htmx 2.0.4, and idiomorph 0.3.0 (htmx's morph swap) -->
+  <script src="../../vendor/htmx/htmx.min.js"></script>
+  <script src="../../vendor/htmx/idiomorph-ext.min.js"></script>
   <script>
     if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("wa-dark");
   </script>
@@ -36,9 +39,11 @@
         <li><strong>jsonx</strong>: a jsonx template, which Lit updates in place.</li>
         <li><strong>React</strong>: React 18.3.1 (production build). Every update re-renders all rows, and React diffs them. Rows have keys.</li>
         <li><strong>React + memo</strong>: the same, with each row wrapped in <code>React.memo</code>, so unchanged rows are skipped. This is how you'd tune a React list.</li>
-        <li><strong>innerHTML</strong>: the simple approach. Build the HTML as a string and replace the whole list, every time.</li>
+        <li><strong>htmx</strong>: htmx 2.0.4 swaps in HTML from the server with its default <code>innerHTML</code> swap. Here the server's HTML is built in the page, so no network is involved.</li>
+        <li><strong>htmx + morph</strong>: the same HTML, merged into the live page by idiomorph 0.3.0, which is what htmx's morph extension does. Unchanged elements are kept.</li>
+        <li><strong>innerHTML</strong>: the simple approach, with no library. Build the HTML as a string and replace the whole list, every time.</li>
       </ul>
-      <p>React renders with <code>flushSync</code>, so its work happens inside the timing, like the others. Download size, gzipped: React + ReactDOM is about 47&nbsp;KB minified. jsonx + lit-html is about 17&nbsp;KB, unminified with all its comments.</p>
+      <p>React renders with <code>flushSync</code>, so its work happens inside the timing, like the others. Download size, gzipped: React + ReactDOM is about 47&nbsp;KB minified. htmx is about 16&nbsp;KB minified, plus 3&nbsp;KB for idiomorph. jsonx + lit-html is about 17&nbsp;KB, unminified with all its comments.</p>
     </header>
 
     <div class="wa-cluster">
@@ -56,7 +61,7 @@
     <h2 class="wa-heading-l">First draw (startup)</h2>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Todos</th><th>jsonx</th><th>React</th><th>React + memo</th><th>innerHTML</th></tr></thead>
+        <thead><tr><th>Todos</th><th>jsonx</th><th>React</th><th>React + memo</th><th>htmx</th><th>htmx + morph</th><th>innerHTML</th></tr></thead>
         <tbody id="first-results"></tbody>
       </table>
     </div>
@@ -64,7 +69,7 @@
     <h2 class="wa-heading-l">Update: tick one todo</h2>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Todos</th><th>jsonx</th><th>React</th><th>React + memo</th><th>innerHTML</th></tr></thead>
+        <thead><tr><th>Todos</th><th>jsonx</th><th>React</th><th>React + memo</th><th>htmx</th><th>htmx + morph</th><th>innerHTML</th></tr></thead>
         <tbody id="tick-results"></tbody>
       </table>
     </div>
@@ -107,8 +112,9 @@
     }
     var plain = false; // set from the "Rows are made of" choice
 
-    function innerHTMLRender(container, data) {
-      container.innerHTML = "<ul>" + data.todos.map(function (todo) {
+    // The HTML a server would send. innerHTML and htmx both use it.
+    function listHtml(data) {
+      return "<ul>" + data.todos.map(function (todo) {
         if (plain) {
           return '<li class="' + (todo.done ? "done" : "") + '">' +
             '<label><input type="checkbox"' + (todo.done ? " checked" : "") + "> " + escape(todo.title) + "</label>" +
@@ -118,6 +124,15 @@
           "<wa-checkbox" + (todo.done ? " checked" : "") + ">" + escape(todo.title) + "</wa-checkbox>" +
           '<wa-button size="s" appearance="plain">Delete</wa-button></li>';
       }).join("") + "</ul>";
+    }
+    function innerHTMLRender(container, data) {
+      container.innerHTML = listHtml(data);
+    }
+    function htmxRender(container, data) {
+      htmx.swap(container, listHtml(data), { swapStyle: "innerHTML", swapDelay: 0, settleDelay: 0 });
+    }
+    function morphRender(container, data) {
+      Idiomorph.morph(container, listHtml(data), { morphStyle: "innerHTML" });
     }
     function jsonxRender(container, data) {
       jsonx.render(container, data);
@@ -199,7 +214,7 @@
       return { first: median(first), tick: median(tick) };
     }
 
-    var renderers = [jsonxRender, reactRender, reactMemoRender, innerHTMLRender];
+    var renderers = [jsonxRender, reactRender, reactMemoRender, htmxRender, morphRender, innerHTMLRender];
 
     // One table row: the fastest time is shown in green.
     function addRow(tbody, n, times) {
@@ -242,8 +257,8 @@
         }
         window.benchResults.push({
           todos: n,
-          firstJsonx: results[0].first, firstReact: results[1].first, firstReactMemo: results[2].first, firstInnerHTML: results[3].first,
-          tickJsonx: results[0].tick, tickReact: results[1].tick, tickReactMemo: results[2].tick, tickInnerHTML: results[3].tick
+          first: results.map(function (x) { return Math.round(x.first * 10) / 10; }),
+          tick: results.map(function (x) { return Math.round(x.tick * 10) / 10; })
         });
         addRow(firstResults, n, results.map(function (x) { return x.first; }));
         addRow(tickResults, n, results.map(function (x) { return x.tick; }));
