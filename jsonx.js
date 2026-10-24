@@ -18,8 +18,8 @@
  *
  *   <script type="module" src="jsonx.js"></script>
  */
-import { compileTemplate, compileView } from "./templates.js?v=15";
-import { defineComponent } from "./components.js?v=15";
+import { compileTemplate, compileView } from "./templates.js?v=16";
+import { defineComponent } from "./components.js?v=16";
 
 var METHODS = ["get", "post", "put", "patch", "delete"];
 var SELECTOR = METHODS.map(function (m) { return "[jx-" + m + "]"; }).join(",") + ",[jx-region],[jx-query],[jx-data],[jx-emit]";
@@ -470,8 +470,12 @@ function send(url, options, el) {
     .then(function () { return fn(values, { method: options.method, element: el }); })
     .finally(function () {
       // The function may have changed shared data, so redraw what shows it.
-      // Unchanged regions and rows are skipped, so this is cheap.
-      update();
+      // <button jx-post="fn:add" jx-data="count"> says which data it changes,
+      // so only those regions redraw. Otherwise all of them do: unchanged rows
+      // are skipped, but each item still costs about a microsecond to check.
+      var changes = el && el.getAttribute("jx-data");
+      if (changes) changes.split(/[\s,]+/).filter(Boolean).forEach(redraw);
+      else update();
     })
     .then(function (view) {
       return view === undefined ? json(204, undefined, { "X-Jsonx-Nothing": "1" }) : json(200, view);
@@ -493,7 +497,8 @@ function send(url, options, el) {
 //   </script>
 //   <span jx-data="cart"><template>{{count}}</template></span>
 //   <button jx-post="fn:add">Add</button>
-// After any fn: call, every jx-data region is drawn again from its variable.
+// After any fn: call, every jx-data region is drawn again from its variable,
+// or only the ones it names: <button jx-post="fn:add" jx-data="cart">.
 //
 // From other code (a timer, a fetch), call jsonx.update() to redraw them all,
 // or jsonx.update("cart", function (cart) { cart.count++; }) to change one and

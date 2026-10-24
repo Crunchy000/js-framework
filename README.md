@@ -136,7 +136,7 @@ Each file is fetched once. Nothing on the page is wired until every file is in, 
 | `jx-then` | After the request works, go to this page. `:name` is filled from the server's answer, e.g. `jx-then="article.html?slug=:article.slug"`. | stay |
 | `jx-refresh` | After the request works, reload these regions the way they were last loaded, e.g. `jx-refresh="#comments"` or `jx-refresh="closest [jx-template]"`. For APIs that answer with one thing instead of the whole view. | none |
 | `jx-region` | Makes an element a region with no URL: it draws its template once, with an empty view. Good for a sign-in form. | |
-| `jx-data` | Makes an element a region that draws the variable with this name, and draws it again after every `fn:` call. See [Functions and shared data](#functions-and-shared-data-optional). | |
+| `jx-data` | Makes an element a region that draws the variable with this name, and draws it again after every `fn:` call. On an element with an `fn:` request, it names the data that call changes, so only those regions redraw. See [Functions and shared data](#functions-and-shared-data-optional). | |
 | `jx-emit` | Fires an event with this name when the element is clicked (or on its `jx-trigger`), with the current item as `event.detail`. For components. | |
 
 ### Triggers
@@ -201,7 +201,7 @@ Views usually come from a server. Two opt-in features let the browser supply the
 
 **`fn:name` in place of a URL** calls the function `name(values)`. It gets the values a request would send, and returns the view or a promise of one. Throw `{ error }` or `{ errors }` to fail, and it's shown like a server's error answer. Return nothing when there's nothing to draw. Templates can't tell the difference, so a region can move from a function to a real URL later.
 
-**`jx-data="cart"`** makes a region that draws the variable `cart`. After any `fn:` call, every `jx-data` region is drawn again from its variable, so a function just changes (or replaces) the data. Regions and rows that didn't change are skipped. When other code changes the data, like a timer or a `fetch`, call `jsonx.update()` to redraw.
+**`jx-data="cart"`** makes a region that draws the variable `cart`. After any `fn:` call, every `jx-data` region is drawn again from its variable, so a function just changes (or replaces) the data. Regions and rows that didn't change are skipped, but each item still takes about a microsecond to check, so with big lists, name what the button changes: `<button jx-post="fn:add" jx-data="cart">` redraws only the `cart` regions. When other code changes the data, like a timer or a `fetch`, call `jsonx.update()` to redraw.
 
 jsonx finds them by name, so put them in a plain `<script>`, not a module (a module's variables are private). In a module, use `jsonx.functions.add = …` and `jsonx.data.cart = …`, which are looked up first. `jsonx.update("cart", function (cart) { … })` changes one piece of data and redraws its regions.
 
