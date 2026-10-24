@@ -42,6 +42,13 @@
     </header>
 
     <div class="wa-cluster">
+      <wa-radio-group id="markup" orientation="horizontal" value="wa" label="Rows are made of">
+        <wa-radio appearance="button" value="wa">Web Awesome components</wa-radio>
+        <wa-radio appearance="button" value="plain">Plain HTML</wa-radio>
+      </wa-radio-group>
+    </div>
+    <p>With Web Awesome, much of the time goes into starting the components themselves. Plain HTML (a checkbox, a label and a button) shows the frameworks' own cost.</p>
+    <div class="wa-cluster">
       <wa-button id="run" variant="brand">Run benchmark</wa-button>
       <span id="status"></span>
     </div>
@@ -66,7 +73,7 @@
 
     <!-- Web Awesome loads each component the first time it sees one on the page.
          These make sure both are loaded before any timing starts. -->
-    <div hidden><wa-checkbox></wa-checkbox><wa-button></wa-button></div>
+    <div hidden><wa-checkbox></wa-checkbox><wa-button></wa-button><wa-radio-group></wa-radio-group><wa-radio></wa-radio></div>
   </main>
 
   <!-- The same markup, written as a jsonx template... -->
@@ -81,13 +88,32 @@
     </ul>
   </template>
 
+  <!-- ...and with plain HTML. -->
+  <template id="bench-list-plain">
+    <ul>
+      <jx-each items="todos">
+        <li class:done="{{done}}">
+          <label><input type="checkbox" checked="{{done}}"> {{title}}</label>
+          <button>Delete</button>
+        </li>
+      </jx-each>
+    </ul>
+  </template>
+
   <script type="module">
     // ...and as a string, for the innerHTML comparison.
     function escape(s) {
       return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     }
+    var plain = false; // set from the "Rows are made of" choice
+
     function innerHTMLRender(container, data) {
       container.innerHTML = "<ul>" + data.todos.map(function (todo) {
+        if (plain) {
+          return '<li class="' + (todo.done ? "done" : "") + '">' +
+            '<label><input type="checkbox"' + (todo.done ? " checked" : "") + "> " + escape(todo.title) + "</label>" +
+            "<button>Delete</button></li>";
+        }
         return '<li class="' + (todo.done ? "done" : "") + '">' +
           "<wa-checkbox" + (todo.done ? " checked" : "") + ">" + escape(todo.title) + "</wa-checkbox>" +
           '<wa-button size="s" appearance="plain">Delete</wa-button></li>';
@@ -101,6 +127,11 @@
     var h = React.createElement;
     function Row(props) {
       var todo = props.todo;
+      if (props.plain) {
+        return h("li", { className: todo.done ? "done" : "" },
+          h("label", null, h("input", { type: "checkbox", checked: todo.done, readOnly: true }), " ", todo.title),
+          h("button", null, "Delete"));
+      }
       return h("li", { className: todo.done ? "done" : "" },
         // A custom element: React 18 sets these as attributes, so leave
         // `checked` off entirely when false.
@@ -110,14 +141,14 @@
     var MemoRow = React.memo(Row);
     function List(props) {
       var RowType = props.memo ? MemoRow : Row;
-      return h("ul", null, props.todos.map(function (todo) { return h(RowType, { key: todo.id, todo: todo }); }));
+      return h("ul", null, props.todos.map(function (todo) { return h(RowType, { key: todo.id, todo: todo, plain: props.plain }); }));
     }
     var roots = new WeakMap();
     function reactRenderer(memo) {
       return function (container, data) {
         if (!roots.has(container)) roots.set(container, ReactDOM.createRoot(container));
         var root = roots.get(container);
-        ReactDOM.flushSync(function () { root.render(h(List, { todos: data.todos, memo: memo })); });
+        ReactDOM.flushSync(function () { root.render(h(List, { todos: data.todos, memo: memo, plain: plain })); });
       };
     }
     var reactRender = reactRenderer(false);
@@ -157,7 +188,7 @@
       for (var r = 0; r < runs; r++) {
         var view = makeView(n);
         var container = document.createElement("div");
-        container.setAttribute("jx-template", "#bench-list");
+        container.setAttribute("jx-template", plain ? "#bench-list-plain" : "#bench-list");
         stage.replaceChildren(container);
         await nextFrame();
         first.push(await time(function () { renderer(container, view); }));
@@ -192,6 +223,7 @@
       var firstResults = document.querySelector("#first-results");
       var tickResults = document.querySelector("#tick-results");
       button.disabled = true;
+      plain = document.querySelector("#markup").value === "plain";
       firstResults.replaceChildren();
       tickResults.replaceChildren();
       window.benchResults = [];
@@ -223,6 +255,10 @@
     }
 
     document.querySelector("#run").addEventListener("click", run);
+    // benchmark/?markup=plain starts with plain HTML chosen.
+    if (new URLSearchParams(location.search).get("markup") === "plain") {
+      customElements.whenDefined("wa-radio-group").then(function () { document.querySelector("#markup").value = "plain"; });
+    }
   </script>
 </body>
 </html>
