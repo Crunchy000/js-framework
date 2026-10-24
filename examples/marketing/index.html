@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en" class="wa-cloak">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Beacon — status pages for small teams</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/styles/webawesome.css">
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
+  <link rel="stylesheet" href="style.css?v=6">
+
+  <!-- Pretend servers: a Contentful-style CMS, and the view API in front of it.
+       In real life both are on a server, and these two lines go away. -->
+  <script src="cms-api.js?v=6"></script>
+  <script src="view-api.js?v=6"></script>
+  <script type="module" src="../../jsonx.js?v=6"></script>
+  <script>if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("wa-dark");</script>
+</head>
+<body>
+  <!-- The whole site is this one page. ?page=pricing, ?page=blog and ?post=... pick
+       what to show; the CMS decides which sections it has, and in what order.
+       This file only says how each kind of section looks. -->
+  <div jx-get="/view/page?slug=:page&amp;post=:post">
+    <div class="loading"><wa-spinner></wa-spinner></div>
+    <template>
+      <header class="site-nav">
+        <nav class="wa-split container">
+          <a class="brand" href="index.html"><wa-icon name="tower-broadcast"></wa-icon> {{nav.brand}}</a>
+          <div class="wa-cluster wa-gap-l">
+            <a jx-each="nav.links" href="{{url}}">{{label}}</a>
+            <wa-button size="s" variant="brand" href="{{nav.cta.url}}">{{nav.cta.label}}</wa-button>
+          </div>
+        </nav>
+      </header>
+
+      <main>
+        <div jx-each="sections">
+
+          <section class="hero" jx-each="hero">
+            <div class="container wa-stack wa-gap-l wa-align-items-center">
+              <wa-badge jx-if="badge" pill appearance="outlined">{{badge}}</wa-badge>
+              <h1>{{heading}}</h1>
+              <p class="lead">{{subheading}}</p>
+              <div class="wa-cluster wa-justify-content-center" jx-if="primary">
+                <wa-button variant="brand" size="l" href="{{primary.url}}">{{primary.label}}</wa-button>
+                <wa-button jx-if="secondary" size="l" appearance="outlined" href="{{secondary.url}}">{{secondary.label}}</wa-button>
+              </div>
+            </div>
+          </section>
+
+          <section class="logos" jx-each="logos">
+            <div class="container wa-stack wa-align-items-center">
+              <p class="eyebrow">{{heading}}</p>
+              <div class="wa-cluster wa-gap-2xl wa-justify-content-center"><span jx-each="names">{{.}}</span></div>
+            </div>
+          </section>
+
+          <section class="features" jx-each="features" id="{{anchor}}">
+            <div class="container">
+              <h2>{{heading}}</h2>
+              <p class="lead">{{intro}}</p>
+              <div class="wa-grid" style="--min-column-size: 240px">
+                <wa-card jx-each="items">
+                  <wa-icon name="{{icon}}" class="feature-icon"></wa-icon>
+                  <h3>{{title}}</h3>
+                  <p>{{body}}</p>
+                </wa-card>
+              </div>
+            </div>
+          </section>
+
+          <section class="testimonial" jx-each="testimonial">
+            <figure class="container">
+              <blockquote>“{{quote}}”</blockquote>
+              <figcaption class="wa-cluster wa-justify-content-center">
+                <wa-avatar initials="{{initials}}" label="{{name}}"></wa-avatar>
+                <span><strong>{{name}}</strong><br>{{role}}</span>
+              </figcaption>
+            </figure>
+          </section>
+
+          <section class="pricing" jx-each="pricing">
+            <div class="container">
+              <h2>{{heading}}</h2>
+              <div class="wa-grid" style="--min-column-size: 240px">
+                <wa-card jx-each="plans" class:highlighted="{{highlighted}}">
+                  <wa-badge jx-if="highlighted" slot="header" variant="brand">Most popular</wa-badge>
+                  <h3>{{name}}</h3>
+                  <p class="price"><strong>{{price}}</strong> {{period}}</p>
+                  <p>{{description}}</p>
+                  <ul class="checks"><li jx-each="features"><wa-icon name="check"></wa-icon> {{.}}</li></ul>
+                  <wa-button slot="footer" variant="{{buttonVariant}}" appearance="{{buttonAppearance}}" href="{{cta.url}}">{{cta.label}}</wa-button>
+                </wa-card>
+              </div>
+            </div>
+          </section>
+
+          <section class="faq" jx-each="faq">
+            <div class="container narrow">
+              <h2>{{heading}}</h2>
+              <wa-details jx-each="questions" summary="{{question}}">
+                <template jx-use="#rich-text"></template>
+              </wa-details>
+            </div>
+          </section>
+
+          <section class="posts" jx-each="posts">
+            <div class="container narrow wa-stack">
+              <h2>{{heading}}</h2>
+              <a jx-each="items" class="post" href="{{url}}">
+                <small>{{date}} · {{author}}</small>
+                <h3>{{title}}</h3>
+                <p>{{excerpt}}</p>
+                <div class="wa-cluster wa-gap-2xs"><wa-tag size="s" jx-each="tags">{{.}}</wa-tag></div>
+              </a>
+            </div>
+          </section>
+
+          <article class="article" jx-each="article">
+            <div class="container narrow">
+              <p><a href="index.html?page=blog">← All posts</a></p>
+              <h1>{{title}}</h1>
+              <p class="byline">{{date}} · {{author}}</p>
+              <template jx-use="#rich-text"></template>
+              <div class="wa-cluster wa-gap-2xs"><wa-tag size="s" jx-each="tags">{{.}}</wa-tag></div>
+            </div>
+          </article>
+
+          <section class="signup" jx-each="signup" id="signup">
+            <div class="container narrow wa-stack wa-align-items-center">
+              <h2>{{heading}}</h2>
+              <p>{{body}}</p>
+              <!-- The form is its own small region: posting it only redraws the form. -->
+              <div class="signup-form" jx-region>
+                <template>
+                  <div jx-if="!done" class="wa-cluster wa-gap-xs wa-align-items-end">
+                    <wa-input name="email" type="email" placeholder="you@company.com" label="Email" hint="{{fieldErrors.email}}"
+                              jx-post="/view/signup" jx-trigger="keydown[key=Enter]"></wa-input>
+                    <wa-button variant="brand" jx-post="/view/signup">Subscribe</wa-button>
+                  </div>
+                  <wa-callout jx-if="done" variant="success"><wa-icon slot="icon" name="circle-check"></wa-icon>{{message}}</wa-callout>
+                </template>
+              </div>
+            </div>
+          </section>
+
+          <section class="cta" jx-each="cta">
+            <div class="container wa-stack wa-align-items-center">
+              <h2>{{heading}}</h2>
+              <p class="lead">{{body}}</p>
+              <wa-button size="l" href="{{button.url}}">{{button.label}}</wa-button>
+            </div>
+          </section>
+
+        </div>
+      </main>
+
+      <footer class="site-footer">
+        <div class="container wa-split">
+          <span><wa-icon name="tower-broadcast"></wa-icon> {{nav.brand}}</span>
+          <span>A made-up product, built with jsonx and a Contentful-style API.</span>
+        </div>
+      </footer>
+    </template>
+  </div>
+
+  <!-- Rich text from the CMS, as blocks: headings, paragraphs and lists.
+       Each paragraph is a list of parts, which can be bold, italic or a link. -->
+  <template id="rich-text">
+    <div class="rich" jx-each="blocks">
+      <h2 jx-each="h2">{{text}}</h2>
+      <p jx-each="p"><template jx-use="#parts"></template></p>
+      <ul jx-each="ul"><li jx-each="items"><template jx-use="#parts"></template></li></ul>
+    </div>
+  </template>
+  <template id="parts"><span jx-each="parts" class:bold="{{bold}}" class:italic="{{italic}}"><a jx-if="href" href="{{href}}">{{text}}</a><span jx-if="!href">{{text}}</span></span></template>
+</body>
+</html>

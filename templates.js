@@ -67,7 +67,8 @@ function text(value) {
 // ---------------------------------------------------------------------------
 
 // Rule 3: a whole-value attribute like checked="{{done}}" or value="{{draft}}".
-// While an error is drawn on top of a view, form controls keep what you typed.
+// While an error is drawn on top of a view, form controls keep what you typed
+// (their value and checked properties are left alone).
 var keepTyping = false;
 
 class SmartAttribute extends Directive {
@@ -75,7 +76,7 @@ class SmartAttribute extends Directive {
     var el = part.element;
     var name = part.name;
     if (name in el && !name.startsWith("aria")) {
-      if (keepTyping) return noChange;
+      if (keepTyping && (name === "value" || name === "checked")) return noChange;
       // A property: compare with the element's live value, so typing or
       // clicking never leaves it out of step with the view.
       var next = value == null ? (typeof el[name] === "boolean" ? false : "") : value;

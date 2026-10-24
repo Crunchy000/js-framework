@@ -22,6 +22,7 @@ The card loads `api/todos` when the page opens and draws it with the template in
 - [Todo app](https://crunchy000.github.io/js-framework/examples/todo/), built with [Web Awesome](https://webawesome.com) components
 - [Feature tour](https://crunchy000.github.io/js-framework/examples/basic/), every attribute plus three web component patterns
 - [Conduit](https://crunchy000.github.io/js-framework/examples/conduit/), the [RealWorld](https://github.com/realworld-apps/realworld) Medium clone: feeds, articles, comments, profiles and sign-in, against an API that isn't shaped for the page
+- [Beacon](https://crunchy000.github.io/js-framework/examples/marketing/), a marketing site whose pages are built from a Contentful-style CMS
 - [Benchmark](https://crunchy000.github.io/js-framework/examples/benchmark/), drawing and updating 10, 100 and 1,000 todos
 
 ## The idea: regions
@@ -84,6 +85,7 @@ Serve the folder with any static server, for example `npx serve .`, and open `ex
 | `examples/todo/` | The Web Awesome todo app, with its mock API. |
 | `examples/basic/` | The feature tour, with three demo web components in `components.js`. |
 | `examples/conduit/` | The RealWorld app: one HTML file per page and no page script. `view-api.js` is a pretend backend-for-frontend that turns the RealWorld API (`mock-api.js`) into page-shaped views. |
+| `examples/marketing/` | A marketing site in one HTML file. `cms-api.js` is a pretend Contentful (entries, links, rich text) and `view-api.js` turns its entries into page sections. |
 | `examples/benchmark/` | Times jsonx against rebuilding the list with `innerHTML`. |
 | `index.html` | The GitHub Pages home page. |
 | `.github/workflows/pages.yml` | Publishes the site to GitHub Pages on every push to `main`. |
@@ -151,6 +153,8 @@ If you can't add a view API, jsonx has three tools for working with the real one
 - **`jx-refresh="#comments"`** reloads regions after a change, the way they were last loaded.
 - **`jx:beforeRender`** lets page code reshape the data: set `event.detail.data`.
 - **`jsonx.headers`** adds headers, like a token, to every request. It can be an object, or a function that's asked each time. Page code that runs before jsonx can set `window.jsonx = { headers: … }` first.
+
+[Beacon](examples/marketing/), the marketing site, does the same with a Contentful-style CMS. Editors stack section entries (hero, features, pricing, FAQ...) into pages. The view API resolves the links between entries and turns rich text into blocks, and answers with a list of sections, each naming its kind: `{ hero: {...}, pricing: null, ... }`. The page is one HTML file with a template per kind of section, `<section jx-each="hero">`. A `jx-each` on a single object draws it once, with its fields in scope.
 
 Article bodies are Markdown, but Conduit shows them as plain paragraphs: templates never insert raw HTML, so an article can't inject anything into the page.
 

@@ -1,0 +1,66 @@
+/* Beacon's look, on top of Web Awesome. */
+body { margin: 0; background: var(--wa-color-surface-default); }
+a { color: inherit; }
+.container { max-width: 1100px; margin: 0 auto; padding: 0 16px; }
+.narrow { max-width: 720px; }
+.loading { display: grid; place-items: center; min-height: 60vh; font-size: 2rem; }
+section, .article { padding: var(--wa-space-3xl) 0; }
+h1, h2, h3 { text-wrap: balance; }
+section h2 { font-size: var(--wa-font-size-2xl); margin: 0 0 var(--wa-space-s); }
+.lead { font-size: var(--wa-font-size-l); color: var(--wa-color-text-quiet); max-width: 640px; }
+.eyebrow { text-transform: uppercase; letter-spacing: .08em; font-size: var(--wa-font-size-s); color: var(--wa-color-text-quiet); }
+
+.site-nav { border-bottom: var(--wa-border-width-s) solid var(--wa-color-surface-border); position: sticky; top: 0; background: var(--wa-color-surface-default); z-index: 1; }
+.site-nav nav { padding-top: var(--wa-space-s); padding-bottom: var(--wa-space-s); flex-wrap: wrap; }
+.site-nav a { text-decoration: none; color: var(--wa-color-text-quiet); }
+.site-nav .brand { font-weight: 700; font-size: var(--wa-font-size-l); color: var(--wa-color-brand-on-quiet); }
+
+.hero { text-align: center; background: linear-gradient(180deg, var(--wa-color-brand-fill-quiet), transparent); padding: var(--wa-space-4xl) 0; }
+.hero h1 { font-size: clamp(2.2rem, 5vw, 3.6rem); line-height: 1.1; margin: 0; max-width: 820px; }
+.hero .lead { margin: 0 auto; }
+
+.logos { padding: var(--wa-space-xl) 0; }
+.logos span { font-weight: 700; font-size: var(--wa-font-size-l); color: var(--wa-color-text-quiet); opacity: .7; }
+
+.features h2, .pricing h2, .faq h2, .cta h2 { text-align: center; }
+.features .lead { margin: 0 auto var(--wa-space-xl); text-align: center; }
+.features wa-card h3 { margin: var(--wa-space-s) 0 var(--wa-space-2xs); }
+.features wa-card p { margin: 0; color: var(--wa-color-text-quiet); }
+.feature-icon { font-size: 1.6rem; color: var(--wa-color-brand-on-quiet); }
+
+.testimonial { background: var(--wa-color-surface-lowered); text-align: center; }
+.testimonial figure { margin: 0 auto; max-width: 800px; }
+.testimonial blockquote { font-size: var(--wa-font-size-xl); line-height: 1.5; margin: 0 0 var(--wa-space-l); }
+.testimonial figcaption { text-align: left; }
+
+.pricing h2 { margin-bottom: var(--wa-space-xl); }
+.pricing wa-card.highlighted { border: 2px solid var(--wa-color-brand-border-loud); border-radius: var(--wa-border-radius-l); }
+.pricing h3 { margin: 0; }
+.price strong { font-size: var(--wa-font-size-3xl); }
+.checks { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--wa-space-2xs); }
+.checks wa-icon { color: var(--wa-color-success-on-quiet); }
+.pricing wa-button { width: 100%; }
+
+.faq wa-details { margin-top: var(--wa-space-s); }
+.rich p, .rich ul { margin: 0 0 var(--wa-space-s); }
+.bold { font-weight: 700; }
+.italic { font-style: italic; }
+.rich a { color: var(--wa-color-brand-on-quiet); }
+
+.posts .post { display: block; text-decoration: none; padding: var(--wa-space-l) 0; border-bottom: var(--wa-border-width-s) solid var(--wa-color-surface-border); }
+.posts .post h3 { margin: var(--wa-space-2xs) 0; font-size: var(--wa-font-size-xl); }
+.posts .post p { margin: 0 0 var(--wa-space-s); color: var(--wa-color-text-quiet); }
+.posts small, .byline { color: var(--wa-color-text-quiet); }
+
+.article h1 { font-size: clamp(2rem, 4vw, 3rem); margin: var(--wa-space-s) 0 0; }
+.article .rich { font-size: var(--wa-font-size-l); line-height: 1.7; }
+.article .rich h2 { font-size: var(--wa-font-size-xl); margin: var(--wa-space-xl) 0 var(--wa-space-s); }
+
+.signup { background: var(--wa-color-brand-fill-quiet); text-align: center; }
+.signup p { margin: 0; }
+.signup-form wa-input { min-width: min(320px, 80vw); text-align: left; }
+
+.cta { text-align: center; }
+.site-footer { border-top: var(--wa-border-width-s) solid var(--wa-color-surface-border); padding: var(--wa-space-l) 0; color: var(--wa-color-text-quiet); font-size: var(--wa-font-size-s); }
+.site-footer .container { flex-wrap: wrap; gap: var(--wa-space-s); }
+.jx-loading { opacity: .6; transition: opacity .2s; }
