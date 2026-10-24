@@ -4,10 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>jsonx tutorial</title>
-  <link rel="stylesheet" href="style.css?v=14">
+  <link rel="stylesheet" href="style.css?v=15">
   <!-- A pretend server, so every example works without one. -->
-  <script src="mock-api.js?v=14"></script>
-  <script type="module" src="../../jsonx.js?v=14"></script>
+  <script src="mock-api.js?v=15"></script>
+  <script type="module" src="../../jsonx.js?v=15"></script>
 </head>
 <body>
 <header class="top">
@@ -523,34 +523,30 @@
         <div class="result">
           <!-- example:shop -->
           <script>
-            // Set before jsonx starts (a plain script runs before modules).
-            window.jsonx = {
-              data: { cart: { count: 0, items: [] } },
-              functions: {
-                products: function () {
-                  return { products: [
-                    { id: 1, name: "Tea", price: 3 },
-                    { id: 2, name: "Coffee", price: 4 },
-                    { id: 3, name: "Cake", price: 5 }
-                  ] };
-                },
-                add: function (values) {
-                  jsonx.update("cart", function (cart) {
-                    var item = cart.items.find(function (i) { return i.id === values.id; });
-                    if (item && item.qty >= 3) throw { error: "Only 3 of each, please." };
-                    if (item) item.qty++;
-                    else cart.items.push({ id: values.id, name: values.name, qty: 1 });
-                    cart.count++;
-                  });
-                  // The products view again, which also clears an old error.
-                  return jsonx.functions.products();
-                },
-                empty: function () {
-                  jsonx.update("cart", { count: 0, items: [] });
-                  // Returning nothing: jsonx.update already redrew the basket.
-                }
-              }
-            };
+            // Plain variables and functions, in a plain script.
+            let cart = { count: 0, items: [] };
+
+            function products() {
+              return { products: [
+                { id: 1, name: "Tea", price: 3 },
+                { id: 2, name: "Coffee", price: 4 },
+                { id: 3, name: "Cake", price: 5 }
+              ] };
+            }
+
+            function add(values) {
+              let item = cart.items.find((i) => i.id === values.id);
+              if (item && item.qty >= 3) throw { error: "Only 3 of each, please." };
+              if (item) item.qty++;
+              else cart.items.push({ id: values.id, name: values.name, qty: 1 });
+              cart.count++;
+              // The products view again, which also clears an old error.
+              return products();
+            }
+
+            function empty() {
+              cart = { count: 0, items: [] };
+            }
           </script>
 
           <p>Basket: <span jx-data="cart"><template>{{count}} items</template></span></p>
@@ -579,19 +575,20 @@
 
     <h3>Functions: <code>fn:name</code></h3>
     <ul>
-      <li>Anywhere a URL goes, <code>fn:products</code> calls <code>jsonx.functions.products</code> instead. It gets the same values a request would send (the region's controls and <code>jx-vals</code>), and returns the view, or a promise of one.</li>
+      <li>Anywhere a URL goes, <code>fn:products</code> calls the function <code>products</code> instead. It gets the same values a request would send (the region's controls and <code>jx-vals</code>), and returns the view, or a promise of one.</li>
       <li>So templates don't care where a view comes from. A region can start on a function and later point at a real URL.</li>
       <li>To fail, <code>throw</code> an error answer like <code>{ error: "…" }</code> or <code>{ errors: {…} }</code>. It's shown like a server's error from step 9. Try adding a fourth tea.</li>
-      <li>Returning nothing means there's nothing to draw, which is handy when the function updates shared data instead.</li>
-      <li>A function can call real APIs and reshape what they return, so you can adapt an API you don't control, one function per region.</li>
+      <li>Returning nothing means there's nothing to draw here, like <code>empty()</code>.</li>
+      <li>A function can call real APIs and reshape what they return, so you can adapt an API you don't control.</li>
     </ul>
 
     <h3>Shared data: <code>jx-data</code></h3>
     <ul>
-      <li><code>jx-data="cart"</code> makes a region that draws <code>jsonx.data.cart</code>. Both the basket count and the basket list use it.</li>
-      <li><code>jsonx.update("cart", function (cart) { … })</code> changes the data, then redraws <em>every</em> region bound to it. The function can change the data in place, or return new data. <code>jsonx.update("cart", newData)</code> replaces it.</li>
+      <li><code>jx-data="cart"</code> makes a region that draws the variable <code>cart</code>. Both the basket count and the basket list use it.</li>
+      <li>After <em>any</em> <code>fn:</code> call, every <code>jx-data</code> region is drawn again from its variable. So <code>add()</code> just changes <code>cart</code>, and <code>empty()</code> just replaces it. Regions whose data didn't change are skipped.</li>
       <li>This is how two distant parts of a page stay in step without <code>jx-refresh</code>.</li>
-      <li>Set <code>window.jsonx = { data, functions }</code> in a plain script before jsonx loads, as above, so they're there when the page first draws.</li>
+      <li>Changing the data from other code, like a timer? Call <code>jsonx.update()</code> to redraw.</li>
+      <li>Use a plain <code>&lt;script&gt;</code>, as above, not a module: jsonx finds functions and variables by name, and a module's are private. In a module, put them on <code>jsonx.functions</code> and <code>jsonx.data</code> instead.</li>
     </ul>
     <p class="note">These put logic in the browser, which jsonx otherwise avoids. Server views stay the default. Reach for these for local state, and for APIs you can't change.</p>
   </section>
@@ -656,10 +653,10 @@
       <tr><td><code>jx-get</code> / <code>jx-post</code> / <code>jx-put</code> / <code>jx-patch</code> / <code>jx-delete</code></td><td>The request</td></tr>
       <tr><td><code>&lt;template&gt;</code> inside, or <code>jx-template="#id"</code></td><td>Makes a region</td></tr>
       <tr><td><code>jx-region</code></td><td>A region with nothing to load</td></tr>
-      <tr><td><code>jx-post="fn:name"</code></td><td>Call <code>jsonx.functions.name(values)</code> instead of a server</td></tr>
+      <tr><td><code>jx-post="fn:name"</code></td><td>Call the function <code>name(values)</code> instead of a server</td></tr>
       <tr><td><code>&lt;template jx-component="tag-name" props="a b"&gt;</code></td><td>Define a web component from a template</td></tr>
       <tr><td><code>jx-emit="name"</code></td><td>Fire an event (with the current item) on click</td></tr>
-      <tr><td><code>jx-data="name"</code></td><td>Draw <code>jsonx.data.name</code>; <code>jsonx.update("name", fn)</code> redraws it everywhere</td></tr>
+      <tr><td><code>jx-data="name"</code></td><td>Draw the variable <code>name</code>, again after every <code>fn:</code> call</td></tr>
       <tr><td><code>jx-trigger</code></td><td>When to run: <code>input delay:300ms</code>, <code>keydown[key=Enter]</code>, <code>change from:#other</code></td></tr>
       <tr><td><code>jx-target</code></td><td>Draw somewhere else: a selector, or <code>closest .card</code></td></tr>
       <tr><td><code>jx-include</code>, <code>jx-vals</code></td><td>Send more values</td></tr>
@@ -671,6 +668,6 @@
   </section>
 </main>
 
-<script src="tutorial.js?v=14"></script>
+<script src="tutorial.js?v=15"></script>
 </body>
 </html>

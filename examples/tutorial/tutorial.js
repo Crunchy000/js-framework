@@ -119,7 +119,7 @@
     var request = pending.get(source);
     pending.delete(source);
     var entry = request || (source.hasAttribute && source.hasAttribute("jx-data")
-      ? { method: "—", url: "jsonx.data." + source.getAttribute("jx-data") + " (jx-data)" }
+      ? { method: "—", url: "the variable " + source.getAttribute("jx-data") + " (jx-data)" }
       : { method: "—", url: "no request (jx-region draws with an empty view)" });
     entry.data = event.detail.data;
     entry.target = event.detail.target;

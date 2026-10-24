@@ -123,7 +123,7 @@ Each file is fetched once. Nothing on the page is wired until every file is in, 
 
 | Attribute | What it does | Default |
 |---|---|---|
-| `jx-get`, `jx-post`, `jx-put`, `jx-patch`, `jx-delete` | The URL to call, and with which HTTP method. It can use `{{name}}` when it's inside a template. `fn:name` calls `jsonx.functions.name` instead. | (required) |
+| `jx-get`, `jx-post`, `jx-put`, `jx-patch`, `jx-delete` | The URL to call, and with which HTTP method. It can use `{{name}}` when it's inside a template. `fn:name` calls the function `name` instead. | (required) |
 | `jx-trigger` | The event that starts the request. Any event name works, including custom events. Add `delay:300ms` to wait until events stop (good for search boxes), or `from:#other` to listen on another element. Use `keydown[key=Enter]` to fire only for one key. Use `load` to run once on page load. List several with commas. | depends on the element, see below |
 | `jx-template` | Selector of a `<template>` that draws the JSON, for when it isn't inside the element. An element with a template is a region. | the template inside, or the region's |
 | `jx-target` | Where the result goes: a CSS selector, `this`, or `closest <selector>`. | the region, or else the element itself |
@@ -136,7 +136,7 @@ Each file is fetched once. Nothing on the page is wired until every file is in, 
 | `jx-then` | After the request works, go to this page. `:name` is filled from the server's answer, e.g. `jx-then="article.html?slug=:article.slug"`. | stay |
 | `jx-refresh` | After the request works, reload these regions the way they were last loaded, e.g. `jx-refresh="#comments"` or `jx-refresh="closest [jx-template]"`. For APIs that answer with one thing instead of the whole view. | none |
 | `jx-region` | Makes an element a region with no URL: it draws its template once, with an empty view. Good for a sign-in form. | |
-| `jx-data` | Makes an element a region that draws `jsonx.data[name]`, and redraws when `jsonx.update(name, …)` changes it. See [Functions and shared data](#functions-and-shared-data-optional). | |
+| `jx-data` | Makes an element a region that draws the variable with this name, and draws it again after every `fn:` call. See [Functions and shared data](#functions-and-shared-data-optional). | |
 | `jx-emit` | Fires an event with this name when the element is clicked (or on its `jx-trigger`), with the current item as `event.detail`. For components. | |
 
 ### Triggers
@@ -187,27 +187,23 @@ jsonx fires DOM events you can listen to from page code. They bubble and cross s
 
 ## Functions and shared data (optional)
 
-Views usually come from a server. Two opt-in features let the browser supply them too, for state that never touches a server or for reshaping an API you don't control. Tutorial step 11 shows both.
-
-**`fn:name` in place of a URL** calls `jsonx.functions.name(values)`. It gets the values a request would send, and returns the view or a promise of one. Throw `{ error }` or `{ errors }` to fail, and it's shown like a server's error answer. Return nothing when there's nothing to draw. Templates can't tell the difference, so a region can move from a function to a real URL later.
-
-```html
-<div jx-get="fn:products">…<button jx-post="fn:add" jx-vals='{"id": {{id}}}'>Add</button>…</div>
-```
-
-**`jx-data="cart"`** makes a region that draws `jsonx.data.cart`. `jsonx.update("cart", function (cart) { cart.count++; })` changes it and redraws every region bound to it, so a basket count in the header and the basket list stay in step. The function can change the data in place or return new data, and `jsonx.update("cart", newData)` replaces it.
-
-Set them before jsonx starts, in a plain script, so they're there for the first draw:
+Views usually come from a server. Two opt-in features let the browser supply them too, for state that never touches a server or for reshaping an API you don't control. [Tutorial step 11](examples/tutorial/#s11) shows both. They're plain variables and functions:
 
 ```html
 <script>
-  window.jsonx = {
-    data: { cart: { count: 0, items: [] } },
-    functions: { products: function () { return { products: [ … ] }; } }
-  };
+  let cart = { count: 0 };
+  function add() { cart.count++; }
 </script>
-<script type="module" src="jsonx.js"></script>
+
+<p>Basket: <span jx-data="cart"><template>{{count}} items</template></span></p>
+<button jx-post="fn:add">Add</button>
 ```
+
+**`fn:name` in place of a URL** calls the function `name(values)`. It gets the values a request would send, and returns the view or a promise of one. Throw `{ error }` or `{ errors }` to fail, and it's shown like a server's error answer. Return nothing when there's nothing to draw. Templates can't tell the difference, so a region can move from a function to a real URL later.
+
+**`jx-data="cart"`** makes a region that draws the variable `cart`. After any `fn:` call, every `jx-data` region is drawn again from its variable, so a function just changes (or replaces) the data. Regions and rows that didn't change are skipped. When other code changes the data, like a timer or a `fetch`, call `jsonx.update()` to redraw.
+
+jsonx finds them by name, so put them in a plain `<script>`, not a module (a module's variables are private). In a module, use `jsonx.functions.add = …` and `jsonx.data.cart = …`, which are looked up first. `jsonx.update("cart", function (cart) { … })` changes one piece of data and redraws its regions.
 
 ## Web components
 

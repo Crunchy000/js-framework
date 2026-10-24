@@ -18,8 +18,8 @@
  *
  *   <script type="module" src="jsonx.js"></script>
  */
-import { compileTemplate, compileView } from "./templates.js?v=14";
-import { defineComponent } from "./components.js?v=14";
+import { compileTemplate, compileView } from "./templates.js?v=15";
+import { defineComponent } from "./components.js?v=15";
 
 var METHODS = ["get", "post", "put", "patch", "delete"];
 var SELECTOR = METHODS.map(function (m) { return "[jx-" + m + "]"; }).join(",") + ",[jx-region],[jx-query],[jx-data],[jx-emit]";
@@ -148,12 +148,12 @@ function fillFromAddress(el) {
 }
 
 function attachTriggers(el) {
-  // <div jx-data="cart"> draws jsonx.data.cart, and again whenever
-  // jsonx.update("cart", ...) changes it.
+  // <div jx-data="cart"> draws the variable cart, and again after
+  // every fn: call or jsonx.update() (see "Shared data" below).
   if (el.hasAttribute("jx-data") && !getMethodAndUrl(el)) {
     var name = el.getAttribute("jx-data");
     (bound[name] = bound[name] || new Set()).add(el);
-    render(el, copy(api.data[name] || {}));
+    render(el, copy(dataFor(name)));
     return;
   }
   // <button jx-emit="pick"> fires a "pick" event, carrying the item it was drawn
@@ -458,16 +458,21 @@ function send(url, options, el) {
   if (url.indexOf("fn:") !== 0) return fetch(url, options);
   var address = new URL(url.slice(3), "http://x/");
   var name = decodeURIComponent(address.pathname.slice(1));
-  var fn = api.functions[name];
+  var fn = name in api.functions ? api.functions[name] : globalValue(name);
   var json = function (status, body, headers) {
     return new Response(body === undefined ? null : JSON.stringify(body), {
       status: status, headers: Object.assign({ "Content-Type": "application/json" }, headers)
     });
   };
-  if (typeof fn !== "function") return Promise.resolve(json(404, { error: "jsonx.functions." + name + " doesn't exist" }));
+  if (typeof fn !== "function") return Promise.resolve(json(404, { error: "There's no function called " + name }));
   var values = options.body ? JSON.parse(options.body) : Object.fromEntries(address.searchParams);
   return Promise.resolve()
     .then(function () { return fn(values, { method: options.method, element: el }); })
+    .finally(function () {
+      // The function may have changed shared data, so redraw what shows it.
+      // Unchanged regions and rows are skipped, so this is cheap.
+      update();
+    })
     .then(function (view) {
       return view === undefined ? json(204, undefined, { "X-Jsonx-Nothing": "1" }) : json(200, view);
     }, function (thrown) {
@@ -479,25 +484,67 @@ function send(url, options, el) {
     });
 }
 
-// jsonx.update("cart", function (cart) { cart.count++; }) changes jsonx.data.cart
-// and redraws every region with jx-data="cart". The function can change the
-// data in place, or return new data. jsonx.update("cart", newData) replaces it.
+// Shared data, for regions with jx-data="cart".
+//
+// The simplest way: a plain script with ordinary variables and functions.
+//   <script>
+//     let cart = { count: 0 };
+//     function add() { cart.count++; }
+//   </script>
+//   <span jx-data="cart"><template>{{count}}</template></span>
+//   <button jx-post="fn:add">Add</button>
+// After any fn: call, every jx-data region is drawn again from its variable.
+//
+// From other code (a timer, a fetch), call jsonx.update() to redraw them all,
+// or jsonx.update("cart", function (cart) { cart.count++; }) to change one and
+// redraw it. The function can change the data in place, or return new data;
+// jsonx.update("cart", newData) replaces it.
+//
+// Names are looked up in jsonx.data and jsonx.functions first, then as globals.
 var bound = {};
 
+// A global by name: a `var` or `function` (on window), or a `let` or `const`
+// from a plain script (not on window, but visible to global code).
+function globalValue(name) {
+  if (!/^[A-Za-z_$][\w$]*$/.test(name)) return undefined;
+  try {
+    return Function('return typeof ' + name + ' === "undefined" ? undefined : ' + name)();
+  } catch (e) {
+    return window[name];
+  }
+}
+
+function setGlobal(name, value) {
+  try { Function("value", name + " = value")(value); return true; } catch (e) { return false; }
+}
+
+function dataFor(name) {
+  var data = name in api.data ? api.data[name] : globalValue(name);
+  return data === undefined || data === null ? {} : data;
+}
+
 function update(name, change) {
-  var data = api.data[name];
+  if (name === undefined) {
+    Object.keys(bound).forEach(function (n) { redraw(n); });
+    return;
+  }
+  var data = name in api.data || globalValue(name) === undefined ? api.data[name] : globalValue(name);
   if (typeof change === "function") {
     var result = change(data);
     if (result !== undefined) data = result;
   } else if (change !== undefined) {
     data = change;
   }
-  api.data[name] = data;
+  if (name in api.data || globalValue(name) === undefined || !setGlobal(name, data)) api.data[name] = data;
+  redraw(name);
+  return data;
+}
+
+function redraw(name) {
   (bound[name] || new Set()).forEach(function (el) {
-    if (el.isConnected) render(el, copy(data || {}));
+    if (el.isConnected) render(el, copy(dataFor(name)));
     else bound[name].delete(el);
   });
-  return data;
 }
 
 // Turns an error response into an Error. If the server sent JSON like

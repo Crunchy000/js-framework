@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>jsonx feature tour</title>
-  <link rel="stylesheet" href="../tutorial/style.css?v=14">
+  <link rel="stylesheet" href="../tutorial/style.css?v=15">
   <style>
     .results li.pioneer strong::after { content: " ★"; color: #e0a800; }
     .results { list-style: none; padding: 0 !important; }
@@ -13,27 +13,11 @@
     #event-log { font: 12.5px/1.5 ui-monospace, Menlo, monospace; max-height: 220px; overflow: auto; }
   </style>
   <!-- 1. A pretend server, so the page works without one. -->
-  <script src="mock-api.js?v=14"></script>
-  <!-- 2. Functions and shared data (feature 11) must exist before jsonx starts. -->
-  <script>
-    window.jsonx = {
-      data: { clicks: { count: 0 } },
-      functions: {
-        click: function () {
-          jsonx.update("clicks", function (clicks) { clicks.count++; });
-        },
-        shout: function (values) {
-          var word = (values.word || "").trim();
-          if (!word) throw { errors: { word: ["can't be blank"] } };
-          return { shouted: word.toUpperCase() + "!" };
-        }
-      }
-    };
-  </script>
-  <!-- 3. jsonx itself. -->
-  <script type="module" src="../../jsonx.js?v=14"></script>
-  <!-- 4. Two hand-written web components, for features 9 and 10. -->
-  <script type="module" src="components.js?v=14"></script>
+  <script src="mock-api.js?v=15"></script>
+  <!-- 2. jsonx itself. -->
+  <script type="module" src="../../jsonx.js?v=15"></script>
+  <!-- 3. Two hand-written web components, for features 9 and 10. -->
+  <script type="module" src="components.js?v=15"></script>
 </head>
 <body>
 <header class="top">
@@ -294,12 +278,26 @@
   <!-- ===================================================================== -->
   <section class="lesson" id="f11">
     <h2>Functions and shared data</h2>
-    <p><code>fn:name</code> calls <code>jsonx.functions.name(values)</code> instead of a server (defined in the page's head). <code>jx-data="clicks"</code> draws <code>jsonx.data.clicks</code>, and <code>jsonx.update("clicks", …)</code> redraws every region bound to it.</p>
+    <p><code>fn:click</code> calls the function <code>click(values)</code> instead of a server. <code>jx-data="clicks"</code> draws the variable <code>clicks</code>, and after any <code>fn:</code> call every <code>jx-data</code> region is drawn again. Use a plain script, not a module, so jsonx can find them by name.</p>
     <div class="example">
       <pre class="code" data-example="functions"></pre>
       <div class="side">
         <div class="result">
           <!-- example:functions -->
+          <script>
+            let clicks = { count: 0 };
+
+            function click() {
+              clicks.count++;
+            }
+
+            function shout(values) {
+              let word = (values.word || "").trim();
+              if (!word) throw { errors: { word: ["can't be blank"] } };
+              return { shouted: word.toUpperCase() + "!" };
+            }
+          </script>
+
           <p>Clicked <span jx-data="clicks"><template><strong>{{count}}</strong></template></span> times.</p>
           <button jx-post="fn:click">Click</button>
           <p jx-data="clicks"><template>Same data, another region: {{count}}</template></p>
@@ -363,6 +361,6 @@
   </section>
 </main>
 
-<script src="../tutorial/tutorial.js?v=14"></script>
+<script src="../tutorial/tutorial.js?v=15"></script>
 </body>
 </html>
