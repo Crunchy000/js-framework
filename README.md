@@ -23,7 +23,7 @@ The card loads `api/todos` when the page opens and draws it with the template in
 
 **Live demos:** https://crunchy000.github.io/js-framework/
 
-**New to jsonx?** Start with the [tutorial](https://crunchy000.github.io/js-framework/examples/tutorial/): ten live steps, from explicit ids to regions inside regions, with each request's JSON shown as it happens.
+**New to jsonx?** Start with the [tutorial](https://crunchy000.github.io/js-framework/examples/tutorial/): eleven live steps, from explicit ids to regions inside regions, with each request's JSON shown as it happens.
 
 - [Todo app](https://crunchy000.github.io/js-framework/examples/todo/), built with [Web Awesome](https://webawesome.com) components
 - [Feature tour](https://crunchy000.github.io/js-framework/examples/basic/), every attribute plus three web component patterns
@@ -186,7 +186,7 @@ Serve the folder with any static server, for example `npx serve .`, and open `ex
 
 | Attribute | What it does | Default |
 |---|---|---|
-| `jx-get`, `jx-post`, `jx-put`, `jx-patch`, `jx-delete` | The URL to call, and with which HTTP method. It can use `{{name}}` when it's inside a template. | (required) |
+| `jx-get`, `jx-post`, `jx-put`, `jx-patch`, `jx-delete` | The URL to call, and with which HTTP method. It can use `{{name}}` when it's inside a template. `fn:name` calls `jsonx.functions.name` instead. | (required) |
 | `jx-trigger` | The event that starts the request. Any event name works, including custom events. Add `delay:300ms` to wait until events stop (good for search boxes), or `from:#other` to listen on another element. Use `keydown[key=Enter]` to fire only for one key. Use `load` to run once on page load. List several with commas. | depends on the element, see below |
 | `jx-template` | Selector of a `<template>` that draws the JSON, for when it isn't inside the element. An element with a template is a region. | the template inside, or the region's |
 | `jx-target` | Where the result goes: a CSS selector, `this`, or `closest <selector>`. | the region, or else the element itself |
@@ -199,6 +199,7 @@ Serve the folder with any static server, for example `npx serve .`, and open `ex
 | `jx-then` | After the request works, go to this page. `:name` is filled from the server's answer, e.g. `jx-then="article.html?slug=:article.slug"`. | stay |
 | `jx-refresh` | After the request works, reload these regions the way they were last loaded, e.g. `jx-refresh="#comments"` or `jx-refresh="closest [jx-template]"`. For APIs that answer with one thing instead of the whole view. | none |
 | `jx-region` | Makes an element a region with no URL: it draws its template once, with an empty view. Good for a sign-in form. | |
+| `jx-data` | Makes an element a region that draws `jsonx.data[name]`, and redraws when `jsonx.update(name, …)` changes it. See [Functions and shared data](#functions-and-shared-data-optional). | |
 
 **Default triggers.** You usually don't need `jx-trigger`, because jsonx picks one from the kind of element:
 
@@ -253,6 +254,30 @@ If you can't add a view API, jsonx has three tools for working with the real one
 
 Article bodies are Markdown, but Conduit shows them as plain paragraphs: templates never insert raw HTML, so an article can't inject anything into the page.
 
+## Functions and shared data (optional)
+
+Views usually come from a server. Two opt-in features let the browser supply them too, for state that never touches a server or for reshaping an API you don't control. Tutorial step 11 shows both.
+
+**`fn:name` in place of a URL** calls `jsonx.functions.name(values)`. It gets the values a request would send, and returns the view or a promise of one. Throw `{ error }` or `{ errors }` to fail, and it's shown like a server's error answer. Return nothing when there's nothing to draw. Templates can't tell the difference, so a region can move from a function to a real URL later.
+
+```html
+<div jx-get="fn:products">…<button jx-post="fn:add" jx-vals='{"id": {{id}}}'>Add</button>…</div>
+```
+
+**`jx-data="cart"`** makes a region that draws `jsonx.data.cart`. `jsonx.update("cart", function (cart) { cart.count++; })` changes it and redraws every region bound to it, so a basket count in the header and the basket list stay in step. The function can change the data in place or return new data, and `jsonx.update("cart", newData)` replaces it.
+
+Set them before jsonx starts, in a plain script, so they're there for the first draw:
+
+```html
+<script>
+  window.jsonx = {
+    data: { cart: { count: 0, items: [] } },
+    functions: { products: function () { return { products: [ … ] }; } }
+  };
+</script>
+<script type="module" src="jsonx.js"></script>
+```
+
 ## Events
 
 jsonx fires DOM events you can listen to from page code. They bubble and cross shadow DOM boundaries.
@@ -272,20 +297,12 @@ There are three ways jsonx and web components work together. The feature tour ha
 2. **Components that take JSON as a property.** `jx-swap="prop:stats"` skips templates and does `target.stats = data`. The component decides how to draw itself. This is often the cleanest fit, because components usually want data, not HTML.
 3. **Components that use jsonx inside their shadow DOM.** Call `jsonx.process(this.shadowRoot)` once in `connectedCallback`. After that, `jx-target` and `jx-template` look inside the component's shadow root first (then fall back to the page), so a component can ship its own private templates. jsonx also watches that shadow root for new elements.
 
-## Web components
-
-There are three ways jsonx and web components work together. The feature tour has one of each, and the todo app uses Web Awesome's `<wa-input>`, `<wa-checkbox>` and `<wa-button>` the same way you'd use native controls.
-
-1. **Components that fire events.** `jx-trigger` accepts any event name, so `<star-rating jx-post="/api/feedback" jx-trigger="rating-changed">` works. jsonx reads the component's `name` attribute and `value` property, like an `<input>`.
-2. **Components that take JSON as a property.** `jx-swap="prop:stats"` skips templates and does `target.stats = data`. The component decides how to draw itself. Inside a template, `stats="{{stats}}"` does the same, because the component has a `stats` property.
-3. **Components that use jsonx inside their shadow DOM.** Call `jsonx.process(this.shadowRoot)` once in `connectedCallback`. After that, `jx-target` and `jx-template` look inside the component's shadow root first (then fall back to the page), so a component can ship its own private templates.
-
 ## How it works
 
 1. **Find and wire.** On page load, find every element with a `jx-<method>` attribute and add an event listener for its trigger. A `MutationObserver` does the same for elements added later. For a web component whose code hasn't loaded yet, jsonx waits for `customElements.whenDefined()` first, so it can tell whether the component is a button or a form control.
 2. **Request.** When the event fires, collect the values, build the `fetch` call, and send it.
 3. **Render.** The first time a template is used, `templates.js` compiles it into a Lit template (and caches it). Lit then draws the JSON into the target, or updates what's already there.
-4. **Wire again.** Run step 1 on the new content, so `jx-` attributes inside the template work too. That's how each todo's checkbox and Delete button work.
+4. **Wire again.** Run step 1 on the elements the draw added (not the whole region), so `jx-` attributes inside the template work too. That's how each todo's checkbox and Delete button work.
 
 ## Design choices, and why
 

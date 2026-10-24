@@ -113,11 +113,23 @@
     var source = event.detail.source;
     var request = pending.get(source);
     pending.delete(source);
-    var entry = request || { method: "—", url: "no request (jx-region draws with an empty view)" };
+    var entry = request || (source.hasAttribute && source.hasAttribute("jx-data")
+      ? { method: "—", url: "jsonx.data." + source.getAttribute("jx-data") + " (jx-data)" }
+      : { method: "—", url: "no request (jx-region draws with an empty view)" });
     entry.data = event.detail.data;
     entry.target = event.detail.target;
     // Wait a moment so the panel shows the view as it was drawn.
     log(source, entry);
+  });
+
+  // A function that returned nothing: no render, so log it here.
+  document.addEventListener("jx:afterRender", function (event) {
+    if (event.detail.target !== null) return;
+    var request = pending.get(event.target);
+    if (!request) return;
+    pending.delete(event.target);
+    request.data = undefined;
+    log(event.target, request);
   });
 
   document.addEventListener("jx:error", function (event) {

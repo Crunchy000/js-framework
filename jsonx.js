@@ -18,10 +18,10 @@
  *
  *   <script type="module" src="jsonx.js"></script>
  */
-import { compileTemplate } from "./templates.js?v=11";
+import { compileTemplate } from "./templates.js?v=12";
 
 var METHODS = ["get", "post", "put", "patch", "delete"];
-var SELECTOR = METHODS.map(function (m) { return "[jx-" + m + "]"; }).join(",") + ",[jx-region],[jx-query]";
+var SELECTOR = METHODS.map(function (m) { return "[jx-" + m + "]"; }).join(",") + ",[jx-region],[jx-query],[jx-data]";
 
 // Remember which elements already have listeners, so we never attach twice.
 var processed = new WeakSet();
@@ -143,6 +143,14 @@ function fillFromAddress(el) {
 }
 
 function attachTriggers(el) {
+  // <div jx-data="cart"> draws jsonx.data.cart, and again whenever
+  // jsonx.update("cart", ...) changes it.
+  if (el.hasAttribute("jx-data") && !getMethodAndUrl(el)) {
+    var name = el.getAttribute("jx-data");
+    (bound[name] = bound[name] || new Set()).add(el);
+    render(el, copy(api.data[name] || {}));
+    return;
+  }
   // <div jx-region> has no URL: it draws its template once, with an empty view.
   // Good for a sign-in form, which has nothing to load.
   if (!getMethodAndUrl(el)) {
@@ -376,13 +384,19 @@ function issueRequest(el, override) {
 
   el.classList.add("jx-loading");
 
-  return fetch(url, options)
+  return send(url, options, el)
     .then(function (response) {
       if (!response.ok) return failed(response, info.method + " " + url);
+      // A function that returned nothing: there's no view to draw.
+      if (response.headers.get("X-Jsonx-Nothing")) return NOTHING;
       // 204 No Content has no body, so we treat it as empty data.
       return response.status === 204 ? null : response.json();
     })
     .then(function (data) {
+      if (data === NOTHING) {
+        fire(el, "jx:afterRender", { data: undefined, target: null, source: el });
+        return;
+      }
       // GraphQL answers { data, errors } with status 200, even when it failed.
       if (graphql) {
         if (data.errors && data.errors.length) throw problem(data, "GraphQL request");
@@ -413,6 +427,60 @@ function issueRequest(el, override) {
     .finally(function () {
       el.classList.remove("jx-loading");
     });
+}
+
+// jx-post="fn:addToCart" calls jsonx.functions.addToCart instead of a server.
+// It gets the values a request would send, and returns the view (or a promise
+// of one). To fail, throw: { errors: {...} } or { error: "..." } (shown like a
+// server's error answer, with status 422 unless it has a `status`), or an Error.
+// Returning nothing means "nothing to draw" (handy after jsonx.update).
+// The answer is wrapped in a real Response, so it's handled exactly like fetch's.
+var NOTHING = {};
+
+function send(url, options, el) {
+  if (url.indexOf("fn:") !== 0) return fetch(url, options);
+  var address = new URL(url.slice(3), "http://x/");
+  var name = decodeURIComponent(address.pathname.slice(1));
+  var fn = api.functions[name];
+  var json = function (status, body, headers) {
+    return new Response(body === undefined ? null : JSON.stringify(body), {
+      status: status, headers: Object.assign({ "Content-Type": "application/json" }, headers)
+    });
+  };
+  if (typeof fn !== "function") return Promise.resolve(json(404, { error: "jsonx.functions." + name + " doesn't exist" }));
+  var values = options.body ? JSON.parse(options.body) : Object.fromEntries(address.searchParams);
+  return Promise.resolve()
+    .then(function () { return fn(values, { method: options.method, element: el }); })
+    .then(function (view) {
+      return view === undefined ? json(204, undefined, { "X-Jsonx-Nothing": "1" }) : json(200, view);
+    }, function (thrown) {
+      if (thrown instanceof Error) {
+        console.error(thrown);
+        return json(thrown.status || 500, { error: thrown.message });
+      }
+      return json((thrown && thrown.status) || 422, thrown);
+    });
+}
+
+// jsonx.update("cart", function (cart) { cart.count++; }) changes jsonx.data.cart
+// and redraws every region with jx-data="cart". The function can change the
+// data in place, or return new data. jsonx.update("cart", newData) replaces it.
+var bound = {};
+
+function update(name, change) {
+  var data = api.data[name];
+  if (typeof change === "function") {
+    var result = change(data);
+    if (result !== undefined) data = result;
+  } else if (change !== undefined) {
+    data = change;
+  }
+  api.data[name] = data;
+  (bound[name] || new Set()).forEach(function (el) {
+    if (el.isConnected) render(el, copy(data || {}));
+    else bound[name].delete(el);
+  });
+  return data;
 }
 
 // Turns an error response into an Error. If the server sent JSON like
@@ -617,8 +685,9 @@ function copy(data) {
 // A small public API, for page code and web components.
 // Set jsonx.headers to add headers to every request (see issueRequest).
 // Page code that runs before jsonx can set window.jsonx = { headers: ... } first.
-var api = Object.assign({ headers: null, graphql: "/graphql" }, window.jsonx, {
+var api = Object.assign({ headers: null, graphql: "/graphql", functions: {}, data: {} }, window.jsonx, {
   process: process,
+  update: update,
   request: function (el) { return issueRequest(el); },
   reload: reload,
   // A copy, because jsonx compares each view with the last one drawn: if your

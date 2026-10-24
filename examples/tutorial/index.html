@@ -4,10 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>jsonx tutorial</title>
-  <link rel="stylesheet" href="style.css?v=11">
+  <link rel="stylesheet" href="style.css?v=12">
   <!-- A pretend server, so every example works without one. -->
-  <script src="mock-api.js?v=11"></script>
-  <script type="module" src="../../jsonx.js?v=11"></script>
+  <script src="mock-api.js?v=12"></script>
+  <script type="module" src="../../jsonx.js?v=12"></script>
 </head>
 <body>
 <header class="top">
@@ -16,7 +16,7 @@
 </header>
 
 <main>
-  <h1>Learn jsonx in ten steps</h1>
+  <h1>Learn jsonx in eleven steps</h1>
   <p class="lead">jsonx draws JSON into your page with plain HTML templates. Your server answers with the data for a part of the page, a template turns it into HTML, and only what changed is updated.</p>
 
   <p>Every step below has three parts:</p>
@@ -41,6 +41,7 @@
     <a href="#s8">8. Nested regions</a>
     <a href="#s9">9. Errors</a>
     <a href="#s10">10. Reuse</a>
+    <a href="#s11">11. Functions and shared data</a>
     <a href="#cheatsheet">Cheat sheet</a>
   </nav>
 
@@ -511,6 +512,90 @@
   </section>
 
   <!-- ===================================================================== -->
+  <section class="lesson" id="s11">
+    <h2>11. Functions and shared data (optional)</h2>
+    <p>So far every view came from a server. Two optional features let the browser supply views too: a <strong>function</strong> in place of a URL, and regions <strong>bound to shared data</strong>. Use them for state that never touches a server, or to reshape an API you don't control.</p>
+
+    <div class="example">
+      <pre class="code" data-example="shop"></pre>
+      <div class="side">
+        <div class="result">
+          <!-- example:shop -->
+          <script>
+            // Set before jsonx starts (a plain script runs before modules).
+            window.jsonx = {
+              data: { cart: { count: 0, items: [] } },
+              functions: {
+                products: function () {
+                  return { products: [
+                    { id: 1, name: "Tea", price: 3 },
+                    { id: 2, name: "Coffee", price: 4 },
+                    { id: 3, name: "Cake", price: 5 }
+                  ] };
+                },
+                add: function (values) {
+                  jsonx.update("cart", function (cart) {
+                    var item = cart.items.find(function (i) { return i.id === values.id; });
+                    if (item && item.qty >= 3) throw { error: "Only 3 of each, please." };
+                    if (item) item.qty++;
+                    else cart.items.push({ id: values.id, name: values.name, qty: 1 });
+                    cart.count++;
+                  });
+                  // The products view again, which also clears an old error.
+                  return jsonx.functions.products();
+                },
+                empty: function () {
+                  jsonx.update("cart", { count: 0, items: [] });
+                  // Returning nothing: jsonx.update already redrew the basket.
+                }
+              }
+            };
+          </script>
+
+          <p>Basket: <span jx-data="cart"><template>{{count}} items</template></span></p>
+
+          <div jx-get="fn:products">
+            <template>
+              <jx-if test="error"><p class="error">{{error}}</p></jx-if>
+              <jx-each items="products">
+                <button jx-post="fn:add" jx-vals='{"id": {{id}}, "name": "{{name}}"}'>Add {{name}} (£{{price}})</button>
+              </jx-each>
+            </template>
+          </div>
+
+          <div jx-data="cart">
+            <template>
+              <jx-each items="items"><p>{{qty}} × {{name}}</p></jx-each>
+              <jx-if test="count"><button jx-post="fn:empty">Empty the basket</button></jx-if>
+              <jx-else><p><small>Your basket is empty.</small></p></jx-else>
+            </template>
+          </div>
+          <!-- /example:shop -->
+        </div>
+        <div class="data"><div class="data-title">Data</div><div class="data-log"><p class="data-empty">Waiting…</p></div></div>
+      </div>
+    </div>
+
+    <h3>Functions: <code>fn:name</code></h3>
+    <ul>
+      <li>Anywhere a URL goes, <code>fn:products</code> calls <code>jsonx.functions.products</code> instead. It gets the same values a request would send (the region's controls and <code>jx-vals</code>), and returns the view, or a promise of one.</li>
+      <li>So templates don't care where a view comes from. A region can start on a function and later point at a real URL.</li>
+      <li>To fail, <code>throw</code> an error answer like <code>{ error: "…" }</code> or <code>{ errors: {…} }</code>. It's shown like a server's error from step 9. Try adding a fourth tea.</li>
+      <li>Returning nothing means there's nothing to draw, which is handy when the function updates shared data instead.</li>
+      <li>A function can call real APIs and reshape what they return, so you can adapt an API you don't control, one function per region.</li>
+    </ul>
+
+    <h3>Shared data: <code>jx-data</code></h3>
+    <ul>
+      <li><code>jx-data="cart"</code> makes a region that draws <code>jsonx.data.cart</code>. Both the basket count and the basket list use it.</li>
+      <li><code>jsonx.update("cart", function (cart) { … })</code> changes the data, then redraws <em>every</em> region bound to it. The function can change the data in place, or return new data. <code>jsonx.update("cart", newData)</code> replaces it.</li>
+      <li>This is how two distant parts of a page stay in step without <code>jx-refresh</code>.</li>
+      <li>Set <code>window.jsonx = { data, functions }</code> in a plain script before jsonx loads, as above, so they're there when the page first draws.</li>
+    </ul>
+    <p class="note">These put logic in the browser, which jsonx otherwise avoids. Server views stay the default. Reach for these for local state, and for APIs you can't change.</p>
+  </section>
+
+  <!-- ===================================================================== -->
   <section id="cheatsheet">
     <h2>Cheat sheet</h2>
     <h3>Templates</h3>
@@ -528,6 +613,8 @@
       <tr><td><code>jx-get</code> / <code>jx-post</code> / <code>jx-put</code> / <code>jx-patch</code> / <code>jx-delete</code></td><td>The request</td></tr>
       <tr><td><code>&lt;template&gt;</code> inside, or <code>jx-template="#id"</code></td><td>Makes a region</td></tr>
       <tr><td><code>jx-region</code></td><td>A region with nothing to load</td></tr>
+      <tr><td><code>jx-post="fn:name"</code></td><td>Call <code>jsonx.functions.name(values)</code> instead of a server</td></tr>
+      <tr><td><code>jx-data="name"</code></td><td>Draw <code>jsonx.data.name</code>; <code>jsonx.update("name", fn)</code> redraws it everywhere</td></tr>
       <tr><td><code>jx-trigger</code></td><td>When to run: <code>input delay:300ms</code>, <code>keydown[key=Enter]</code>, <code>change from:#other</code></td></tr>
       <tr><td><code>jx-target</code></td><td>Draw somewhere else: a selector, or <code>closest .card</code></td></tr>
       <tr><td><code>jx-include</code>, <code>jx-vals</code></td><td>Send more values</td></tr>
@@ -539,6 +626,6 @@
   </section>
 </main>
 
-<script src="tutorial.js?v=11"></script>
+<script src="tutorial.js?v=12"></script>
 </body>
 </html>
