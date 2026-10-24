@@ -1,6 +1,7 @@
 /*
- * components.js — three small web components that show how jsonx and
- * web components fit together. Each one shows a different pattern.
+ * components.js — two small hand-written web components that show how jsonx
+ * and web components fit together. (The third, <user-card>, is written as a
+ * jsonx template instead: see user-card.jx.)
  * Loaded as a module after jsonx.js, so `jsonx` exists when they start.
  */
 
@@ -71,31 +72,3 @@ class TodoStats extends HTMLElement {
 }
 customElements.define("todo-stats", TodoStats);
 
-
-// Pattern 3: a component that USES jsonx INSIDE its shadow DOM.
-// Its template and its target live inside the shadow root, so they can't
-// clash with anything on the page. One line wires it up: jsonx.process(this.shadowRoot).
-class UserCard extends HTMLElement {
-  connectedCallback() {
-    const id = this.getAttribute("user-id");
-    this.attachShadow({ mode: "open" });
-    this.shadowRoot.innerHTML = `
-      <style>
-        :host { display: block; border: 1px solid #d1d5db; border-radius: 8px; padding: 12px; }
-        h3 { margin: 0 0 4px; }
-        button { margin-top: 8px; }
-        .jx-loading { opacity: .5; }
-      </style>
-
-      <template id="card">
-        <h3>{{name}}</h3>
-        <div>{{role}}</div>
-      </template>
-
-      <div id="body">User #${id}</div>
-      <button jx-get="/api/users/${id}" jx-target="#body" jx-template="#card">Load user</button>`;
-
-    jsonx.process(this.shadowRoot);
-  }
-}
-customElements.define("user-card", UserCard);

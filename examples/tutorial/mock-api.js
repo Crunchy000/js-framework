@@ -73,6 +73,16 @@
     return { comments: comments, count: comments.length, loadedAt: time(), draft: draft || "" };
   }
 
+  // Lesson 12
+  var poll = [
+    { id: 1, label: "Tabs", votes: 3 },
+    { id: 2, label: "Spaces", votes: 5 }
+  ];
+  function pollView() {
+    var total = poll.reduce(function (n, o) { return n + o.votes; }, 0);
+    return { options: poll, total: total };
+  }
+
   // Each route: [method, path pattern, handler(match, body, query)] -> data or [status, data].
   var routes = [
     ["GET", /^\/api\/greeting$/, function () {
@@ -136,6 +146,12 @@
       return { done: true, email: email };
     }],
     ["GET", /^\/api\/signup$/, function () { return {}; }],
+
+    ["GET", /^\/api\/poll$/, function () { return pollView(); }],
+    ["POST", /^\/api\/poll\/(\d+)\/vote$/, function (m) {
+      poll.forEach(function (o) { if (o.id === Number(m[1])) o.votes++; });
+      return pollView();
+    }],
 
     ["GET", /^\/api\/team$/, function () {
       return {

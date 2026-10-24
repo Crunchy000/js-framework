@@ -23,7 +23,7 @@ The card loads `api/todos` when the page opens and draws it with the template in
 
 **Live demos:** https://crunchy000.github.io/js-framework/
 
-**New to jsonx?** Start with the [tutorial](https://crunchy000.github.io/js-framework/examples/tutorial/): eleven live steps, from explicit ids to regions inside regions, with each request's JSON shown as it happens.
+**New to jsonx?** Start with the [tutorial](https://crunchy000.github.io/js-framework/examples/tutorial/): twelve live steps, from explicit ids to regions inside regions, with each request's JSON shown as it happens.
 
 - [Todo app](https://crunchy000.github.io/js-framework/examples/todo/), built with [Web Awesome](https://webawesome.com) components
 - [Feature tour](https://crunchy000.github.io/js-framework/examples/basic/), every attribute plus three web component patterns
@@ -172,13 +172,18 @@ Serve the folder with any static server, for example `npx serve .`, and open `ex
 |---|---|
 | `jsonx.js` | The framework: wiring, triggers, values and requests (heavily commented). Read this first. |
 | `templates.js` | The template language, compiled to Lit. |
+| `components.js` | Web components written as templates (`jx-component`). |
 | `vendor/lit-html/` | lit-html 3.3.1 and its `repeat` directive (BSD-3-Clause, see `vendor/lit-html/LICENSE.txt`). |
+| `vendor/lit-element/` | LitElement 4.2.1, the base class for components (BSD-3-Clause). |
+| `vendor/react/`, `vendor/htmx/` | React 18.3.1, htmx 2.0.4 and idiomorph 0.3.0, for the benchmark only. |
 | `examples/todo/` | The Web Awesome todo app, with its mock API. |
-| `examples/basic/` | The feature tour, with three demo web components in `components.js`. |
+| `examples/basic/` | The feature tour, with two hand-written web components in `components.js` and one written as a template in `user-card.jx`. |
+| `examples/components/` | `article-preview.jx`, a component shared by both Conduit apps. |
+| `examples/tutorial/` | The tutorial. |
 | `examples/conduit/` | The RealWorld app: one HTML file per page and no page script. `view-api.js` is a pretend backend-for-frontend that turns the RealWorld API (`mock-api.js`) into page-shaped views. |
 | `examples/conduit-graphql/` | Conduit again, talking GraphQL. Queries live in the pages; `graphql-server.js` is a pretend GraphQL server (the real graphql-js, in `vendor/`) over the RealWorld mock. |
 | `examples/marketing/` | A marketing site in one HTML file. `cms-api.js` is a pretend Contentful (entries, links, rich text) and `view-api.js` turns its entries into page sections. |
-| `examples/benchmark/` | Times jsonx against rebuilding the list with `innerHTML`. |
+| `examples/benchmark/` | Times an update in jsonx, React, htmx (swap and morph) and plain `innerHTML`. |
 | `index.html` | The GitHub Pages home page. |
 | `.github/workflows/pages.yml` | Publishes the site to GitHub Pages on every push to `main`. |
 
@@ -200,6 +205,7 @@ Serve the folder with any static server, for example `npx serve .`, and open `ex
 | `jx-refresh` | After the request works, reload these regions the way they were last loaded, e.g. `jx-refresh="#comments"` or `jx-refresh="closest [jx-template]"`. For APIs that answer with one thing instead of the whole view. | none |
 | `jx-region` | Makes an element a region with no URL: it draws its template once, with an empty view. Good for a sign-in form. | |
 | `jx-data` | Makes an element a region that draws `jsonx.data[name]`, and redraws when `jsonx.update(name, …)` changes it. See [Functions and shared data](#functions-and-shared-data-optional). | |
+| `jx-emit` | Fires an event with this name when the element is clicked (or on its `jx-trigger`), with the current item as `event.detail`. For components. | |
 
 **Default triggers.** You usually don't need `jx-trigger`, because jsonx picks one from the kind of element:
 
@@ -289,13 +295,42 @@ jsonx fires DOM events you can listen to from page code. They bubble and cross s
 | `jx:afterRender` | After the page is updated. If the swap removed the element that made the request, this fires on the target's parent instead. | `{ data, target, source }` |
 | `jx:error` | The request failed or returned an error status. If the server's JSON has an `error` field, that's the message. | `{ error }` (with `error.status` and `error.data`) |
 
+## Components written as templates
+
+A template can define a web component:
+
+```html
+<!-- vote-button.jx -->
+<template jx-component="vote-button" props="label votes">
+  <style>button { border-radius: 999px; }</style>
+  <button jx-emit="vote">{{label}} <strong>{{votes}}</strong></button>
+</template>
+```
+
+```html
+<template src="vote-button.jx"></template>
+…
+<jx-each items="options">
+  <vote-button label="{{label}}" votes="{{votes}}" jx-post="/api/poll/{{id}}/vote" jx-trigger="vote"></vote-button>
+</jx-each>
+```
+
+- jsonx defines `<vote-button>` as a **LitElement** as soon as it finds the template (on the page, or in a `.jx` file).
+- **Props** are reactive properties, and attributes too (`favoritesCount` is the attribute `favorites-count`; a bare attribute means `true`). A `{{value}}` in a jsonx template sets the property, so objects and lists can be passed in.
+- It draws into **shadow DOM**, so its `<style>` stays inside and `<slot>` works. `jx-` attributes inside work as usual.
+- **`jx-emit="vote"`** fires a `vote` event (bubbling, and out of the shadow root) when the element is clicked, or on its `jx-trigger`, with the current item as `event.detail`. Components don't make requests for the page: they fire events, and the page puts the request on the component, with `jx-trigger="vote"`.
+- Web components used inside one that load on demand (like Web Awesome's) are introduced to their autoloader, which otherwise can't see into shadow roots.
+- Other code can use them like any custom element, and Lit code can subclass them or await `updateComplete`. jsonx needs to be on the page.
+
+Both Conduit apps share `examples/components/article-preview.jx`: the REST version feeds it from its view API, and the GraphQL version from a fragment whose aliases (`favorited: viewerHasFavorited`) match its props.
+
 ## Web components
 
 There are three ways jsonx and web components work together. The feature tour has one of each, and the todo app uses Web Awesome's `<wa-input>`, `<wa-checkbox>` and `<wa-button>` the same way you'd use native controls.
 
 1. **Components that fire events.** `jx-trigger` accepts any event name, so `<star-rating jx-post="/api/feedback" jx-trigger="rating-changed">` works. jsonx reads the component's `name` attribute and `value` property, like an `<input>`. Components inside a form that are [form-associated](https://developer.mozilla.org/en-US/docs/Web/API/ElementInternals) are picked up by the form automatically.
 2. **Components that take JSON as a property.** `jx-swap="prop:stats"` skips templates and does `target.stats = data`. The component decides how to draw itself. This is often the cleanest fit, because components usually want data, not HTML.
-3. **Components that use jsonx inside their shadow DOM.** Call `jsonx.process(this.shadowRoot)` once in `connectedCallback`. After that, `jx-target` and `jx-template` look inside the component's shadow root first (then fall back to the page), so a component can ship its own private templates. jsonx also watches that shadow root for new elements.
+3. **Components that use jsonx inside their shadow DOM.** Write them as templates (above), or, by hand, call `jsonx.process(this.shadowRoot)` once in `connectedCallback`. After that, `jx-target` and `jx-template` look inside the component's shadow root first (then fall back to the page), so a component can ship its own private templates. jsonx also watches that shadow root for new elements.
 
 ## How it works
 

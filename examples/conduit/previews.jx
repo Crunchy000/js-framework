@@ -1,32 +1,14 @@
-<!-- previews.jx: the list of article previews, shared by the home and profile pages. -->
-  <!-- A list of article previews, used by the page's template. -->
-  <template id="previews">
-    <jx-if test="!articles">
-      <p class="empty">No articles are here... yet.</p>
-    </jx-if>
-    <jx-each items="articles">
-      <article class="preview">
-        <div class="wa-split">
-          <template jx-use="#author"></template>
-          <wa-button size="s" variant="success" appearance="{{favoriteAppearance}}" jx-post="{{favoriteUrl}}">
-            <wa-icon slot="start" name="heart"></wa-icon>{{favoritesCount}}
-          </wa-button>
-        </div>
-        <a class="title" href="{{url}}">
-          <h2>{{title}}</h2>
-          <p>{{description}}</p>
-        </a>
-        <div class="wa-split">
-          <small>Read more...</small>
-          <div class="wa-cluster wa-gap-2xs"><jx-each items="tagList"><wa-tag size="s" appearance="outlined">{{.}}</wa-tag></jx-each></div>
-        </div>
-      </article>
-    </jx-each>
-  </template>
+<!-- previews.jx: the list of article previews, shared by the home and profile pages.
+     Each preview is an <article-preview> web component (see ../components/).
+     It fires "favorite" when its heart is clicked, and here that posts to the
+     article's favoriteUrl, which answers with this page's view again. -->
+<template src="../components/article-preview.jx"></template>
 
-  <template id="author">
-    <a class="author" href="{{author.url}}">
-      <wa-avatar initials="{{author.initial}}" image="{{author.image}}" label="{{author.username}}"></wa-avatar>
-      <span><strong>{{author.username}}</strong><br><small>{{date}}</small></span>
-    </a>
-  </template>
+<template id="previews">
+  <jx-if test="!articles">
+    <p class="empty">No articles are here... yet.</p>
+  </jx-if>
+  <jx-each items="articles">
+    <article-preview article="{{.}}" jx-post="{{favoriteUrl}}" jx-trigger="favorite"></article-preview>
+  </jx-each>
+</template>

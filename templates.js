@@ -117,6 +117,16 @@ class SmartAttribute extends Directive {
 }
 var smartAttribute = directive(SmartAttribute);
 
+// jx-emit: the element keeps the item it was drawn for, as el.__jxItem.
+class EmitItem extends Directive {
+  update(part, [item]) {
+    part.element.__jxItem = item;
+    return noChange;
+  }
+  render() { return noChange; }
+}
+var emitItem = directive(EmitItem);
+
 // Rule 4: class:done="{{done}}".
 class ToggleClass extends Directive {
   update(part, [className, on]) {
@@ -405,8 +415,20 @@ function compileElement(node, b, ctx) {
     return;
   }
 
+  // jx-emit="pick" remembers the current item, so the event can carry it.
+  if (node.hasAttribute("jx-emit")) {
+    b.add(" jx-emit-item=");
+    b.hole(function (stack) { return emitItem(stack[stack.length - 1]); });
+  }
+
   b.add(">");
   if (VOID.test(tag)) return;
+
+  // A <style> (say, in a component) is kept as it is: CSS isn't HTML.
+  if (tag === "style") {
+    b.add(node.textContent + "</style>");
+    return;
+  }
 
   // A nested <template> (say, a region inside this one) is kept as it is.
   var children = tag === "template" ? node.content.childNodes : node.childNodes;
@@ -476,7 +498,14 @@ function compileAttribute(name, value, b) {
 
 // Compiles a <template> element. `find(selector)` returns another <template>,
 // for jx-use. Returns renderInto(data, target).
-export function compileTemplate(templateElement, find) {
+// Compiles a <template> to view(data) -> a Lit TemplateResult, for code that
+// renders with Lit itself (jsonx components are LitElements).
+export function compileView(templateElement, find) {
+  var template = compileParts(templateElement, find);
+  return function (data) { return template([data]); };
+}
+
+function compileParts(templateElement, find) {
   var partials = {};
   var ctx = {
     partial: function (selector) {
@@ -488,7 +517,11 @@ export function compileTemplate(templateElement, find) {
       return partials[selector];
     }
   };
-  var template = compileNodes(Array.from(templateElement.content.childNodes), ctx);
+  return compileNodes(Array.from(templateElement.content.childNodes), ctx);
+}
+
+export function compileTemplate(templateElement, find) {
+  var template = compileParts(templateElement, find);
 
   // `keepInputs`: leave form controls' values alone (used when showing an error).
   return function renderInto(data, target, keepInputs) {

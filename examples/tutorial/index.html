@@ -4,10 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>jsonx tutorial</title>
-  <link rel="stylesheet" href="style.css?v=12">
+  <link rel="stylesheet" href="style.css?v=13">
   <!-- A pretend server, so every example works without one. -->
-  <script src="mock-api.js?v=12"></script>
-  <script type="module" src="../../jsonx.js?v=12"></script>
+  <script src="mock-api.js?v=13"></script>
+  <script type="module" src="../../jsonx.js?v=13"></script>
 </head>
 <body>
 <header class="top">
@@ -16,7 +16,7 @@
 </header>
 
 <main>
-  <h1>Learn jsonx in eleven steps</h1>
+  <h1>Learn jsonx in twelve steps</h1>
   <p class="lead">jsonx draws JSON into your page with plain HTML templates. Your server answers with the data for a part of the page, a template turns it into HTML, and only what changed is updated.</p>
 
   <p>Every step below has three parts:</p>
@@ -42,6 +42,7 @@
     <a href="#s9">9. Errors</a>
     <a href="#s10">10. Reuse</a>
     <a href="#s11">11. Functions and shared data</a>
+    <a href="#s12">12. Components</a>
     <a href="#cheatsheet">Cheat sheet</a>
   </nav>
 
@@ -596,6 +597,48 @@
   </section>
 
   <!-- ===================================================================== -->
+  <section class="lesson" id="s12">
+    <h2>12. Components</h2>
+    <p>A template can define a real web component. Give it a tag name and the props it takes, and use it like any HTML element. It renders with the same template language.</p>
+
+    <div class="example">
+      <pre class="code" data-example="poll"></pre>
+      <div class="side">
+        <div class="result">
+          <!-- example:poll -->
+          <template jx-component="vote-button" props="label votes">
+            <style>
+              button { font: inherit; padding: 6px 14px; border-radius: 999px; border: 1px solid; cursor: pointer; }
+              strong { margin-left: 6px; }
+            </style>
+            <button jx-emit="vote">{{label}} <strong>{{votes}}</strong></button>
+          </template>
+
+          <div jx-get="/api/poll">
+            <template>
+              <p>Tabs or spaces? {{total}} votes so far.</p>
+              <jx-each items="options">
+                <vote-button label="{{label}}" votes="{{votes}}"
+                             jx-post="/api/poll/{{id}}/vote" jx-trigger="vote"></vote-button>
+              </jx-each>
+            </template>
+          </div>
+          <!-- /example:poll -->
+        </div>
+        <div class="data"><div class="data-title">Data</div><div class="data-log"><p class="data-empty">Waiting for a request…</p></div></div>
+      </div>
+    </div>
+
+    <ul>
+      <li><code>&lt;template jx-component="vote-button" props="label votes"&gt;</code> defines <code>&lt;vote-button&gt;</code>. Each prop can be set as an attribute (<code>label="Tabs"</code>; <code>favoritesCount</code> would be <code>favorites-count</code>) or as a property. A <code>{{value}}</code> in a jsonx template sets the property, so you can pass objects and lists too.</li>
+      <li>It draws into its own shadow DOM, so its <code>&lt;style&gt;</code> only affects the component, and <code>&lt;slot&gt;</code> works.</li>
+      <li><strong>Components fire events; pages decide.</strong> <code>jx-emit="vote"</code> fires a <code>vote</code> event when clicked, with the current item as <code>event.detail</code>. The component doesn't know what a vote does. Here, the page puts the request on the component itself, with <code>jx-trigger="vote"</code>. The answer redraws the page's region as usual.</li>
+      <li>Put components in <code>.jx</code> files and pull them in with <code>&lt;template src="vote-button.jx"&gt;&lt;/template&gt;</code> to share them between pages. Conduit's <code>&lt;article-preview&gt;</code> is shared by both versions of the app.</li>
+      <li>Each one is a genuine Lit element (a <code>LitElement</code>). Other code can set its properties, listen to its events, and use it in React, Vue or Lit apps, as long as jsonx is on the page.</li>
+    </ul>
+  </section>
+
+  <!-- ===================================================================== -->
   <section id="cheatsheet">
     <h2>Cheat sheet</h2>
     <h3>Templates</h3>
@@ -614,6 +657,8 @@
       <tr><td><code>&lt;template&gt;</code> inside, or <code>jx-template="#id"</code></td><td>Makes a region</td></tr>
       <tr><td><code>jx-region</code></td><td>A region with nothing to load</td></tr>
       <tr><td><code>jx-post="fn:name"</code></td><td>Call <code>jsonx.functions.name(values)</code> instead of a server</td></tr>
+      <tr><td><code>&lt;template jx-component="tag-name" props="a b"&gt;</code></td><td>Define a web component from a template</td></tr>
+      <tr><td><code>jx-emit="name"</code></td><td>Fire an event (with the current item) on click</td></tr>
       <tr><td><code>jx-data="name"</code></td><td>Draw <code>jsonx.data.name</code>; <code>jsonx.update("name", fn)</code> redraws it everywhere</td></tr>
       <tr><td><code>jx-trigger</code></td><td>When to run: <code>input delay:300ms</code>, <code>keydown[key=Enter]</code>, <code>change from:#other</code></td></tr>
       <tr><td><code>jx-target</code></td><td>Draw somewhere else: a selector, or <code>closest .card</code></td></tr>
@@ -626,6 +671,6 @@
   </section>
 </main>
 
-<script src="tutorial.js?v=12"></script>
+<script src="tutorial.js?v=13"></script>
 </body>
 </html>

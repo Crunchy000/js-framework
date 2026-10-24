@@ -19,9 +19,9 @@
   </style>
 
   <!-- 1. The fake API. Remove this when you have a real server. -->
-  <script src="mock-api.js?v=12"></script>
+  <script src="mock-api.js?v=13"></script>
   <!-- 2. The framework itself -->
-  <script type="module" src="../../jsonx.js?v=12"></script>
+  <script type="module" src="../../jsonx.js?v=13"></script>
   <!-- 3. Demo web components (modules run in order, so jsonx is ready) -->
   <script type="module" src="components.js"></script>
 </head>
@@ -83,8 +83,9 @@
     <todo-stats id="stats"></todo-stats>
     <button jx-get="/api/stats" jx-target="#stats" jx-swap="prop:stats">Refresh stats</button>
 
-    <h3>c) Components that use jsonx inside their shadow DOM</h3>
-    <p>Each card has its own template and target hidden in its shadow root.</p>
+    <h3>c) A component written as a jsonx template</h3>
+    <p><a href="user-card.jx">user-card.jx</a> defines <code>&lt;user-card&gt;</code> with <code>&lt;template jx-component="user-card" props="userId"&gt;</code>. It's a real web component (a LitElement): its template, target and styles live in its shadow DOM, and <code>user-id="3"</code> sets its <code>userId</code>. No JavaScript needed.</p>
+    <template src="user-card.jx"></template>
     <div class="cards">
       <user-card user-id="1"></user-card>
       <user-card user-id="3"></user-card>

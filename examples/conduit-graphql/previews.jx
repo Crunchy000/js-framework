@@ -1,37 +1,23 @@
 <!-- previews.jx: the list of article previews, shared by the home and profile pages. -->
-  <!-- Article previews, shared by the page's template. The heart buttons run this
-       page's #favorite or #unfavorite mutation, which asks for the page's #view again. -->
+<template src="../components/article-preview.jx"></template>
+
+  <!-- Article previews, shared by the page's template. Each is an <article-preview>
+       web component (see ../components/), which fires "favorite" when its heart
+       is clicked. Here that runs this page's #favorite or #unfavorite mutation,
+       which asks for the page's #view again. -->
   <template id="previews">
     <jx-if test="!articles.nodes">
       <p class="empty">No articles are here... yet.</p>
     </jx-if>
     <jx-each items="articles.nodes">
-      <article class="preview">
-        <div class="wa-split">
-          <a class="author" href="profile.html?username={{author.username}}">
-            <wa-avatar image="{{author.image}}" label="{{author.username}}"></wa-avatar>
-            <span><strong>{{author.username}}</strong><br><small>{{createdAt}}</small></span>
-          </a>
-          <jx-if test="viewerHasFavorited">
-            <wa-button size="s" variant="success"
-                       jx-query="#unfavorite, #view, #preview-fields" jx-select="unfavoriteArticle.query" jx-vals='{"slug": "{{slug}}"}'>
-              <wa-icon slot="start" name="heart"></wa-icon>{{favoritesCount}}</wa-button>
-          </jx-if>
-          <jx-else>
-            <wa-button size="s" variant="success" appearance="outlined"
-                       jx-query="#favorite, #view, #preview-fields" jx-select="favoriteArticle.query" jx-vals='{"slug": "{{slug}}"}'>
-              <wa-icon slot="start" name="heart" variant="regular"></wa-icon>{{favoritesCount}}</wa-button>
-          </jx-else>
-        </div>
-        <a class="title" href="article.html?slug={{slug}}">
-          <h2>{{title}}</h2>
-          <p>{{description}}</p>
-        </a>
-        <div class="wa-split">
-          <small>Read more...</small>
-          <div class="wa-cluster wa-gap-2xs"><jx-each items="tagList"><wa-tag size="s" appearance="outlined">{{.}}</wa-tag></jx-each></div>
-        </div>
-      </article>
+      <jx-if test="favorited">
+        <article-preview article="{{.}}" jx-trigger="favorite" jx-vals='{"slug": "{{slug}}"}'
+                         jx-query="#unfavorite, #view, #preview-fields" jx-select="unfavoriteArticle.query"></article-preview>
+      </jx-if>
+      <jx-else>
+        <article-preview article="{{.}}" jx-trigger="favorite" jx-vals='{"slug": "{{slug}}"}'
+                         jx-query="#favorite, #view, #preview-fields" jx-select="favoriteArticle.query"></article-preview>
+      </jx-else>
     </jx-each>
     <jx-if test="articles.pages">
       <div class="pages wa-cluster wa-gap-2xs">
@@ -44,9 +30,11 @@
   </template>
 
   <script type="text/graphql" id="preview-fields">
+    # Named the way <article-preview> expects (favorited, date).
     fragment Preview on Article {
-      slug title description tagList favoritesCount viewerHasFavorited
-      createdAt(format: LONG)
+      slug title description tagList favoritesCount
+      favorited: viewerHasFavorited
+      date: createdAt(format: LONG)
       author { username image }
     }
   </script>

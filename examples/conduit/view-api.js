@@ -76,6 +76,7 @@
       date: date(a.createdAt),
       author: person(a.author, me),
       favoritesCount: a.favoritesCount,
+      favorited: a.favorited,
       favoriteAppearance: a.favorited ? "filled" : "outlined"
     };
   }

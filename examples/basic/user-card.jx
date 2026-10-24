@@ -1,0 +1,20 @@
+<!-- user-card.jx: a web component written as a jsonx template.
+     <user-card user-id="3"></user-card> draws a card with a "Load user" button.
+     Its template, target and styles all live in its shadow DOM, so they can't
+     clash with the page. -->
+<template jx-component="user-card" props="userId">
+  <style>
+    :host { display: block; border: 1px solid #d1d5db; border-radius: 8px; padding: 12px; }
+    h3 { margin: 0 0 4px; }
+    button { margin-top: 8px; }
+    .jx-loading { opacity: .5; }
+  </style>
+
+  <div id="body">User #{{userId}}</div>
+  <button jx-get="/api/users/{{userId}}" jx-target="#body" jx-template="#card">Load user</button>
+
+  <template id="card">
+    <h3>{{name}}</h3>
+    <div>{{role}}</div>
+  </template>
+</template>

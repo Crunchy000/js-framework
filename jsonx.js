@@ -18,10 +18,11 @@
  *
  *   <script type="module" src="jsonx.js"></script>
  */
-import { compileTemplate } from "./templates.js?v=12";
+import { compileTemplate, compileView } from "./templates.js?v=13";
+import { defineComponent } from "./components.js?v=13";
 
 var METHODS = ["get", "post", "put", "patch", "delete"];
-var SELECTOR = METHODS.map(function (m) { return "[jx-" + m + "]"; }).join(",") + ",[jx-region],[jx-query],[jx-data]";
+var SELECTOR = METHODS.map(function (m) { return "[jx-" + m + "]"; }).join(",") + ",[jx-region],[jx-query],[jx-data],[jx-emit]";
 
 // Remember which elements already have listeners, so we never attach twice.
 var processed = new WeakSet();
@@ -42,6 +43,10 @@ function process(root) {
     Promise.all(Array.from(includes).map(include)).then(function () { process(root); });
     return;
   }
+  // <template jx-component="user-card"> defines <user-card> (see components.js).
+  root.querySelectorAll("template[jx-component]").forEach(function (template) {
+    defineComponent(template, { compileView: compileView, process: process });
+  });
   var elements = Array.from(root.querySelectorAll(SELECTOR));
   if (root.matches && root.matches(SELECTOR)) elements.unshift(root);
   elements.forEach(wire);
@@ -149,6 +154,18 @@ function attachTriggers(el) {
     var name = el.getAttribute("jx-data");
     (bound[name] = bound[name] || new Set()).add(el);
     render(el, copy(api.data[name] || {}));
+    return;
+  }
+  // <button jx-emit="pick"> fires a "pick" event, carrying the item it was drawn
+  // for. Inside a component, the event comes out of the component itself.
+  if (el.hasAttribute("jx-emit") && !getMethodAndUrl(el)) {
+    parseTriggers(el).forEach(function (trigger) {
+      findSource(el, trigger.from).addEventListener(trigger.event, function (event) {
+        if (trigger.filter && String(event[trigger.filter.property]) !== trigger.filter.value) return;
+        if (event.type === "submit" || el.tagName === "A") event.preventDefault();
+        fire(el, el.getAttribute("jx-emit"), el.__jxItem);
+      });
+    });
     return;
   }
   // <div jx-region> has no URL: it draws its template once, with an empty view.
