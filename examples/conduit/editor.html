@@ -6,33 +6,40 @@
   <title>Editor — Conduit</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/styles/webawesome.css">
   <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
-  <link rel="stylesheet" href="style.css?v=4">
+  <link rel="stylesheet" href="style.css?v=5">
 
-  <!-- The pretend RealWorld server (remove it to use a real one), the page code, then jsonx.
-       app.js is deferred so it runs after the page is parsed, but before jsonx. -->
-  <script src="mock-api.js?v=4"></script>
-  <script defer src="app.js?v=4"></script>
-  <script type="module" src="../../jsonx.js?v=4"></script>
+  <!-- Pretend servers: the RealWorld API, and the view API in front of it.
+       In real life both run on a server, and these two lines go away. -->
+  <script src="mock-api.js?v=5"></script>
+  <script src="view-api.js?v=5"></script>
+
+  <script src="nav.js?v=5"></script>
+  <script type="module" src="../../jsonx.js?v=5"></script>
   <script>if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("wa-dark");</script>
 </head>
-<body data-needs-sign-in>
+<body>
   <conduit-nav></conduit-nav>
 
   <main class="narrow">
-    <!-- editor.html?slug=... loads that article to edit. With no slug there's nothing
-         to load, so app.js turns this into a jx-region: an empty form. -->
-    <div id="editor" class="wa-stack" jx-get="/api/articles/:slug">
+    <!-- editor.html?slug=hello edits that article; editor.html alone starts a new one. -->
+    <div class="wa-stack" jx-get="/view/editor?slug=:slug">
       <template>
-        <wa-callout jx-if="error" variant="danger">
+        <p jx-if="!signedIn" class="empty"><a href="login.html">Sign in</a> to see this page.</p>
+        <div jx-if="signedIn" class="wa-stack">
+          <wa-callout jx-if="error" variant="danger">
           <ul class="wa-stack wa-gap-3xs" style="margin: 0; padding-left: 1em;"><li jx-each="errors">{{text}}</li></ul>
         </wa-callout>
-        <wa-input name="article.title" placeholder="Article title" size="l" value="{{article.title}}"></wa-input>
-        <wa-input name="article.description" placeholder="What's this article about?" value="{{article.description}}"></wa-input>
-        <wa-textarea name="article.body" placeholder="Write your article (paragraphs are separated by a blank line)" rows="10" value="{{article.body}}"></wa-textarea>
-        <wa-input name="article.tagList" placeholder="Enter tags, separated by commas" value="{{article.tags}}"></wa-input>
-        <div>
-          <wa-button jx-if="!article" variant="success" jx-post="/api/articles" jx-swap="none" data-then="article">Publish article</wa-button>
-          <wa-button jx-if="article" variant="success" jx-put="/api/articles/{{article.slug}}" jx-swap="none" data-then="article">Update article</wa-button>
+          <input type="hidden" name="slug" value="{{article.slug}}">
+          <wa-input name="title" placeholder="Article title" size="l" value="{{article.title}}"></wa-input>
+          <wa-input name="description" placeholder="What's this article about?" value="{{article.description}}"></wa-input>
+          <wa-textarea name="body" placeholder="Write your article (paragraphs are separated by a blank line)" rows="10" value="{{article.body}}"></wa-textarea>
+          <wa-input name="tags" placeholder="Enter tags, separated by commas" value="{{article.tags}}"></wa-input>
+          <div>
+            <!-- On success the answer is { article: { slug } }, and jx-then goes to it. -->
+            <wa-button variant="success" jx-post="/view/editor" jx-swap="none" jx-then="article.html?slug=:article.slug">
+              <span jx-if="isNew">Publish article</span><span jx-if="!isNew">Update article</span>
+            </wa-button>
+          </div>
         </div>
       </template>
     </div>

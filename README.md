@@ -83,7 +83,7 @@ Serve the folder with any static server, for example `npx serve .`, and open `ex
 | `vendor/lit-html/` | lit-html 3.3.1 and its `repeat` directive (BSD-3-Clause, see `vendor/lit-html/LICENSE.txt`). |
 | `examples/todo/` | The Web Awesome todo app, with its mock API. |
 | `examples/basic/` | The feature tour, with three demo web components in `components.js`. |
-| `examples/conduit/` | The RealWorld app: one HTML file per page, `app.js` to adapt the API, and a mock of the whole RealWorld API. |
+| `examples/conduit/` | The RealWorld app: one HTML file per page and no page script. `view-api.js` is a pretend backend-for-frontend that turns the RealWorld API (`mock-api.js`) into page-shaped views. |
 | `examples/benchmark/` | Times jsonx against rebuilding the list with `innerHTML`. |
 | `index.html` | The GitHub Pages home page. |
 | `.github/workflows/pages.yml` | Publishes the site to GitHub Pages on every push to `main`. |
@@ -99,6 +99,7 @@ Serve the folder with any static server, for example `npx serve .`, and open `ex
 | `jx-swap` | `prop:<name>` sets a property on the target instead of drawing a template (good for components that take data). `none` calls the API and draws nothing. | draw the template |
 | `jx-include` | Also send the values of other elements, e.g. `jx-include="#filter"`. | none |
 | `jx-vals` | Extra JSON to send, e.g. `jx-vals='{"filter": "{{name}}"}'`. | none |
+| `jx-then` | After the request works, go to this page. `:name` is filled from the server's answer, e.g. `jx-then="article.html?slug=:article.slug"`. | stay |
 | `jx-refresh` | After the request works, reload these regions the way they were last loaded, e.g. `jx-refresh="#comments"` or `jx-refresh="closest [jx-template]"`. For APIs that answer with one thing instead of the whole view. | none |
 | `jx-region` | Makes an element a region with no URL: it draws its template once, with an empty view. Good for a sign-in form. | |
 
@@ -117,6 +118,8 @@ Writing a trigger for the element itself replaces the default. Triggers with `fr
 
 **What gets sent:** the named controls in the element's region (or the fields of its `<form>`), then the element's own `name` and `value`, then the values of any `jx-include` elements, then `jx-vals`. Later ones win, so `jx-vals='{"filter": "done"}'` on a button overrides the hidden filter for that one request. GET and DELETE send them as a query string; POST, PUT and PATCH send a JSON body.
 
+**Values from the page address.** On `article.html?slug=hello`, `jx-get="/view/article/:slug"` calls `/view/article/hello`. A `:name` the address doesn't have becomes empty.
+
 **Dotted names build nested JSON.** `name="user.email"` and `name="user.password"` send `{"user": {"email": …, "password": …}}`, which is what APIs like RealWorld expect.
 
 ## Errors
@@ -133,22 +136,23 @@ The next successful answer replaces the view, so the errors go away by themselve
 
 ## APIs that aren't shaped for the page
 
-The todo app's API sends the whole view on every answer. Most real APIs don't: they're about things (articles, comments), and favouriting an article answers with just that article. [Conduit](examples/conduit/), the RealWorld app, shows how jsonx handles that with a little page code (`app.js`):
+The todo app's API sends the whole view on every answer. Most real APIs don't: they're about things (articles, comments), and favouriting an article answers with just that article.
 
-- **Reload after a change.** `<wa-button jx-post="/api/articles/{{slug}}/favorite" jx-swap="none" jx-refresh="closest [jx-template]">` favourites the article, then reloads the list it's in, on the same tab and page.
-- **Reshape the data before it's drawn.** Listen for `jx:beforeRender` and set `event.detail.data`. Conduit adds dates, "is this mine?", which tab is selected and the page buttons there, so the templates stay logic-free.
-- **Add headers to every request.** Set `jsonx.headers`, to an object or a function that's asked each time. Page code that runs before jsonx can set `window.jsonx = { headers: … }` first.
+The jsonx answer is a small **view API** in front of it, often called a backend-for-frontend. It runs on your server, calls the real API, and answers with page-shaped views: dates written out, "is this mine?" decided, buttons labelled, page buttons counted. Every action answers with the whole view again. [Conduit](examples/conduit/), the RealWorld app, works this way, and its pages have no script at all:
 
-```js
-window.jsonx = {
-  headers: function () {
-    var token = localStorage.getItem("jwtToken");
-    return token ? { Authorization: "Token " + token } : {};
-  }
-};
+```
+browser (jsonx)  --GET /view/home?tab=feed-->  view API  --GET /api/articles/feed-->  RealWorld API
 ```
 
-Each Conduit page is its own HTML file, like `article.html?slug=hello`. `app.js` fills `:slug` in `jx-get="/api/articles/:slug"` from the address before jsonx starts, saves the token after signing in, and moves to the next page after some actions (`data-then="article"`). It's about 200 lines, mostly comments. Article bodies are Markdown, but they're shown as plain paragraphs: templates never insert raw HTML, so an article can't inject anything into the page.
+The view API also keeps the sign-in token, the way a real one keeps it in a server-side session behind a cookie, so the browser never handles it. In the demo it's `view-api.js`, running in the browser like the other mocks.
+
+If you can't add a view API, jsonx has three tools for working with the real one from the page:
+
+- **`jx-refresh="#comments"`** reloads regions after a change, the way they were last loaded.
+- **`jx:beforeRender`** lets page code reshape the data: set `event.detail.data`.
+- **`jsonx.headers`** adds headers, like a token, to every request. It can be an object, or a function that's asked each time. Page code that runs before jsonx can set `window.jsonx = { headers: … }` first.
+
+Article bodies are Markdown, but Conduit shows them as plain paragraphs: templates never insert raw HTML, so an article can't inject anything into the page.
 
 ## Events
 

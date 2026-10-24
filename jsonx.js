@@ -18,7 +18,7 @@
  *
  *   <script type="module" src="jsonx.js"></script>
  */
-import { compileTemplate } from "./templates.js?v=4";
+import { compileTemplate } from "./templates.js?v=5";
 
 var METHODS = ["get", "post", "put", "patch", "delete"];
 var SELECTOR = METHODS.map(function (m) { return "[jx-" + m + "]"; }).join(",") + ",[jx-region]";
@@ -45,6 +45,7 @@ function process(root) {
 function wire(el) {
   if (processed.has(el)) return;
   processed.add(el);
+  fillFromAddress(el);
 
   // A region can keep its template inside itself: <wa-card jx-get="..."><template>.
   // We take it out (so it isn't wiped by the first render) and remember it.
@@ -66,6 +67,21 @@ function wire(el) {
   } else {
     attachTriggers(el);
   }
+}
+
+// On article.html?slug=hello, jx-get="/view/article/:slug" becomes
+// "/view/article/hello", and "?slug=:slug" works the same way.
+// A value the address doesn't have becomes empty.
+var addressValues = new URLSearchParams(location.search);
+
+function fillFromAddress(el) {
+  METHODS.forEach(function (m) {
+    var url = el.getAttribute("jx-" + m);
+    if (url === null || url.indexOf(":") === -1) return;
+    el.setAttribute("jx-" + m, url.replace(/([/=]):(\w+)/g, function (all, before, name) {
+      return before + encodeURIComponent(addressValues.get(name) || "");
+    }));
+  });
 }
 
 function attachTriggers(el) {
@@ -296,6 +312,13 @@ function issueRequest(el, override) {
       // they were last loaded. For APIs that answer with one thing, not the view.
       var refresh = el.getAttribute("jx-refresh");
       if (refresh) refresh.split(",").forEach(function (selector) { reload(findElement(el, selector.trim())); });
+      // jx-then="article.html?slug=:article.slug": once this worked, go to that
+      // page. Here :name is filled from the server's answer.
+      var then = el.getAttribute("jx-then");
+      if (then) location.href = then.replace(/:([\w.]+)/g, function (all, name) {
+        var value = name.split(".").reduce(function (v, key) { return v == null ? v : v[key]; }, data);
+        return encodeURIComponent(value == null ? "" : value);
+      });
     })
     .catch(function (error) {
       console.error("[jsonx]", error);

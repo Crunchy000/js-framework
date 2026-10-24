@@ -6,13 +6,15 @@
   <title>Home — Conduit</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/styles/webawesome.css">
   <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
-  <link rel="stylesheet" href="style.css?v=4">
+  <link rel="stylesheet" href="style.css?v=5">
 
-  <!-- The pretend RealWorld server (remove it to use a real one), the page code, then jsonx.
-       app.js is deferred so it runs after the page is parsed, but before jsonx. -->
-  <script src="mock-api.js?v=4"></script>
-  <script defer src="app.js?v=4"></script>
-  <script type="module" src="../../jsonx.js?v=4"></script>
+  <!-- Pretend servers: the RealWorld API, and the view API in front of it.
+       In real life both run on a server, and these two lines go away. -->
+  <script src="mock-api.js?v=5"></script>
+  <script src="view-api.js?v=5"></script>
+
+  <script src="nav.js?v=5"></script>
+  <script type="module" src="../../jsonx.js?v=5"></script>
   <script>if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("wa-dark");</script>
 </head>
 <body>
@@ -22,50 +24,51 @@
     <p>A place to share your knowledge.</p>
   </header>
 
-  <div class="layout">
-    <!-- The feed. Each tab and page button loads a different list into this region.
-         (When you're signed in, app.js starts it on "Your feed".) -->
-    <main id="feed" data-home jx-get="/api/articles?limit=10">
-      <p class="empty">Loading articles...</p>
-      <template>
-        <div class="tabs">
-          <wa-button jx-if="me" appearance="plain" jx-get="/api/articles/feed?limit=10" class:active="{{tab.feed}}">Your feed</wa-button>
-          <wa-button appearance="plain" jx-get="/api/articles?limit=10" class:active="{{tab.global}}">Global feed</wa-button>
-          <wa-button jx-if="tab.tag" appearance="plain" class="active"># {{tab.tag}}</wa-button>
-        </div>
-        <template jx-use="#article-list"></template>
-      </template>
-    </main>
+  <!-- The whole home page is one region. GET /view/home answers with the tabs,
+       one page of articles, the page buttons and the popular tags. -->
+  <div class="layout" jx-get="/view/home">
+    <p class="empty">Loading articles...</p>
+    <template>
+      <!-- Sent with every request, so the server knows which tab and page you're on. -->
+      <input type="hidden" name="tab" value="{{tab}}">
+      <input type="hidden" name="tag" value="{{tag}}">
+      <input type="hidden" name="page" value="{{page}}">
 
-    <aside>
-      <wa-card id="tags" jx-get="/api/tags">
-        <template>
+      <main>
+        <div class="tabs">
+          <wa-button jx-each="tabs" appearance="plain" class:active="{{active}}"
+                     jx-get="/view/home" jx-vals='{"tab": "{{name}}", "tag": "{{tag}}", "page": 1}'>{{label}}</wa-button>
+        </div>
+        <wa-callout jx-if="error" variant="warning">{{error}} <a href="login.html">Sign in</a></wa-callout>
+        <template jx-use="#previews"></template>
+        <div class="pages wa-cluster wa-gap-2xs" jx-if="pages">
+          <wa-button jx-each="pages" size="s" appearance="outlined" class:current="{{current}}"
+                     jx-get="/view/home" jx-vals='{"page": {{number}}}'>{{number}}</wa-button>
+        </div>
+      </main>
+
+      <aside>
+        <wa-card>
           <h2>Popular tags</h2>
           <div class="wa-cluster wa-gap-2xs">
-            <!-- A tag loads its articles into the feed. -->
-            <a jx-each="tags" href="#" jx-get="/api/articles?tag={{.}}&amp;limit=10" jx-target="#feed"><wa-tag size="s" pill>{{.}}</wa-tag></a>
+            <a jx-each="tags" href="#" jx-get="/view/home" jx-vals='{"tag": "{{.}}", "page": 1}'><wa-tag size="s" pill>{{.}}</wa-tag></a>
           </div>
-        </template>
-      </wa-card>
-    </aside>
+        </wa-card>
+      </aside>
+    </template>
   </div>
 
-  <!-- One list of article previews, used by the feed's template below. -->
-  <template id="article-list">
+  <!-- A list of article previews, used by the page's template. -->
+  <template id="previews">
     <p class="empty" jx-if="!articles">No articles are here... yet.</p>
     <article class="preview" jx-each="articles">
       <div class="wa-split">
-        <a class="author" href="profile.html?username={{author.username}}">
-          <wa-avatar initials="{{author.initial}}" image="{{author.image}}" label="{{author.username}}"></wa-avatar>
-          <span><strong>{{author.username}}</strong><br><small>{{date}}</small></span>
-        </a>
-        <!-- Favouriting answers with just the article, so we reload the list after. -->
-        <wa-button jx-if="favorited" size="s" variant="success" jx-delete="/api/articles/{{slug}}/favorite"
-                   jx-swap="none" jx-refresh="closest [jx-template]"><wa-icon slot="start" name="heart"></wa-icon>{{favoritesCount}}</wa-button>
-        <wa-button jx-if="!favorited" size="s" variant="success" appearance="outlined" jx-post="/api/articles/{{slug}}/favorite"
-                   jx-swap="none" jx-refresh="closest [jx-template]"><wa-icon slot="start" name="heart" variant="regular"></wa-icon>{{favoritesCount}}</wa-button>
+        <template jx-use="#author"></template>
+        <wa-button size="s" variant="success" appearance="{{favoriteAppearance}}" jx-post="{{favoriteUrl}}">
+          <wa-icon slot="start" name="heart"></wa-icon>{{favoritesCount}}
+        </wa-button>
       </div>
-      <a class="title" href="article.html?slug={{slug}}">
+      <a class="title" href="{{url}}">
         <h2>{{title}}</h2>
         <p>{{description}}</p>
       </a>
@@ -74,9 +77,13 @@
         <div class="wa-cluster wa-gap-2xs"><wa-tag size="s" appearance="outlined" jx-each="tagList">{{.}}</wa-tag></div>
       </div>
     </article>
-    <div class="pages wa-cluster wa-gap-2xs" jx-if="pages">
-      <wa-button jx-each="pages" size="s" appearance="outlined" jx-get="{{url}}" class:current="{{current}}">{{number}}</wa-button>
-    </div>
+  </template>
+
+  <template id="author">
+    <a class="author" href="{{author.url}}">
+      <wa-avatar initials="{{author.initial}}" image="{{author.image}}" label="{{author.username}}"></wa-avatar>
+      <span><strong>{{author.username}}</strong><br><small>{{date}}</small></span>
+    </a>
   </template>
 </body>
 </html>
