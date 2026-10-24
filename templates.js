@@ -3,23 +3,28 @@
  *
  * Templates are plain HTML inside a <template> tag, plus four rules:
  *
- *   1. {{name}} prints a value, between tags or inside an attribute value.
- *      It's always HTML-escaped. Dotted names work: {{stats.done}}. {{.}} is
+ *   1. ${name} prints a value, between tags or inside an attribute value.
+ *      It's always HTML-escaped. Dotted names work: ${stats.done}. ${.} is
  *      the current item itself.
  *
- *   2. Logic goes on elements, as attributes:
- *        jx-each="todos"   repeat this element for each item; inside it, names
- *                          refer to the item. Items with an `id` are tracked by it.
- *        jx-if="error"     show this element only if `error` is truthy
- *        jx-if="!todos"    show it only if `todos` is falsy or an empty list
+ *   2. Logic is written as tags, which draw only what's inside them:
+ *        <jx-each items="todos">…</jx-each>   repeat for each item; inside, names
+ *                                             refer to the item. Items with an
+ *                                             `id` are tracked by it.
+ *        <jx-if test="error">…</jx-if>         draw if `error` is truthy
+ *        <jx-else-if test="!todos">…</jx-else-if>   `!` means falsy or empty list
+ *        <jx-else>…</jx-else>
+ *      Inside <table> and <select> the browser moves unknown tags away, so
+ *      there you put the logic on the element instead: <tr jx-each="rows">,
+ *      <option jx-if="x">, jx-else-if="y", jx-else.
  *
- *   3. Attributes are smart. When an attribute's whole value is one {{name}}:
+ *   3. Attributes are smart. When an attribute's whole value is one ${name}:
  *        - if the element has a property with that name (value, checked, ...),
  *          the live property is set, so form controls always show the view
  *        - otherwise true/false adds/removes the attribute, and anything else
  *          becomes the attribute's text
  *
- *   4. class:done="{{done}}" turns the class "done" on or off.
+ *   4. class:done="${done}" turns the class "done" on or off.
  *
  *   Reuse another template with <template jx-use="#todo-item"></template>.
  *
@@ -38,7 +43,7 @@ import { repeat } from "./vendor/lit-html/directives/repeat.js";
 
 // `stack` is the list of contexts, innermost last: [view, todo, ...].
 // A name is looked up from the innermost context outwards, so inside
-// jx-each="todos", {{title}} is the todo's title and {{filter}} still works.
+// <jx-each items="todos">, ${title} is the todo's title and ${filter} still works.
 function lookup(stack, name) {
   if (name === ".") return stack[stack.length - 1];
   var parts = name.split(".");
@@ -66,7 +71,7 @@ function text(value) {
 // The two special attribute behaviours, as Lit directives
 // ---------------------------------------------------------------------------
 
-// Rule 3: a whole-value attribute like checked="{{done}}" or value="{{draft}}".
+// Rule 3: a whole-value attribute like checked="${done}" or value="${draft}".
 // While an error is drawn on top of a view, form controls keep what you typed
 // (their value and checked properties are left alone).
 var keepTyping = false;
@@ -94,7 +99,7 @@ class SmartAttribute extends Directive {
 }
 var smartAttribute = directive(SmartAttribute);
 
-// Rule 4: class:done="{{done}}".
+// Rule 4: class:done="${done}".
 class ToggleClass extends Directive {
   update(part, [className, on]) {
     part.element.classList.toggle(className, !isEmpty(on));
@@ -108,7 +113,8 @@ var toggleClass = directive(ToggleClass);
 // Compiling: <template> -> a Lit template
 // ---------------------------------------------------------------------------
 
-var TAG = /\{\{\s*([^}]+?)\s*\}\}/g;
+var TAG = /\$\{\s*([^}]+?)\s*\}/g;
+var WHOLE = /^\$\{\s*([^}]+?)\s*\}$/;
 var VOID = /^(area|base|br|col|embed|hr|img|input|link|meta|source|track|wbr)$/;
 
 function escapeText(s) {
@@ -152,8 +158,86 @@ Builder.prototype.finish = function () {
 // Returns (stack) -> Lit TemplateResult.
 function compileNodes(nodes, ctx) {
   var b = new Builder();
-  nodes.forEach(function (node) { compileNode(node, b, ctx); });
+  compileInto(Array.from(nodes), b, ctx);
   return b.finish();
+}
+
+// The logic tags, and the attribute forms kept for tables and selects (where
+// the browser's HTML parser moves unknown tags out of the way).
+function isIf(node) {
+  return node.nodeType === Node.ELEMENT_NODE && (node.localName === "jx-if" || node.hasAttribute("jx-if"));
+}
+function isElse(node) {
+  return node.nodeType === Node.ELEMENT_NODE &&
+    (node.localName === "jx-else-if" || node.localName === "jx-else" ||
+     node.hasAttribute("jx-else-if") || node.hasAttribute("jx-else"));
+}
+function isBlank(node) {
+  return node.nodeType === Node.COMMENT_NODE || (node.nodeType === Node.TEXT_NODE && !node.nodeValue.trim());
+}
+
+// One branch of an if / else-if / else chain: { test, render }.
+// `test` is null for the final else.
+function branch(node, ctx) {
+  var tag = node.localName;
+  if (tag === "jx-if" || tag === "jx-else-if" || tag === "jx-else") {
+    var test = tag === "jx-else" ? null : node.getAttribute("test");
+    if (tag !== "jx-else" && test === null) throw new Error("[jsonx] <" + tag + "> needs test=\"name\"");
+    return { test: test, render: compileNodes(node.childNodes, ctx) };
+  }
+  var copy = node.cloneNode(true);
+  var attrTest = copy.hasAttribute("jx-else") ? null : (copy.getAttribute("jx-if") ?? copy.getAttribute("jx-else-if"));
+  ["jx-if", "jx-else-if", "jx-else"].forEach(function (a) { copy.removeAttribute(a); });
+  return { test: attrTest, render: compileNodes([copy], ctx) };
+}
+
+// test="done", or test="!done" for the opposite.
+function passes(test, stack) {
+  test = test.trim();
+  var negate = test[0] === "!";
+  return isEmpty(lookup(stack, test.replace(/^!\s*/, ""))) === negate;
+}
+
+function compileInto(nodes, b, ctx) {
+  for (var i = 0; i < nodes.length; i++) {
+    var node = nodes[i];
+    if (isElse(node)) throw new Error("[jsonx] <" + node.localName + "> must come right after <jx-if> or <jx-else-if>");
+    if (!isIf(node)) { compileNode(node, b, ctx); continue; }
+
+    // Gather the chain: <jx-if>, then any <jx-else-if>s, then maybe <jx-else>.
+    // Only whitespace and comments may sit between them.
+    var branches = [branch(node, ctx)];
+    var next = i + 1;
+    while (branches[branches.length - 1].test !== null) {
+      var k = next;
+      while (k < nodes.length && isBlank(nodes[k])) k++;
+      if (k >= nodes.length || !isElse(nodes[k])) break;
+      branches.push(branch(nodes[k], ctx));
+      next = k + 1;
+    }
+    i = next - 1;
+    b.hole(function (branches) {
+      return function (stack) {
+        for (var n = 0; n < branches.length; n++) {
+          if (branches[n].test === null || passes(branches[n].test, stack)) return branches[n].render(stack);
+        }
+        return nothing;
+      };
+    }(branches));
+  }
+}
+
+// Repeats `renderItem` for each item of the list called `name`. Items with an
+// `id` are tracked by it. A single object (not a list) is drawn once.
+function eachHole(name, render) {
+  return function (stack) {
+    var list = lookup(stack, name.trim());
+    if (isEmpty(list)) return nothing;
+    if (!Array.isArray(list)) list = [list];
+    var renderItem = function (item) { return render(stack.concat([item])); };
+    var keyed = list.every(function (item) { return item && typeof item === "object" && "id" in item; });
+    return keyed ? repeat(list, function (item) { return item.id; }, renderItem) : list.map(renderItem);
+  };
 }
 
 function compileNode(node, b, ctx) {
@@ -168,28 +252,20 @@ function compileNode(node, b, ctx) {
     return;
   }
 
-  // jx-if and jx-each turn the element into its own little template.
+  // <jx-each items="todos">…</jx-each>: repeat what's inside.
+  if (node.localName === "jx-each") {
+    var items = node.getAttribute("items");
+    if (items === null) throw new Error('[jsonx] <jx-each> needs items="name"');
+    b.hole(eachHole(items, compileNodes(node.childNodes, ctx)));
+    return;
+  }
+
+  // The attribute form, for tables and selects: <tr jx-each="rows">.
   var each = node.getAttribute("jx-each");
-  var condition = node.getAttribute("jx-if");
-  if (each !== null || condition !== null) {
+  if (each !== null) {
     var copy = node.cloneNode(true);
     copy.removeAttribute("jx-each");
-    copy.removeAttribute("jx-if");
-    var element = compileNodes([copy], ctx);
-    b.hole(function (stack) {
-      if (condition !== null) {
-        var negate = condition.trim()[0] === "!";
-        var value = lookup(stack, condition.trim().replace(/^!\s*/, ""));
-        if (isEmpty(value) !== negate) return nothing;
-      }
-      if (each === null) return element(stack);
-      var list = lookup(stack, each.trim());
-      if (isEmpty(list)) return nothing;
-      if (!Array.isArray(list)) list = [list];
-      var renderItem = function (item) { return element(stack.concat([item])); };
-      var keyed = list.every(function (item) { return item && typeof item === "object" && "id" in item; });
-      return keyed ? repeat(list, function (item) { return item.id; }, renderItem) : list.map(renderItem);
-    });
+    b.hole(eachHole(each, compileNodes([copy], ctx)));
     return;
   }
 
@@ -204,11 +280,11 @@ function compileElement(node, b, ctx) {
     compileAttribute(attr.name, attr.value, b);
   });
 
-  // A <textarea>'s text can't hold a Lit hole, so {{x}} inside it becomes its value.
+  // A <textarea>'s text can't hold a Lit hole, so ${x} inside it becomes its value.
   if (tag === "textarea" && TAG.test(node.textContent)) {
     TAG.lastIndex = 0;
-    var match = node.textContent.trim().match(/^\{\{\s*([^}]+?)\s*\}\}$/);
-    if (!match) throw new Error("[jsonx] a <textarea> can only hold one {{name}}");
+    var match = node.textContent.trim().match(WHOLE);
+    if (!match) throw new Error("[jsonx] a <textarea> can only hold one ${name}");
     b.add(" value=");
     b.hole(function (stack) { return smartAttribute(lookup(stack, match[1])); });
     b.add("></textarea>");
@@ -223,7 +299,7 @@ function compileElement(node, b, ctx) {
   if (tag === "template") {
     b.add(Array.from(children).map(function (c) { return c.outerHTML || escapeText(c.nodeValue || ""); }).join(""));
   } else {
-    Array.from(children).forEach(function (child) { compileNode(child, b, ctx); });
+    compileInto(Array.from(children), b, ctx);
   }
   b.add("</" + tag + ">");
 }
@@ -240,11 +316,11 @@ function compileText(value, b) {
 }
 
 function compileAttribute(name, value, b) {
-  var whole = value.trim().match(/^\{\{\s*([^}]+?)\s*\}\}$/);
+  var whole = value.trim().match(WHOLE);
 
-  // class:done="{{done}}"
+  // class:done="${done}"
   if (name.startsWith("class:")) {
-    if (!whole) throw new Error('[jsonx] ' + name + '="…" must be exactly one {{name}}');
+    if (!whole) throw new Error('[jsonx] ' + name + '="…" must be exactly one ${name}');
     var className = name.slice(6);
     b.add(" " + name + "=");
     b.hole(function (stack) { return toggleClass(className, lookup(stack, whole[1])); });

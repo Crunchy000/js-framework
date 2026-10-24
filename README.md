@@ -6,11 +6,15 @@ A tiny htmx-style framework for JSON APIs. Your server sends JSON shaped for the
 <wa-card jx-get="api/todos">
   <template>
     <ul>
-      <li jx-each="todos" class:done="{{done}}">
-        <wa-checkbox checked="{{done}}" jx-post="api/todos/{{id}}/toggle">{{title}}</wa-checkbox>
-      </li>
+      <jx-each items="todos">
+        <li class:done="${done}">
+          <wa-checkbox checked="${done}" jx-post="api/todos/${id}/toggle">${title}</wa-checkbox>
+        </li>
+      </jx-each>
     </ul>
-    <p jx-if="!todos">Nothing to do.</p>
+    <jx-if test="!todos">
+      <p>Nothing to do.</p>
+    </jx-if>
   </template>
 </wa-card>
 ```
@@ -36,7 +40,7 @@ An element with a template is a **region**. The template can sit inside it, as a
 2. **Results re-render the region.** A button inside a region doesn't need `jx-target` or `jx-template`. Whatever it calls, the response is drawn with the region's template.
 3. **A region is a form without the `<form>`.** Every request from inside it sends the region's named controls, so a hidden `<input name="filter">` tells the server the current filter on every click.
 
-Errors are part of the view too: if the title is empty, the todo server sends the same view with an `error` field, and the template shows it with `jx-if="error"`. Keep half-typed text in the view as well (the todo API echoes the title back as `draft`), so the server's view is always the truth.
+Errors are part of the view too: if the title is empty, the todo server sends the same view with an `error` field, and the template shows it with `<jx-if test="error">`. Keep half-typed text in the view as well (the todo API echoes the title back as `draft`), so the server's view is always the truth.
 
 ## GraphQL
 
@@ -58,9 +62,9 @@ GraphQL is the other way to get page-shaped data without a view API: the page as
 
 <div jx-query="#query, #view" jx-vals='{"slug": ":slug"}'>
   <template>
-    <input type="hidden" name="slug" value="{{article.slug}}">
-    <h1>{{article.title}}</h1>
-    <wa-button jx-query="#favorite, #view" jx-select="favoriteArticle.query">Favorite ({{article.favoritesCount}})</wa-button>
+    <input type="hidden" name="slug" value="${article.slug}">
+    <h1>${article.title}</h1>
+    <wa-button jx-query="#favorite, #view" jx-select="favoriteArticle.query">Favorite (${article.favoritesCount})</wa-button>
   </template>
 </div>
 ```
@@ -76,13 +80,32 @@ A template is plain HTML inside a `<template>` tag, plus four rules:
 
 | You write | What it does |
 |---|---|
-| `{{title}}` | Prints a value, between tags or inside an attribute value. Always HTML-escaped, so user text is safe. Dotted names work: `{{stats.done}}`. |
-| `jx-each="todos"` | Repeats this element for each item in the list. Inside it, names refer to the item first, then the outer view. Items with an `id` are tracked by it, so adding or removing one only adds or removes that row. |
-| `jx-if="error"`, `jx-if="!todos"` | Shows this element only if the value is there (or, with `!`, only if it's missing, false, or an empty list). |
-| `checked="{{done}}"`, `value="{{draft}}"` | When an attribute's whole value is one `{{name}}`, it's smart: if the element has a property with that name, the live property is set, so form controls always show the view. Otherwise `true`/`false` adds or removes the attribute, and anything else becomes its text. |
-| `class:done="{{done}}"` | Turns the class `done` on or off. |
+| `${title}` | Prints a value, between tags or inside an attribute value. Always HTML-escaped, so user text is safe. Dotted names work: `${stats.done}`, and `${.}` is the current item itself. |
+| `<jx-each items="todos">…</jx-each>` | Repeats what's inside for each item in the list. Inside it, names refer to the item first, then the outer view. Items with an `id` are tracked by it, so adding or removing one only adds or removes that row. Given a single object instead of a list, it draws once with the object's fields in scope. |
+| `<jx-if test="error">…</jx-if>` | Draws what's inside only if the value is there. `test="!todos"` is the opposite: only if it's missing, false, or an empty list. |
+| `<jx-else-if test="…">`, `<jx-else>` | Right after a `<jx-if>` (only spaces and comments between), they draw when the branches before them didn't. |
+| `checked="${done}"`, `value="${draft}"` | When an attribute's whole value is one `${name}`, it's smart: if the element has a property with that name, the live property is set, so form controls always show the view. Otherwise `true`/`false` adds or removes the attribute, and anything else becomes its text. |
+| `class:done="${done}"` | Turns the class `done` on or off. |
 
-Reuse a template inside another with `<template jx-use="#todo-item"></template>`. A `{{name}}` inside a `<textarea>` becomes its value.
+The `<jx-…>` tags only mark what to repeat or show. They're never put on the page, so they don't affect your layout or CSS (`ul > li` still matches).
+
+```html
+<jx-if test="viewer">
+  <a href="settings.html">Settings</a>
+</jx-if>
+<jx-else-if test="loading">
+  <wa-spinner></wa-spinner>
+</jx-else-if>
+<jx-else>
+  <a href="login.html">Sign in</a>
+</jx-else>
+```
+
+**Inside `<table>` and `<select>`, put the logic on the element instead.** The browser's HTML parser moves unknown tags out of tables and selects before jsonx ever sees them, so there you write `<tr jx-each="rows">`, `<option jx-if="x">`, and `jx-else-if="y"` / `jx-else` on the next element. Everywhere else, use the tags.
+
+Reuse a template inside another with `<template jx-use="#todo-item"></template>`. A `${name}` inside a `<textarea>` becomes its value.
+
+**`${}` in JavaScript.** Templates usually live in your HTML, where `${}` is just text. If you build one inside a JavaScript template literal (backticks), escape it as `\${name}`, or JavaScript fills it in first.
 
 That's the whole language. There's no other logic on purpose: if the page needs to know something, like which filter button is highlighted, the server works it out and sends it.
 
@@ -95,7 +118,7 @@ Put the request on the `<template>` itself, and it loads and draws right where i
 
 ```html
 <template jx-get="/api/stats">
-  <p>{{done}} of {{total}} done</p>
+  <p>${done} of ${total} done</p>
 </template>
 ```
 
@@ -110,7 +133,9 @@ Put the request on the `<template>` itself, and it loads and draws right where i
 <header class="site-nav">
   <template jx-get="/view/nav">
     <a href="index.html">Home</a>
-    <a jx-if="signedIn" href="settings.html">Settings</a>
+    <jx-if test="signedIn">
+      <a href="settings.html">Settings</a>
+    </jx-if>
   </template>
 </header>
 ```
@@ -157,13 +182,13 @@ Serve the folder with any static server, for example `npx serve .`, and open `ex
 
 | Attribute | What it does | Default |
 |---|---|---|
-| `jx-get`, `jx-post`, `jx-put`, `jx-patch`, `jx-delete` | The URL to call, and with which HTTP method. It can use `{{name}}` when it's inside a template. | (required) |
+| `jx-get`, `jx-post`, `jx-put`, `jx-patch`, `jx-delete` | The URL to call, and with which HTTP method. It can use `${name}` when it's inside a template. | (required) |
 | `jx-trigger` | The event that starts the request. Any event name works, including custom events. Add `delay:300ms` to wait until events stop (good for search boxes), or `from:#other` to listen on another element. Use `keydown[key=Enter]` to fire only for one key. Use `load` to run once on page load. List several with commas. | depends on the element, see below |
 | `jx-template` | Selector of a `<template>` that draws the JSON, for when it isn't inside the element. An element with a template is a region. | the template inside, or the region's |
 | `jx-target` | Where the result goes: a CSS selector, `this`, or `closest <selector>`. | the region, or else the element itself |
 | `jx-swap` | `prop:<name>` sets a property on the target instead of drawing a template (good for components that take data). `none` calls the API and draws nothing. | draw the template |
 | `jx-include` | Also send the values of other elements, e.g. `jx-include="#filter"`. | none |
-| `jx-vals` | Extra JSON to send, e.g. `jx-vals='{"filter": "{{name}}"}'`. | none |
+| `jx-vals` | Extra JSON to send, e.g. `jx-vals='{"filter": "${name}"}'`. | none |
 | `jx-query` | Makes it a GraphQL request: the query comes from these `<script type="text/graphql">` elements (several, for fragments), and the values become its variables. Sent to `jsonx.graphql`, `/graphql` by default. | |
 | `jx-operation` | Which operation to run, when the script holds several. | |
 | `jx-select` | Draw only part of the answer, e.g. `jx-select="favoriteArticle.query"`. | the whole answer |
@@ -188,7 +213,7 @@ Writing a trigger for the element itself replaces the default. Triggers with `fr
 
 **Values from the page address.** On `article.html?slug=hello`, `jx-get="/view/article/:slug"` calls `/view/article/hello`. A `:name` the address doesn't have becomes empty.
 
-**Dotted names build nested JSON.** `name="user.email"` and `name="user.password"` send `{"user": {"email": …, "password": …}}`, which is what APIs like RealWorld expect.
+**Dotted names build nested JSON.** `name="user.email"` and `name="user.password"` send `{"user": {"email": …, "password": …}`, which is what APIs like RealWorld expect.
 
 ## Errors
 
@@ -197,8 +222,8 @@ When a request fails and the server sends JSON, jsonx redraws the region with it
 | Field | What it holds |
 |---|---|
 | `error` | One message for the whole thing: the server's `error` or `message`, or the field errors joined up. |
-| `errors` | A list for `jx-each`. `{"errors": {"email": ["can't be blank"]}}` becomes `[{field: "email", message: "can't be blank", text: "email can't be blank"}]`. |
-| `fieldErrors` | The same by field, e.g. `{{fieldErrors.email}}`, to show a message next to its input. |
+| `errors` | A list for `<jx-each>`. `{"errors": {"email": ["can't be blank"]}` becomes `[{field: "email", message: "can't be blank", text: "email can't be blank"}]`. |
+| `fieldErrors` | The same by field, e.g. `${fieldErrors.email}`, to show a message next to its input. |
 
 The next successful answer replaces the view, so the errors go away by themselves. What you typed stays, because the inputs aren't bound to the view. jsonx also fires `jx:error`, for page code.
 
@@ -220,7 +245,7 @@ If you can't add a view API, jsonx has three tools for working with the real one
 - **`jx:beforeRender`** lets page code reshape the data: set `event.detail.data`.
 - **`jsonx.headers`** adds headers, like a token, to every request. It can be an object, or a function that's asked each time. Page code that runs before jsonx can set `window.jsonx = { headers: … }` first.
 
-[Beacon](examples/marketing/), the marketing site, does the same with a Contentful-style CMS. Editors stack section entries (hero, features, pricing, FAQ...) into pages. The view API resolves the links between entries and turns rich text into blocks, and answers with a list of sections, each naming its kind: `{ hero: {...}, pricing: null, ... }`. The page is one HTML file with a template per kind of section, `<section jx-each="hero">`. A `jx-each` on a single object draws it once, with its fields in scope.
+[Beacon](examples/marketing/), the marketing site, does the same with a Contentful-style CMS. Editors stack section entries (hero, features, pricing, FAQ...) into pages. The view API resolves the links between entries and turns rich text into blocks, and answers with a list of sections, each naming its kind: `{ hero: {...}, pricing: null, ... }`. The page is one HTML file with a template per kind of section, `<jx-each items="hero"><section>…`. A `<jx-each>` on a single object draws it once, with its fields in scope.
 
 Article bodies are Markdown, but Conduit shows them as plain paragraphs: templates never insert raw HTML, so an article can't inject anything into the page.
 
@@ -248,7 +273,7 @@ There are three ways jsonx and web components work together. The feature tour ha
 There are three ways jsonx and web components work together. The feature tour has one of each, and the todo app uses Web Awesome's `<wa-input>`, `<wa-checkbox>` and `<wa-button>` the same way you'd use native controls.
 
 1. **Components that fire events.** `jx-trigger` accepts any event name, so `<star-rating jx-post="/api/feedback" jx-trigger="rating-changed">` works. jsonx reads the component's `name` attribute and `value` property, like an `<input>`.
-2. **Components that take JSON as a property.** `jx-swap="prop:stats"` skips templates and does `target.stats = data`. The component decides how to draw itself. Inside a template, `stats="{{stats}}"` does the same, because the component has a `stats` property.
+2. **Components that take JSON as a property.** `jx-swap="prop:stats"` skips templates and does `target.stats = data`. The component decides how to draw itself. Inside a template, `stats="${stats}"` does the same, because the component has a `stats` property.
 3. **Components that use jsonx inside their shadow DOM.** Call `jsonx.process(this.shadowRoot)` once in `connectedCallback`. After that, `jx-target` and `jx-template` look inside the component's shadow root first (then fall back to the page), so a component can ship its own private templates.
 
 ## How it works
@@ -261,7 +286,7 @@ There are three ways jsonx and web components work together. The feature tour ha
 ## Design choices, and why
 
 - **JSON instead of HTML from the server.** htmx expects the server to return HTML. jsonx moves rendering into the browser, so the same API can also serve a mobile app or other clients. The trade-off is that templates now live in the page.
-- **Our own tiny template language.** Lit is fast but has rules about where values can go. Writing templates as real HTML and compiling them means those rules never show up: every `{{name}}` lands somewhere valid, and there's less to learn than EJS or Mustache.
+- **Our own tiny template language.** Lit is fast but has rules about where values can go. Writing templates as real HTML and compiling them means those rules never show up: every `${name}` lands somewhere valid, and there's less to learn than EJS or Mustache.
 - **Templates in `<template>` tags.** The browser parses them as real HTML without showing or running them, which is exactly what the compiler needs.
 - **No build step, one dependency (lit-html).** Easy to read, easy to change.
 

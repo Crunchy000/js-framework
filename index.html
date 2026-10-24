@@ -26,11 +26,15 @@
 <pre><code>&lt;wa-card jx-get="api/todos"&gt;
   &lt;template&gt;
     &lt;ul&gt;
-      &lt;li jx-each="todos" class:done="{{done}}"&gt;
-        &lt;wa-checkbox checked="{{done}}" jx-post="api/todos/{{id}}/toggle"&gt;{{title}}&lt;/wa-checkbox&gt;
-      &lt;/li&gt;
+      &lt;jx-each items="todos"&gt;
+        &lt;li class:done="${done}"&gt;
+          &lt;wa-checkbox checked="${done}" jx-post="api/todos/${id}/toggle"&gt;${title}&lt;/wa-checkbox&gt;
+        &lt;/li&gt;
+      &lt;/jx-each&gt;
     &lt;/ul&gt;
-    &lt;p jx-if="!todos"&gt;Nothing to do.&lt;/p&gt;
+    &lt;jx-if test="!todos"&gt;
+      &lt;p&gt;Nothing to do.&lt;/p&gt;
+    &lt;/jx-if&gt;
   &lt;/template&gt;
 &lt;/wa-card&gt;</code></pre>
 

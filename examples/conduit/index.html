@@ -6,13 +6,13 @@
   <title>Home — Conduit</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/styles/webawesome.css">
   <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
-  <link rel="stylesheet" href="style.css?v=8">
+  <link rel="stylesheet" href="style.css?v=9">
 
   <!-- Pretend servers: the RealWorld API, and the view API in front of it.
        In real life both run on a server, and these two lines go away. -->
-  <script src="mock-api.js?v=8"></script>
-  <script src="view-api.js?v=8"></script>
-  <script type="module" src="../../jsonx.js?v=8"></script>
+  <script src="mock-api.js?v=9"></script>
+  <script src="view-api.js?v=9"></script>
+  <script type="module" src="../../jsonx.js?v=9"></script>
   <script>if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("wa-dark");</script>
 </head>
 <body>
@@ -28,28 +28,38 @@
     <p class="empty">Loading articles...</p>
     <template>
       <!-- Sent with every request, so the server knows which tab and page you're on. -->
-      <input type="hidden" name="tab" value="{{tab}}">
-      <input type="hidden" name="tag" value="{{tag}}">
-      <input type="hidden" name="page" value="{{page}}">
+      <input type="hidden" name="tab" value="${tab}">
+      <input type="hidden" name="tag" value="${tag}">
+      <input type="hidden" name="page" value="${page}">
 
       <main>
         <div class="tabs">
-          <wa-button jx-each="tabs" appearance="plain" class:active="{{active}}"
-                     jx-get="/view/home" jx-vals='{"tab": "{{name}}", "tag": "{{tag}}", "page": 1}'>{{label}}</wa-button>
+          <jx-each items="tabs">
+            <wa-button appearance="plain" class:active="${active}"
+                       jx-get="/view/home" jx-vals='{"tab": "${name}", "tag": "${tag}", "page": 1}'>${label}</wa-button>
+          </jx-each>
         </div>
-        <wa-callout jx-if="error" variant="warning">{{error}} <a href="login.html">Sign in</a></wa-callout>
+        <jx-if test="error">
+          <wa-callout variant="warning">${error} <a href="login.html">Sign in</a></wa-callout>
+        </jx-if>
         <template jx-use="#previews"></template>
-        <div class="pages wa-cluster wa-gap-2xs" jx-if="pages">
-          <wa-button jx-each="pages" size="s" appearance="outlined" class:current="{{current}}"
-                     jx-get="/view/home" jx-vals='{"page": {{number}}}'>{{number}}</wa-button>
-        </div>
+        <jx-if test="pages">
+          <div class="pages wa-cluster wa-gap-2xs">
+            <jx-each items="pages">
+              <wa-button size="s" appearance="outlined" class:current="${current}"
+                         jx-get="/view/home" jx-vals='{"page": ${number}}'>${number}</wa-button>
+            </jx-each>
+          </div>
+        </jx-if>
       </main>
 
       <aside>
         <wa-card>
           <h2>Popular tags</h2>
           <div class="wa-cluster wa-gap-2xs">
-            <a jx-each="tags" href="#" jx-get="/view/home" jx-vals='{"tag": "{{.}}", "page": 1}'><wa-tag size="s" pill>{{.}}</wa-tag></a>
+            <jx-each items="tags">
+              <a href="#" jx-get="/view/home" jx-vals='{"tag": "${.}", "page": 1}'><wa-tag size="s" pill>${.}</wa-tag></a>
+            </jx-each>
           </div>
         </wa-card>
       </aside>

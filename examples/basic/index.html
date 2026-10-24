@@ -19,9 +19,9 @@
   </style>
 
   <!-- 1. The fake API. Remove this when you have a real server. -->
-  <script src="mock-api.js?v=8"></script>
+  <script src="mock-api.js?v=9"></script>
   <!-- 2. The framework itself -->
-  <script type="module" src="../../jsonx.js?v=8"></script>
+  <script type="module" src="../../jsonx.js?v=9"></script>
   <!-- 3. Demo web components (modules run in order, so jsonx is ready) -->
   <script type="module" src="components.js"></script>
 </head>
@@ -37,7 +37,7 @@
     <div id="likes" jx-get="/api/likes">
       Loading…
       <template>
-        <p>This page has <strong>{{label}}</strong>.</p>
+        <p>This page has <strong>${label}</strong>.</p>
         <button jx-post="/api/likes">Like it</button>
         <button jx-post="/api/broken">Break the server</button>
       </template>
@@ -48,7 +48,7 @@
   <!-- ===================================================================== -->
   <section>
     <h2>2. Live search</h2>
-    <p><code>jx-trigger="input delay:300ms"</code> waits until you stop typing, then sends <code>?q=...</code>. The results go into another element with <code>jx-target</code>. The template uses <code>jx-each</code>, <code>jx-if</code> and <code>class:pioneer</code>.</p>
+    <p><code>jx-trigger="input delay:300ms"</code> waits until you stop typing, then sends <code>?q=...</code>. The results go into another element with <code>jx-target</code>. The template uses <code>&lt;jx-each&gt;</code>, <code>&lt;jx-if&gt;</code> and <code>class:pioneer</code>.</p>
 
     <input type="search" name="q" placeholder="Search people…"
            jx-get="/api/users" jx-trigger="input delay:300ms"
@@ -56,8 +56,12 @@
     <ul id="results"></ul>
 
     <template id="user-results">
-      <li jx-each="users" class:pioneer="{{pioneer}}"><strong>{{name}}</strong> — {{role}}</li>
-      <li jx-if="!users"><em>No one matches "{{query}}"</em></li>
+      <jx-each items="users">
+        <li class:pioneer="${pioneer}"><strong>${name}</strong> — ${role}</li>
+      </jx-each>
+      <jx-if test="!users">
+        <li><em>No one matches "${query}"</em></li>
+      </jx-if>
     </template>
   </section>
 
@@ -72,7 +76,7 @@
                  jx-target="#feedback" jx-template="#thanks"></star-rating>
     <p id="feedback"></p>
 
-    <template id="thanks">{{message}}</template>
+    <template id="thanks">${message}</template>
 
     <h3>b) A component that receives JSON as a property</h3>
     <p><code>jx-swap="prop:stats"</code> sets <code>todoStats.stats = data</code> instead of drawing a template.</p>

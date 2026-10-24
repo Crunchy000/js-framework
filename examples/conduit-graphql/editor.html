@@ -6,13 +6,13 @@
   <title>Editor — Conduit GraphQL</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/styles/webawesome.css">
   <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
-  <link rel="stylesheet" href="style.css?v=8">
+  <link rel="stylesheet" href="style.css?v=9">
 
   <!-- Pretend servers: the RealWorld REST API, and a GraphQL server in front of it.
        In real life they run on a server, and these two lines go away. -->
-  <script src="../conduit/mock-api.js?v=8"></script>
-  <script type="module" src="graphql-server.js?v=8"></script>
-  <script type="module" src="../../jsonx.js?v=8"></script>
+  <script src="../conduit/mock-api.js?v=9"></script>
+  <script type="module" src="graphql-server.js?v=9"></script>
+  <script type="module" src="../../jsonx.js?v=9"></script>
   <script>if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("wa-dark");</script>
 </head>
 <body>
@@ -37,21 +37,31 @@
     <!-- editor.html?slug=hello edits that article. With no slug, article is null: a new one. -->
     <div class="wa-stack" jx-query="#query" jx-vals='{"slug": ":slug"}'>
       <template>
-        <p jx-if="!viewer" class="empty"><a href="login.html">Sign in</a> to write an article.</p>
-        <div jx-if="viewer" class="wa-stack">
-          <wa-callout jx-if="error" variant="danger">{{error}}</wa-callout>
-          <input type="hidden" name="slug" value="{{article.slug}}">
-          <wa-input name="title" placeholder="Article title" size="l" value="{{article.title}}"></wa-input>
-          <wa-input name="description" placeholder="What's this article about?" value="{{article.description}}"></wa-input>
-          <wa-textarea name="body" placeholder="Write your article (paragraphs are separated by a blank line)" rows="10" value="{{article.body}}"></wa-textarea>
-          <wa-input name="tags" placeholder="Enter tags, separated by commas" value="{{article.tags}}"></wa-input>
-          <div>
-            <wa-button jx-if="!article" variant="success" jx-query="#save" jx-operation="Create" jx-swap="none"
-                       jx-then="article.html?slug=:createArticle.article.slug">Publish article</wa-button>
-            <wa-button jx-if="article" variant="success" jx-query="#save" jx-operation="Update" jx-swap="none"
-                       jx-then="article.html?slug=:updateArticle.article.slug">Update article</wa-button>
+        <jx-if test="!viewer">
+          <p class="empty"><a href="login.html">Sign in</a> to write an article.</p>
+        </jx-if>
+        <jx-else>
+          <div class="wa-stack">
+            <jx-if test="error">
+              <wa-callout variant="danger">${error}</wa-callout>
+            </jx-if>
+            <input type="hidden" name="slug" value="${article.slug}">
+            <wa-input name="title" placeholder="Article title" size="l" value="${article.title}"></wa-input>
+            <wa-input name="description" placeholder="What's this article about?" value="${article.description}"></wa-input>
+            <wa-textarea name="body" placeholder="Write your article (paragraphs are separated by a blank line)" rows="10" value="${article.body}"></wa-textarea>
+            <wa-input name="tags" placeholder="Enter tags, separated by commas" value="${article.tags}"></wa-input>
+            <div>
+              <jx-if test="!article">
+                <wa-button variant="success" jx-query="#save" jx-operation="Create" jx-swap="none"
+                           jx-then="article.html?slug=:createArticle.article.slug">Publish article</wa-button>
+              </jx-if>
+              <jx-else>
+                <wa-button variant="success" jx-query="#save" jx-operation="Update" jx-swap="none"
+                           jx-then="article.html?slug=:updateArticle.article.slug">Update article</wa-button>
+              </jx-else>
+            </div>
           </div>
-        </div>
+        </jx-else>
       </template>
     </div>
   </main>

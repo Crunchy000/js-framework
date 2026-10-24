@@ -10,7 +10,7 @@
  *
  * One rule makes the templates simple: every section names every kind,
  *   { hero: {...}, features: null, pricing: null, ... }
- * so the page can write <section jx-each="hero"> and only the right one draws.
+ * so the page can write <jx-each items="hero"> and only the right one draws.
  * (A missing name would be looked up in the outer view instead, so we set them all.)
  */
 (function () {

@@ -6,13 +6,13 @@
   <title>Article — Conduit GraphQL</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/styles/webawesome.css">
   <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
-  <link rel="stylesheet" href="style.css?v=8">
+  <link rel="stylesheet" href="style.css?v=9">
 
   <!-- Pretend servers: the RealWorld REST API, and a GraphQL server in front of it.
        In real life they run on a server, and these two lines go away. -->
-  <script src="../conduit/mock-api.js?v=8"></script>
-  <script type="module" src="graphql-server.js?v=8"></script>
-  <script type="module" src="../../jsonx.js?v=8"></script>
+  <script src="../conduit/mock-api.js?v=9"></script>
+  <script type="module" src="graphql-server.js?v=9"></script>
+  <script type="module" src="../../jsonx.js?v=9"></script>
   <script>if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("wa-dark");</script>
 </head>
 <body>
@@ -46,64 +46,88 @@
   <!-- article.html?slug=hello: jsonx fills ":slug" in jx-vals from the address. -->
   <div id="article" jx-query="#query, #view" jx-vals='{"slug": ":slug"}'>
     <template>
-      <input type="hidden" name="slug" value="{{article.slug}}">
+      <input type="hidden" name="slug" value="${article.slug}">
       <header class="banner dark">
-        <h1>{{article.title}}</h1>
+        <h1>${article.title}</h1>
         <template jx-use="#meta"></template>
       </header>
       <div class="article-body">
-        <p jx-each="article.paragraphs">{{text}}</p>
-        <div class="wa-cluster wa-gap-2xs"><wa-tag size="s" appearance="outlined" jx-each="article.tagList">{{.}}</wa-tag></div>
+        <jx-each items="article.paragraphs">
+          <p>${text}</p>
+        </jx-each>
+        <div class="wa-cluster wa-gap-2xs"><jx-each items="article.tagList"><wa-tag size="s" appearance="outlined">${.}</wa-tag></jx-each></div>
         <hr>
         <template jx-use="#meta"></template>
       </div>
 
       <section id="comments" class="comments wa-stack">
-        <wa-callout jx-if="error" variant="danger">{{error}}</wa-callout>
-        <div jx-if="viewer" class="wa-stack wa-gap-s">
-          <wa-textarea name="body" placeholder="Write a comment..." rows="3" value="{{draft}}"></wa-textarea>
-          <div><wa-button variant="success" jx-query="#actions, #view" jx-operation="AddComment" jx-select="addComment.query">Post comment</wa-button></div>
-        </div>
-        <p jx-if="!viewer"><a href="login.html">Sign in</a> or <a href="register.html">sign up</a> to add comments on this article.</p>
-        <wa-card jx-each="article.comments">
-          <p>{{body}}</p>
-          <div slot="footer" class="wa-split">
-            <a class="author" href="profile.html?username={{author.username}}">
-              <wa-avatar image="{{author.image}}" label="{{author.username}}" style="--size: 1.5rem"></wa-avatar>
-              <strong>{{author.username}}</strong> <small>{{createdAt}}</small>
-            </a>
-            <wa-button jx-if="viewerIsAuthor" size="s" appearance="plain" variant="danger" label="Delete comment"
-                       jx-query="#actions, #view" jx-operation="DeleteComment" jx-select="deleteComment.query"
-                       jx-vals='{"id": "{{id}}"}'><wa-icon name="trash"></wa-icon></wa-button>
+        <jx-if test="error">
+          <wa-callout variant="danger">${error}</wa-callout>
+        </jx-if>
+        <jx-if test="viewer">
+          <div class="wa-stack wa-gap-s">
+            <wa-textarea name="body" placeholder="Write a comment..." rows="3" value="${draft}"></wa-textarea>
+            <div><wa-button variant="success" jx-query="#actions, #view" jx-operation="AddComment" jx-select="addComment.query">Post comment</wa-button></div>
           </div>
-        </wa-card>
+        </jx-if>
+        <jx-else>
+          <p><a href="login.html">Sign in</a> or <a href="register.html">sign up</a> to add comments on this article.</p>
+        </jx-else>
+        <jx-each items="article.comments">
+          <wa-card>
+            <p>${body}</p>
+            <div slot="footer" class="wa-split">
+              <a class="author" href="profile.html?username=${author.username}">
+                <wa-avatar image="${author.image}" label="${author.username}" style="--size: 1.5rem"></wa-avatar>
+                <strong>${author.username}</strong> <small>${createdAt}</small>
+              </a>
+              <jx-if test="viewerIsAuthor">
+                <wa-button size="s" appearance="plain" variant="danger" label="Delete comment"
+                           jx-query="#actions, #view" jx-operation="DeleteComment" jx-select="deleteComment.query"
+                           jx-vals='{"id": "${id}"}'><wa-icon name="trash"></wa-icon></wa-button>
+              </jx-if>
+            </div>
+          </wa-card>
+        </jx-each>
       </section>
     </template>
   </div>
 
   <template id="meta">
     <div class="meta wa-cluster">
-      <a class="author" href="profile.html?username={{article.author.username}}">
-        <wa-avatar image="{{article.author.image}}" label="{{article.author.username}}"></wa-avatar>
-        <span><strong>{{article.author.username}}</strong><br><small>{{article.createdAt}}</small></span>
+      <a class="author" href="profile.html?username=${article.author.username}">
+        <wa-avatar image="${article.author.image}" label="${article.author.username}"></wa-avatar>
+        <span><strong>${article.author.username}</strong><br><small>${article.createdAt}</small></span>
       </a>
-      <div class="wa-cluster wa-gap-xs" jx-if="article.viewerIsAuthor">
-        <wa-button size="s" appearance="outlined" href="editor.html?slug={{article.slug}}"><wa-icon slot="start" name="pen"></wa-icon>Edit article</wa-button>
-        <wa-button size="s" variant="danger" appearance="outlined" jx-query="#actions, #view" jx-operation="DeleteArticle"
-                   jx-swap="none" jx-then="index.html"><wa-icon slot="start" name="trash"></wa-icon>Delete article</wa-button>
-      </div>
-      <div class="wa-cluster wa-gap-xs" jx-if="!article.viewerIsAuthor">
-        <wa-button jx-if="article.author.viewerIsFollowing" size="s" jx-query="#actions, #view" jx-operation="Unfollow"
-                   jx-select="unfollowProfile.query" jx-vals='{"username": "{{article.author.username}}"}'>
-          <wa-icon slot="start" name="minus"></wa-icon>Unfollow {{article.author.username}}</wa-button>
-        <wa-button jx-if="!article.author.viewerIsFollowing" size="s" appearance="outlined" jx-query="#actions, #view" jx-operation="Follow"
-                   jx-select="followProfile.query" jx-vals='{"username": "{{article.author.username}}"}'>
-          <wa-icon slot="start" name="plus"></wa-icon>Follow {{article.author.username}}</wa-button>
-        <wa-button jx-if="article.viewerHasFavorited" size="s" variant="success" jx-query="#actions, #view" jx-operation="Unfavorite"
-                   jx-select="unfavoriteArticle.query"><wa-icon slot="start" name="heart"></wa-icon>Unfavorite ({{article.favoritesCount}})</wa-button>
-        <wa-button jx-if="!article.viewerHasFavorited" size="s" variant="success" appearance="outlined" jx-query="#actions, #view" jx-operation="Favorite"
-                   jx-select="favoriteArticle.query"><wa-icon slot="start" name="heart" variant="regular"></wa-icon>Favorite ({{article.favoritesCount}})</wa-button>
-      </div>
+      <jx-if test="article.viewerIsAuthor">
+        <div class="wa-cluster wa-gap-xs">
+          <wa-button size="s" appearance="outlined" href="editor.html?slug=${article.slug}"><wa-icon slot="start" name="pen"></wa-icon>Edit article</wa-button>
+          <wa-button size="s" variant="danger" appearance="outlined" jx-query="#actions, #view" jx-operation="DeleteArticle"
+                     jx-swap="none" jx-then="index.html"><wa-icon slot="start" name="trash"></wa-icon>Delete article</wa-button>
+        </div>
+      </jx-if>
+      <jx-else>
+        <div class="wa-cluster wa-gap-xs">
+          <jx-if test="article.author.viewerIsFollowing">
+            <wa-button size="s" jx-query="#actions, #view" jx-operation="Unfollow"
+                       jx-select="unfollowProfile.query" jx-vals='{"username": "${article.author.username}"}'>
+              <wa-icon slot="start" name="minus"></wa-icon>Unfollow ${article.author.username}</wa-button>
+          </jx-if>
+          <jx-else>
+            <wa-button size="s" appearance="outlined" jx-query="#actions, #view" jx-operation="Follow"
+                       jx-select="followProfile.query" jx-vals='{"username": "${article.author.username}"}'>
+              <wa-icon slot="start" name="plus"></wa-icon>Follow ${article.author.username}</wa-button>
+          </jx-else>
+          <jx-if test="article.viewerHasFavorited">
+            <wa-button size="s" variant="success" jx-query="#actions, #view" jx-operation="Unfavorite"
+                       jx-select="unfavoriteArticle.query"><wa-icon slot="start" name="heart"></wa-icon>Unfavorite (${article.favoritesCount})</wa-button>
+          </jx-if>
+          <jx-else>
+            <wa-button size="s" variant="success" appearance="outlined" jx-query="#actions, #view" jx-operation="Favorite"
+                       jx-select="favoriteArticle.query"><wa-icon slot="start" name="heart" variant="regular"></wa-icon>Favorite (${article.favoritesCount})</wa-button>
+          </jx-else>
+        </div>
+      </jx-else>
     </div>
   </template>
 </body>

@@ -6,13 +6,13 @@
   <title>Profile — Conduit GraphQL</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/styles/webawesome.css">
   <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
-  <link rel="stylesheet" href="style.css?v=8">
+  <link rel="stylesheet" href="style.css?v=9">
 
   <!-- Pretend servers: the RealWorld REST API, and a GraphQL server in front of it.
        In real life they run on a server, and these two lines go away. -->
-  <script src="../conduit/mock-api.js?v=8"></script>
-  <script type="module" src="graphql-server.js?v=8"></script>
-  <script type="module" src="../../jsonx.js?v=8"></script>
+  <script src="../conduit/mock-api.js?v=9"></script>
+  <script type="module" src="graphql-server.js?v=9"></script>
+  <script type="module" src="../../jsonx.js?v=9"></script>
   <script>if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("wa-dark");</script>
 </head>
 <body>
@@ -52,30 +52,38 @@
   <!-- profile.html?username=ada -->
   <div jx-query="#query, #view, #preview-fields" jx-vals='{"username": ":username"}'>
     <template>
-      <input type="hidden" name="username" value="{{profile.username}}">
-      <input type="hidden" name="offset" value="{{profile.articles.offset}}">
+      <input type="hidden" name="username" value="${profile.username}">
+      <input type="hidden" name="offset" value="${profile.articles.offset}">
 
       <div id="profile" class="profile-banner">
-        <wa-avatar image="{{profile.image}}" label="{{profile.username}}"></wa-avatar>
-        <h1>{{profile.username}}</h1>
-        <p>{{profile.bio}}</p>
-        <wa-button jx-if="profile.isViewer" size="s" appearance="outlined" href="settings.html"><wa-icon slot="start" name="gear"></wa-icon>Edit profile settings</wa-button>
-        <span jx-if="!profile.isViewer">
-          <wa-button jx-if="profile.viewerIsFollowing" size="s" jx-query="#follow, #view, #preview-fields" jx-operation="Unfollow"
-                     jx-select="unfollowProfile.query"><wa-icon slot="start" name="minus"></wa-icon>Unfollow {{profile.username}}</wa-button>
-          <wa-button jx-if="!profile.viewerIsFollowing" size="s" appearance="outlined" jx-query="#follow, #view, #preview-fields" jx-operation="Follow"
-                     jx-select="followProfile.query"><wa-icon slot="start" name="plus"></wa-icon>Follow {{profile.username}}</wa-button>
-        </span>
+        <wa-avatar image="${profile.image}" label="${profile.username}"></wa-avatar>
+        <h1>${profile.username}</h1>
+        <p>${profile.bio}</p>
+        <jx-if test="profile.isViewer">
+          <wa-button size="s" appearance="outlined" href="settings.html"><wa-icon slot="start" name="gear"></wa-icon>Edit profile settings</wa-button>
+        </jx-if>
+        <jx-else-if test="profile.viewerIsFollowing">
+          <wa-button size="s" jx-query="#follow, #view, #preview-fields" jx-operation="Unfollow"
+                     jx-select="unfollowProfile.query"><wa-icon slot="start" name="minus"></wa-icon>Unfollow ${profile.username}</wa-button>
+        </jx-else-if>
+        <jx-else>
+          <wa-button size="s" appearance="outlined" jx-query="#follow, #view, #preview-fields" jx-operation="Follow"
+                     jx-select="followProfile.query"><wa-icon slot="start" name="plus"></wa-icon>Follow ${profile.username}</wa-button>
+        </jx-else>
       </div>
 
       <main class="narrow" style="padding-top: var(--wa-space-l)">
-        <wa-callout jx-if="error" variant="warning">{{error}}</wa-callout>
-        <wa-radio-group class="tabs-group" name="filter" orientation="horizontal" value="{{profile.articles.filter}}"
+        <jx-if test="error">
+          <wa-callout variant="warning">${error}</wa-callout>
+        </jx-if>
+        <wa-radio-group class="tabs-group" name="filter" orientation="horizontal" value="${profile.articles.filter}"
                         jx-query="#query, #view, #preview-fields" jx-vals='{"offset": 0}'>
           <wa-radio appearance="button" value="WRITTEN">My articles</wa-radio>
           <wa-radio appearance="button" value="FAVORITED">Favorited articles</wa-radio>
         </wa-radio-group>
-        <div jx-each="profile"><template jx-use="#previews"></template></div>
+        <jx-each items="profile">
+          <div><template jx-use="#previews"></template></div>
+        </jx-each>
       </main>
     </template>
   </div>

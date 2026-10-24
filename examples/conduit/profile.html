@@ -6,13 +6,13 @@
   <title>Profile — Conduit</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/styles/webawesome.css">
   <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
-  <link rel="stylesheet" href="style.css?v=8">
+  <link rel="stylesheet" href="style.css?v=9">
 
   <!-- Pretend servers: the RealWorld API, and the view API in front of it.
        In real life both run on a server, and these two lines go away. -->
-  <script src="mock-api.js?v=8"></script>
-  <script src="view-api.js?v=8"></script>
-  <script type="module" src="../../jsonx.js?v=8"></script>
+  <script src="mock-api.js?v=9"></script>
+  <script src="view-api.js?v=9"></script>
+  <script type="module" src="../../jsonx.js?v=9"></script>
   <script>if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("wa-dark");</script>
 </head>
 <body>
@@ -21,29 +21,41 @@
   <!-- profile.html?username=ada. One region: the profile, its tabs and its articles. -->
   <div jx-get="/view/profile/:username">
     <template>
-      <input type="hidden" name="tab" value="{{tab}}">
-      <input type="hidden" name="page" value="{{page}}">
+      <input type="hidden" name="tab" value="${tab}">
+      <input type="hidden" name="page" value="${page}">
 
       <div id="profile" class="profile-banner">
-        <wa-avatar initials="{{profile.initial}}" image="{{profile.image}}" label="{{profile.username}}"></wa-avatar>
-        <h1>{{profile.username}}</h1>
-        <p>{{profile.bio}}</p>
-        <wa-button jx-if="profile.mine" size="s" appearance="outlined" href="settings.html"><wa-icon slot="start" name="gear"></wa-icon>Edit profile settings</wa-button>
-        <wa-button jx-if="!profile.mine" size="s" appearance="{{profile.followAppearance}}" jx-post="/view/profile/{{profile.username}}/follow">
-          <wa-icon slot="start" name="user-plus"></wa-icon>{{profile.followLabel}}</wa-button>
+        <wa-avatar initials="${profile.initial}" image="${profile.image}" label="${profile.username}"></wa-avatar>
+        <h1>${profile.username}</h1>
+        <p>${profile.bio}</p>
+        <jx-if test="profile.mine">
+          <wa-button size="s" appearance="outlined" href="settings.html"><wa-icon slot="start" name="gear"></wa-icon>Edit profile settings</wa-button>
+        </jx-if>
+        <jx-else>
+          <wa-button size="s" appearance="${profile.followAppearance}" jx-post="/view/profile/${profile.username}/follow">
+            <wa-icon slot="start" name="user-plus"></wa-icon>${profile.followLabel}</wa-button>
+        </jx-else>
       </div>
 
       <main class="narrow" style="padding-top: var(--wa-space-l)">
-        <wa-callout jx-if="error" variant="warning">{{error}} <a href="login.html">Sign in</a></wa-callout>
+        <jx-if test="error">
+          <wa-callout variant="warning">${error} <a href="login.html">Sign in</a></wa-callout>
+        </jx-if>
         <div class="tabs">
-          <wa-button jx-each="tabs" appearance="plain" class:active="{{active}}"
-                     jx-get="/view/profile/{{profile.username}}" jx-vals='{"tab": "{{name}}", "page": 1}'>{{label}}</wa-button>
+          <jx-each items="tabs">
+            <wa-button appearance="plain" class:active="${active}"
+                       jx-get="/view/profile/${profile.username}" jx-vals='{"tab": "${name}", "page": 1}'>${label}</wa-button>
+          </jx-each>
         </div>
         <template jx-use="#previews"></template>
-        <div class="pages wa-cluster wa-gap-2xs" jx-if="pages">
-          <wa-button jx-each="pages" size="s" appearance="outlined" class:current="{{current}}"
-                     jx-get="/view/profile/{{profile.username}}" jx-vals='{"page": {{number}}}'>{{number}}</wa-button>
-        </div>
+        <jx-if test="pages">
+          <div class="pages wa-cluster wa-gap-2xs">
+            <jx-each items="pages">
+              <wa-button size="s" appearance="outlined" class:current="${current}"
+                         jx-get="/view/profile/${profile.username}" jx-vals='{"page": ${number}}'>${number}</wa-button>
+            </jx-each>
+          </div>
+        </jx-if>
       </main>
     </template>
   </div>

@@ -17,7 +17,7 @@
  *   }
  *
  * So the page never has to work anything out: it just draws what it's given.
- * jsonx templates have no logic beyond jx-if and jx-each, so everything the page
+ * jsonx templates have no logic beyond <jx-if> and <jx-each>, so everything the page
  * shows, like which filter button is highlighted, is worked out here.
  */
 (function () {
