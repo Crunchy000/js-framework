@@ -44,18 +44,36 @@ import { repeat } from "./vendor/lit-html/directives/repeat.js";
 // `stack` is the list of contexts, innermost last: [view, todo, ...].
 // A name is looked up from the innermost context outwards, so inside
 // <jx-each items="todos">, {{title}} is the todo's title and {{filter}} still works.
-function lookup(stack, name) {
-  if (name === ".") return stack[stack.length - 1];
-  var parts = name.split(".");
-  for (var i = stack.length - 1; i >= 0; i--) {
-    var context = stack[i];
-    if (context != null && typeof context === "object" && parts[0] in context) {
-      var value = context;
-      for (var p = 0; p < parts.length && value != null; p++) value = value[parts[p]];
-      return value;
+//
+// Names are split on dots once, when the template is compiled: path("a.b") is
+// ["a", "b"], and path(".") is DOT.
+var DOT = [];
+function path(name) {
+  name = name.trim();
+  return name === "." ? DOT : name.split(".");
+}
+
+function lookup(stack, parts) {
+  var found = -1, value;
+  if (parts === DOT) {
+    found = stack.length - 1;
+    value = stack[found];
+  } else {
+    for (var i = stack.length - 1; i >= 0; i--) {
+      var context = stack[i];
+      if (context != null && typeof context === "object" && parts[0] in context) {
+        found = i;
+        value = context;
+        for (var p = 0; p < parts.length && value != null; p++) value = value[parts[p]];
+        break;
+      }
     }
   }
-  return undefined;
+  // Tell any list row being drawn that it read a name from outside its item.
+  for (var r = 0; r < recorders.length; r++) {
+    if (found < recorders[r].depth) recorders[r].reads.push({ parts: parts, value: value });
+  }
+  return value;
 }
 
 // "Empty" means: false, null, undefined, "", 0, or an empty list.
@@ -108,6 +126,98 @@ class ToggleClass extends Directive {
   render() { return noChange; }
 }
 var toggleClass = directive(ToggleClass);
+
+// ---------------------------------------------------------------------------
+// Skipping work that can't change anything
+// ---------------------------------------------------------------------------
+//
+// The server sends a whole new view every time, so most of it is usually the
+// same as last time. Two steps let jsonx skip the parts that didn't change:
+//
+//   1. share(old, new) compares the new view with the last one, and wherever a
+//      part is equal, it reuses the old object. So after sharing, "unchanged"
+//      simply means "the same object" (===).
+//   2. Each <jx-each> row remembers the item it drew, and every name it read
+//      from outside the item (like {{filter}}). If the item is the same object
+//      and those names have the same values, the row is skipped: none of its
+//      holes are even looked at.
+//
+// One exception: form controls show the view, even after someone has typed or
+// clicked in them. So a row (or region) containing a control that was changed
+// since the last draw is always drawn, so its value can be put right.
+
+function hasId(item) {
+  return item !== null && typeof item === "object" && "id" in item;
+}
+
+function share(old, next) {
+  if (old === next) return old;
+  if (old === null || next === null || typeof old !== "object" || typeof next !== "object") return next;
+  if (Array.isArray(old) !== Array.isArray(next)) return next;
+  var same = true, out, i;
+  if (Array.isArray(next)) {
+    // Lists of things with ids are matched by id, so a moved item still matches.
+    var byId = next.length && next.every(hasId) && old.every(hasId) ? new Map(old.map(function (o) { return [o.id, o]; })) : null;
+    same = old.length === next.length;
+    out = new Array(next.length);
+    for (i = 0; i < next.length; i++) {
+      out[i] = share(byId ? byId.get(next[i].id) : old[i], next[i]);
+      if (out[i] !== old[i]) same = false;
+    }
+    return same ? old : out;
+  }
+  var proto = Object.getPrototypeOf(next);
+  if (proto !== Object.prototype && proto !== null) return next; // not plain JSON: leave it
+  var keys = Object.keys(next);
+  same = keys.length === Object.keys(old).length;
+  out = {};
+  for (i = 0; i < keys.length; i++) {
+    var k = keys[i];
+    out[k] = share(old[k], next[k]);
+    if (out[k] !== old[k] || !(k in old)) same = false;
+  }
+  return same ? old : out;
+}
+
+// Rows being drawn right now, each recording the names it reads from outside its item.
+var recorders = [];
+
+// Form controls changed by the person since the region was last drawn.
+var touched = new Set();
+
+// Does the row drawn in `part` contain a control that was changed?
+function hasTouched(part) {
+  if (!touched.size) return false;
+  for (var node = part.startNode.nextSibling; node && node !== part.endNode; node = node.nextSibling) {
+    for (var el of touched) {
+      if (node === el || (node.contains && node.contains(el))) return true;
+    }
+  }
+  return false;
+}
+
+// One <jx-each> row: row(item, stack, draw).
+class Row extends Directive {
+  update(part, [item, stack, draw]) {
+    if (this.item === item && !hasTouched(part) && this.reads.every(function (read) {
+      return lookup(stack, read.parts) === read.value;
+    })) {
+      return noChange;
+    }
+    var recorder = { depth: stack.length, reads: [] };
+    recorders.push(recorder);
+    try {
+      var result = draw(stack.concat([item]));
+    } finally {
+      recorders.pop();
+    }
+    this.item = item;
+    this.reads = recorder.reads;
+    return result;
+  }
+  render() { return noChange; }
+}
+var row = directive(Row);
 
 // ---------------------------------------------------------------------------
 // Compiling: <template> -> a Lit template
@@ -183,19 +293,21 @@ function branch(node, ctx) {
   if (tag === "jx-if" || tag === "jx-else-if" || tag === "jx-else") {
     var test = tag === "jx-else" ? null : node.getAttribute("test");
     if (tag !== "jx-else" && test === null) throw new Error("[jsonx] <" + tag + "> needs test=\"name\"");
-    return { test: test, render: compileNodes(node.childNodes, ctx) };
+    return { test: test === null ? null : condition(test), render: compileNodes(node.childNodes, ctx) };
   }
   var copy = node.cloneNode(true);
   var attrTest = copy.hasAttribute("jx-else") ? null : (copy.getAttribute("jx-if") ?? copy.getAttribute("jx-else-if"));
   ["jx-if", "jx-else-if", "jx-else"].forEach(function (a) { copy.removeAttribute(a); });
-  return { test: attrTest, render: compileNodes([copy], ctx) };
+  return { test: attrTest === null ? null : condition(attrTest), render: compileNodes([copy], ctx) };
 }
 
 // test="done", or test="!done" for the opposite.
-function passes(test, stack) {
+function condition(test) {
   test = test.trim();
-  var negate = test[0] === "!";
-  return isEmpty(lookup(stack, test.replace(/^!\s*/, ""))) === negate;
+  return { negate: test[0] === "!", parts: path(test.replace(/^!\s*/, "")) };
+}
+function passes(test, stack) {
+  return isEmpty(lookup(stack, test.parts)) === test.negate;
 }
 
 function compileInto(nodes, b, ctx) {
@@ -230,11 +342,12 @@ function compileInto(nodes, b, ctx) {
 // Repeats `renderItem` for each item of the list called `name`. Items with an
 // `id` are tracked by it. A single object (not a list) is drawn once.
 function eachHole(name, render) {
+  var parts = path(name);
   return function (stack) {
-    var list = lookup(stack, name.trim());
+    var list = lookup(stack, parts);
     if (isEmpty(list)) return nothing;
     if (!Array.isArray(list)) list = [list];
-    var renderItem = function (item) { return render(stack.concat([item])); };
+    var renderItem = function (item) { return row(item, stack, render); };
     var keyed = list.every(function (item) { return item && typeof item === "object" && "id" in item; });
     return keyed ? repeat(list, function (item) { return item.id; }, renderItem) : list.map(renderItem);
   };
@@ -286,7 +399,8 @@ function compileElement(node, b, ctx) {
     var match = node.textContent.trim().match(WHOLE);
     if (!match) throw new Error("[jsonx] a <textarea> can only hold one {{name}}");
     b.add(" value=");
-    b.hole(function (stack) { return smartAttribute(lookup(stack, match[1])); });
+    var textareaPath = path(match[1]);
+    b.hole(function (stack) { return smartAttribute(lookup(stack, textareaPath)); });
     b.add("></textarea>");
     return;
   }
@@ -308,7 +422,8 @@ function compileText(value, b) {
   var last = 0;
   value.replace(TAG, function (whole, name, index) {
     b.add(escapeText(value.slice(last, index)));
-    b.hole(function (stack) { var v = lookup(stack, name); return v == null ? nothing : String(v); });
+    var parts = path(name);
+    b.hole(function (stack) { var v = lookup(stack, parts); return v == null ? nothing : String(v); });
     last = index + whole.length;
     return whole;
   });
@@ -323,14 +438,16 @@ function compileAttribute(name, value, b) {
     if (!whole) throw new Error('[jsonx] ' + name + '="…" must be exactly one {{name}}');
     var className = name.slice(6);
     b.add(" " + name + "=");
-    b.hole(function (stack) { return toggleClass(className, lookup(stack, whole[1])); });
+    var classPath = path(whole[1]);
+    b.hole(function (stack) { return toggleClass(className, lookup(stack, classPath)); });
     return;
   }
 
   // A whole-value attribute: smart (rule 3).
   if (whole) {
     b.add(" " + name + "=");
-    b.hole(function (stack) { return smartAttribute(lookup(stack, whole[1])); });
+    var wholePath = path(whole[1]);
+    b.hole(function (stack) { return smartAttribute(lookup(stack, wholePath)); });
     return;
   }
 
@@ -345,7 +462,8 @@ function compileAttribute(name, value, b) {
   var last = 0;
   value.replace(TAG, function (tagText, tagName, index) {
     b.add(escapeAttribute(value.slice(last, index)));
-    b.hole(function (stack) { return text(lookup(stack, tagName)); });
+    var tagPath = path(tagName);
+    b.hole(function (stack) { return text(lookup(stack, tagPath)); });
     last = index + tagText.length;
     return tagText;
   });
@@ -379,12 +497,28 @@ export function compileTemplate(templateElement, find) {
     if (!target.__jxRendered) {
       target.replaceChildren();
       target.__jxRendered = true;
+      target.__jxTouched = new Set();
+      var touch = function (event) { target.__jxTouched.add(event.target); };
+      target.addEventListener("input", touch, true);
+      target.addEventListener("change", touch, true);
     }
+
+    // Reuse what's unchanged from the last view. If nothing changed at all, and
+    // no control was touched, there's nothing to do.
+    var sameTemplate = target.__jxDrawnWith === template;
+    if (sameTemplate) data = share(target.__jxDrawn, data);
+    if (sameTemplate && data === target.__jxDrawn && !target.__jxTouched.size) return;
+
     keepTyping = !!keepInputs;
+    touched = target.__jxTouched;
     try {
       render(template([data]), target);
     } finally {
       keepTyping = false;
+      touched.clear();
+      touched = new Set();
     }
+    target.__jxDrawn = data;
+    target.__jxDrawnWith = template;
   };
 }

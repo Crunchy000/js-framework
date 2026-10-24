@@ -6,7 +6,7 @@
   <title>jsonx benchmark</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/styles/webawesome.css">
   <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
-  <script type="module" src="../../jsonx.js?v=10"></script>
+  <script type="module" src="../../jsonx.js?v=11"></script>
   <!-- React 18.3.1, production builds, for comparison -->
   <script src="../../vendor/react/react.production.min.js"></script>
   <script src="../../vendor/react/react-dom.production.min.js"></script>
@@ -200,17 +200,20 @@
     }
 
     var renderers = [jsonxRender, reactRender, htmxRender, morphRender, innerHTMLRender];
+    var names = ["jsonx", "react", "htmx", "morph", "innerHTML"];
+    // benchmark/?only=jsonx,react runs just those (the others show as —).
+    var only = new URLSearchParams(location.search).get("only");
 
     // One table row: the fastest time is shown in green.
     function addRow(tbody, n, times) {
-      var best = Math.min.apply(null, times);
+      var best = Math.min.apply(null, times.filter(function (t) { return !isNaN(t); }));
       var tr = document.createElement("tr");
       var first = document.createElement("td");
       first.textContent = n;
       tr.append(first);
       times.forEach(function (t) {
         var td = document.createElement("td");
-        td.textContent = t.toFixed(1) + " ms";
+        td.textContent = isNaN(t) ? "—" : t.toFixed(1) + " ms";
         if (t === best) td.className = "faster";
         tr.append(td);
       });
@@ -228,13 +231,14 @@
       await customElements.whenDefined("wa-checkbox");
       await customElements.whenDefined("wa-button");
 
-      var sizes = [10, 100, 1000];
+      var sizes = [10, 100, 1000, 10000];
       for (var i = 0; i < sizes.length; i++) {
         var n = sizes[i];
-        var runs = n >= 1000 ? 3 : 7;
+        var runs = n >= 10000 ? 1 : n >= 1000 ? 3 : 7;
         status.textContent = "Drawing " + n + " todos…";
         var results = [];
         for (var r = 0; r < renderers.length; r++) {
+          if (only && only.split(",").indexOf(names[r]) === -1) { results.push({ tick: NaN }); continue; }
           await measure(n, renderers[r], 1); // warm-up: compile templates, warm the JIT
           results.push(await measure(n, renderers[r], runs));
         }

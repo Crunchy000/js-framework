@@ -109,7 +109,11 @@ Reuse a template inside another with `<template jx-use="#todo-item"></template>`
 
 That's the whole language. There's no other logic on purpose: if the page needs to know something, like which filter button is highlighted, the server works it out and sends it.
 
-**How it's fast.** jsonx reads each template once and turns it into a [Lit](https://lit.dev) template, with a "hole" wherever a value goes. On every update Lit only touches the holes whose values changed: no HTML parsing, no comparing trees, and unchanged elements (including web components, focus and scroll position) are left completely alone. See [the benchmark](examples/benchmark/).
+**How it's fast.** jsonx reads each template once and turns it into a [Lit](https://lit.dev) template, with a "hole" wherever a value goes. On every update Lit only touches the holes whose values changed: no HTML parsing, no comparing trees, and unchanged elements (including web components, focus and scroll position) are left completely alone.
+
+It also skips work that can't change anything. Each new view is compared with the last one, and the parts that are equal reuse the old objects. A list row whose item didn't change, and whose names from outside the item (like `{{filter}}`) didn't either, is skipped without looking at its holes. A view that didn't change at all draws nothing. The one exception is a form control someone has typed in or clicked since the last draw: its row is always drawn, so the control shows the view again. See [the benchmark](examples/benchmark/).
+
+If you call `jsonx.render(el, data)` yourself, jsonx copies `data` first, so changing your object later and passing it again still works.
 
 
 ### A template that loads itself

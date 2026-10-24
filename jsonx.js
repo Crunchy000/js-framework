@@ -18,7 +18,7 @@
  *
  *   <script type="module" src="jsonx.js"></script>
  */
-import { compileTemplate } from "./templates.js?v=10";
+import { compileTemplate } from "./templates.js?v=11";
 
 var METHODS = ["get", "post", "put", "patch", "delete"];
 var SELECTOR = METHODS.map(function (m) { return "[jx-" + m + "]"; }).join(",") + ",[jx-region],[jx-query]";
@@ -591,6 +591,10 @@ function fire(el, name, detail) {
 // 4. Start up
 // ---------------------------------------------------------------------------
 
+function copy(data) {
+  try { return structuredClone(data); } catch (e) { return data; }
+}
+
 // A small public API, for page code and web components.
 // Set jsonx.headers to add headers to every request (see issueRequest).
 // Page code that runs before jsonx can set window.jsonx = { headers: ... } first.
@@ -598,7 +602,9 @@ var api = Object.assign({ headers: null, graphql: "/graphql" }, window.jsonx, {
   process: process,
   request: function (el) { return issueRequest(el); },
   reload: reload,
-  render: function (el, data) { render(el, data); }
+  // A copy, because jsonx compares each view with the last one drawn: if your
+  // code changed the same object and passed it again, it would look unchanged.
+  render: function (el, data) { render(el, copy(data)); }
 });
 window.jsonx = api;
 
