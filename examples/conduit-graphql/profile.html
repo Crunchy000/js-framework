@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en" class="wa-cloak">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Profile — Conduit GraphQL</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/styles/webawesome.css">
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
+  <link rel="stylesheet" href="style.css?v=7">
+
+  <!-- Pretend servers: the RealWorld REST API, and a GraphQL server in front of it.
+       In real life they run on a server, and these two lines go away. -->
+  <script src="../conduit/mock-api.js?v=7"></script>
+  <script type="module" src="graphql-server.js?v=7"></script>
+
+  <script src="nav.js?v=7"></script>
+  <script type="module" src="../../jsonx.js?v=7"></script>
+  <script>if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("wa-dark");</script>
+</head>
+<body>
+  <conduit-nav></conduit-nav>
+
+  <script type="text/graphql" id="query">
+    query Profile($username: String!, $filter: ProfileArticles, $offset: Int) { ...View }
+  </script>
+  <script type="text/graphql" id="view">
+    fragment View on Query {
+      viewer { username }
+      profile(username: $username) {
+        username bio image isViewer viewerIsFollowing
+        articles(filter: $filter, offset: $offset) {
+          filter offset
+          pages { number offset current }
+          nodes { ...Preview }
+        }
+      }
+    }
+  </script>
+  <script type="text/graphql" id="favorite">
+    mutation Favorite($slug: String!, $username: String!, $filter: ProfileArticles, $offset: Int) {
+      favoriteArticle(slug: $slug) { query { ...View } }
+    }
+  </script>
+  <script type="text/graphql" id="unfavorite">
+    mutation Unfavorite($slug: String!, $username: String!, $filter: ProfileArticles, $offset: Int) {
+      unfavoriteArticle(slug: $slug) { query { ...View } }
+    }
+  </script>
+  <script type="text/graphql" id="follow">
+    mutation Follow($username: String!, $filter: ProfileArticles, $offset: Int) { followProfile(username: $username) { query { ...View } } }
+    mutation Unfollow($username: String!, $filter: ProfileArticles, $offset: Int) { unfollowProfile(username: $username) { query { ...View } } }
+  </script>
+
+  <!-- profile.html?username=ada -->
+  <div jx-query="#query, #view, #preview-fields" jx-vals='{"username": ":username"}'>
+    <template>
+      <input type="hidden" name="username" value="{{profile.username}}">
+      <input type="hidden" name="offset" value="{{profile.articles.offset}}">
+
+      <div id="profile" class="profile-banner">
+        <wa-avatar image="{{profile.image}}" label="{{profile.username}}"></wa-avatar>
+        <h1>{{profile.username}}</h1>
+        <p>{{profile.bio}}</p>
+        <wa-button jx-if="profile.isViewer" size="s" appearance="outlined" href="settings.html"><wa-icon slot="start" name="gear"></wa-icon>Edit profile settings</wa-button>
+        <span jx-if="!profile.isViewer">
+          <wa-button jx-if="profile.viewerIsFollowing" size="s" jx-query="#follow, #view, #preview-fields" jx-operation="Unfollow"
+                     jx-select="unfollowProfile.query"><wa-icon slot="start" name="minus"></wa-icon>Unfollow {{profile.username}}</wa-button>
+          <wa-button jx-if="!profile.viewerIsFollowing" size="s" appearance="outlined" jx-query="#follow, #view, #preview-fields" jx-operation="Follow"
+                     jx-select="followProfile.query"><wa-icon slot="start" name="plus"></wa-icon>Follow {{profile.username}}</wa-button>
+        </span>
+      </div>
+
+      <main class="narrow" style="padding-top: var(--wa-space-l)">
+        <wa-callout jx-if="error" variant="warning">{{error}}</wa-callout>
+        <wa-radio-group class="tabs-group" name="filter" orientation="horizontal" value="{{profile.articles.filter}}"
+                        jx-query="#query, #view, #preview-fields" jx-vals='{"offset": 0}'>
+          <wa-radio appearance="button" value="WRITTEN">My articles</wa-radio>
+          <wa-radio appearance="button" value="FAVORITED">Favorited articles</wa-radio>
+        </wa-radio-group>
+        <div jx-each="profile"><template jx-use="#previews"></template></div>
+      </main>
+    </template>
+  </div>
+
+  <!-- Article previews, shared by the page's template. The heart buttons run this
+       page's #favorite or #unfavorite mutation, which asks for the page's #view again. -->
+  <template id="previews">
+    <p class="empty" jx-if="!articles.nodes">No articles are here... yet.</p>
+    <article class="preview" jx-each="articles.nodes">
+      <div class="wa-split">
+        <a class="author" href="profile.html?username={{author.username}}">
+          <wa-avatar image="{{author.image}}" label="{{author.username}}"></wa-avatar>
+          <span><strong>{{author.username}}</strong><br><small>{{createdAt}}</small></span>
+        </a>
+        <wa-button jx-if="viewerHasFavorited" size="s" variant="success"
+                   jx-query="#unfavorite, #view, #preview-fields" jx-select="unfavoriteArticle.query" jx-vals='{"slug": "{{slug}}"}'>
+          <wa-icon slot="start" name="heart"></wa-icon>{{favoritesCount}}</wa-button>
+        <wa-button jx-if="!viewerHasFavorited" size="s" variant="success" appearance="outlined"
+                   jx-query="#favorite, #view, #preview-fields" jx-select="favoriteArticle.query" jx-vals='{"slug": "{{slug}}"}'>
+          <wa-icon slot="start" name="heart" variant="regular"></wa-icon>{{favoritesCount}}</wa-button>
+      </div>
+      <a class="title" href="article.html?slug={{slug}}">
+        <h2>{{title}}</h2>
+        <p>{{description}}</p>
+      </a>
+      <div class="wa-split">
+        <small>Read more...</small>
+        <div class="wa-cluster wa-gap-2xs"><wa-tag size="s" appearance="outlined" jx-each="tagList">{{.}}</wa-tag></div>
+      </div>
+    </article>
+    <div class="pages wa-cluster wa-gap-2xs" jx-if="articles.pages">
+      <wa-button jx-each="articles.pages" size="s" appearance="outlined" class:current="{{current}}"
+                 jx-query="#query, #view, #preview-fields" jx-vals='{"offset": {{offset}}}'>{{number}}</wa-button>
+    </div>
+  </template>
+
+  <script type="text/graphql" id="preview-fields">
+    fragment Preview on Article {
+      slug title description tagList favoritesCount viewerHasFavorited
+      createdAt(format: LONG)
+      author { username image }
+    }
+  </script>
+</body>
+</html>

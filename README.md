@@ -22,6 +22,7 @@ The card loads `api/todos` when the page opens and draws it with the template in
 - [Todo app](https://crunchy000.github.io/js-framework/examples/todo/), built with [Web Awesome](https://webawesome.com) components
 - [Feature tour](https://crunchy000.github.io/js-framework/examples/basic/), every attribute plus three web component patterns
 - [Conduit](https://crunchy000.github.io/js-framework/examples/conduit/), the [RealWorld](https://github.com/realworld-apps/realworld) Medium clone: feeds, articles, comments, profiles and sign-in, against an API that isn't shaped for the page
+- [Conduit on GraphQL](https://crunchy000.github.io/js-framework/examples/conduit-graphql/), the same app with no view API: each page sends its own GraphQL query
 - [Beacon](https://crunchy000.github.io/js-framework/examples/marketing/), a marketing site whose pages are built from a Contentful-style CMS
 - [Benchmark](https://crunchy000.github.io/js-framework/examples/benchmark/), drawing and updating 10, 100 and 1,000 todos
 
@@ -36,6 +37,38 @@ An element with a template is a **region**. The template can sit inside it, as a
 3. **A region is a form without the `<form>`.** Every request from inside it sends the region's named controls, so a hidden `<input name="filter">` tells the server the current filter on every click.
 
 Errors are part of the view too: if the title is empty, the todo server sends the same view with an `error` field, and the template shows it with `jx-if="error"`. Keep half-typed text in the view as well (the todo API echoes the title back as `draft`), so the server's view is always the truth.
+
+## GraphQL
+
+GraphQL is the other way to get page-shaped data without a view API: the page asks for exactly what it shows. [Conduit on GraphQL](examples/conduit-graphql/) works this way.
+
+```html
+<script type="text/graphql" id="query">
+  query Article($slug: String!) { ...View }
+</script>
+<script type="text/graphql" id="view">
+  fragment View on Query {
+    viewer { username }
+    article(slug: $slug) { title favoritesCount viewerHasFavorited createdAt(format: LONG) }
+  }
+</script>
+<script type="text/graphql" id="favorite">
+  mutation Favorite($slug: String!) { favoriteArticle(slug: $slug) { query { ...View } } }
+</script>
+
+<div jx-query="#query, #view" jx-vals='{"slug": ":slug"}'>
+  <template>
+    <input type="hidden" name="slug" value="{{article.slug}}">
+    <h1>{{article.title}}</h1>
+    <wa-button jx-query="#favorite, #view" jx-select="favoriteArticle.query">Favorite ({{article.favoritesCount}})</wa-button>
+  </template>
+</div>
+```
+
+- **The region's controls are the variables.** Form values are text, so jsonx reads the query's `$offset: Int` declarations and converts `"10"` to `10` and `"true"` to `true`.
+- **A mutation can ask for the view again.** If every mutation's answer includes `query` (the whole Query type), a button can re-select the page's fragment in the same round trip, and `jx-select` draws just that part. Each action is one request, and the region redraws like it does with a view API.
+- **GraphQL errors** (`{ errors: [...] }`, sent with status 200) are shown like any other error.
+- **The schema still matters.** Fields clients usually want, like `viewerHasFavorited`, `createdAt(format: LONG)` and page buttons on lists, keep templates logic-free. Lists also echo their arguments (`scope`, `offset`), so a tab or hidden input can show what the server used.
 
 ## Templates
 
@@ -85,6 +118,7 @@ Serve the folder with any static server, for example `npx serve .`, and open `ex
 | `examples/todo/` | The Web Awesome todo app, with its mock API. |
 | `examples/basic/` | The feature tour, with three demo web components in `components.js`. |
 | `examples/conduit/` | The RealWorld app: one HTML file per page and no page script. `view-api.js` is a pretend backend-for-frontend that turns the RealWorld API (`mock-api.js`) into page-shaped views. |
+| `examples/conduit-graphql/` | Conduit again, talking GraphQL. Queries live in the pages; `graphql-server.js` is a pretend GraphQL server (the real graphql-js, in `vendor/`) over the RealWorld mock. |
 | `examples/marketing/` | A marketing site in one HTML file. `cms-api.js` is a pretend Contentful (entries, links, rich text) and `view-api.js` turns its entries into page sections. |
 | `examples/benchmark/` | Times jsonx against rebuilding the list with `innerHTML`. |
 | `index.html` | The GitHub Pages home page. |
@@ -101,6 +135,9 @@ Serve the folder with any static server, for example `npx serve .`, and open `ex
 | `jx-swap` | `prop:<name>` sets a property on the target instead of drawing a template (good for components that take data). `none` calls the API and draws nothing. | draw the template |
 | `jx-include` | Also send the values of other elements, e.g. `jx-include="#filter"`. | none |
 | `jx-vals` | Extra JSON to send, e.g. `jx-vals='{"filter": "{{name}}"}'`. | none |
+| `jx-query` | Makes it a GraphQL request: the query comes from these `<script type="text/graphql">` elements (several, for fragments), and the values become its variables. Sent to `jsonx.graphql`, `/graphql` by default. | |
+| `jx-operation` | Which operation to run, when the script holds several. | |
+| `jx-select` | Draw only part of the answer, e.g. `jx-select="favoriteArticle.query"`. | the whole answer |
 | `jx-then` | After the request works, go to this page. `:name` is filled from the server's answer, e.g. `jx-then="article.html?slug=:article.slug"`. | stay |
 | `jx-refresh` | After the request works, reload these regions the way they were last loaded, e.g. `jx-refresh="#comments"` or `jx-refresh="closest [jx-template]"`. For APIs that answer with one thing instead of the whole view. | none |
 | `jx-region` | Makes an element a region with no URL: it draws its template once, with an empty view. Good for a sign-in form. | |

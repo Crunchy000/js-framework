@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en" class="wa-cloak">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign up — Conduit GraphQL</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/styles/webawesome.css">
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
+  <link rel="stylesheet" href="style.css?v=7">
+
+  <!-- Pretend servers: the RealWorld REST API, and a GraphQL server in front of it.
+       In real life they run on a server, and these two lines go away. -->
+  <script src="../conduit/mock-api.js?v=7"></script>
+  <script type="module" src="graphql-server.js?v=7"></script>
+
+  <script src="nav.js?v=7"></script>
+  <script type="module" src="../../jsonx.js?v=7"></script>
+  <script>if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("wa-dark");</script>
+</head>
+<body>
+  <conduit-nav></conduit-nav>
+
+  <script type="text/graphql" id="mutation">
+    mutation Register($username: String, $email: String, $password: String) { register(username: $username, email: $email, password: $password) { user { username } } }
+  </script>
+
+  <main class="narrow">
+    <h1>Sign up</h1>
+    <p class="switch"><a href="login.html">Have an account?</a></p>
+    <div class="wa-stack" jx-region>
+      <template>
+        <wa-callout jx-if="error" variant="danger">{{error}}</wa-callout>
+        <wa-input name="username" placeholder="Username" size="l" autofocus></wa-input>
+        <wa-input name="email" type="email" placeholder="Email" size="l"></wa-input>
+        <wa-input name="password" type="password" placeholder="Password" size="l" password-toggle></wa-input>
+        <div><wa-button variant="success" size="l" jx-query="#mutation" jx-swap="none" jx-then="index.html">Sign up</wa-button></div>
+      </template>
+    </div>
+  </main>
+</body>
+</html>

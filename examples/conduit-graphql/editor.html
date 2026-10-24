@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en" class="wa-cloak">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Editor — Conduit GraphQL</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/styles/webawesome.css">
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
+  <link rel="stylesheet" href="style.css?v=7">
+
+  <!-- Pretend servers: the RealWorld REST API, and a GraphQL server in front of it.
+       In real life they run on a server, and these two lines go away. -->
+  <script src="../conduit/mock-api.js?v=7"></script>
+  <script type="module" src="graphql-server.js?v=7"></script>
+
+  <script src="nav.js?v=7"></script>
+  <script type="module" src="../../jsonx.js?v=7"></script>
+  <script>if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("wa-dark");</script>
+</head>
+<body>
+  <conduit-nav></conduit-nav>
+
+  <script type="text/graphql" id="query">
+    query Editor($slug: String) {
+      viewer { username }
+      article(slug: $slug) { slug title description body tags }
+    }
+  </script>
+  <script type="text/graphql" id="save">
+    mutation Create($title: String, $description: String, $body: String, $tags: String) {
+      createArticle(title: $title, description: $description, body: $body, tags: $tags) { article { slug } }
+    }
+    mutation Update($slug: String!, $title: String, $description: String, $body: String, $tags: String) {
+      updateArticle(slug: $slug, title: $title, description: $description, body: $body, tags: $tags) { article { slug } }
+    }
+  </script>
+
+  <main class="narrow">
+    <!-- editor.html?slug=hello edits that article. With no slug, article is null: a new one. -->
+    <div class="wa-stack" jx-query="#query" jx-vals='{"slug": ":slug"}'>
+      <template>
+        <p jx-if="!viewer" class="empty"><a href="login.html">Sign in</a> to write an article.</p>
+        <div jx-if="viewer" class="wa-stack">
+          <wa-callout jx-if="error" variant="danger">{{error}}</wa-callout>
+          <input type="hidden" name="slug" value="{{article.slug}}">
+          <wa-input name="title" placeholder="Article title" size="l" value="{{article.title}}"></wa-input>
+          <wa-input name="description" placeholder="What's this article about?" value="{{article.description}}"></wa-input>
+          <wa-textarea name="body" placeholder="Write your article (paragraphs are separated by a blank line)" rows="10" value="{{article.body}}"></wa-textarea>
+          <wa-input name="tags" placeholder="Enter tags, separated by commas" value="{{article.tags}}"></wa-input>
+          <div>
+            <wa-button jx-if="!article" variant="success" jx-query="#save" jx-operation="Create" jx-swap="none"
+                       jx-then="article.html?slug=:createArticle.article.slug">Publish article</wa-button>
+            <wa-button jx-if="article" variant="success" jx-query="#save" jx-operation="Update" jx-swap="none"
+                       jx-then="article.html?slug=:updateArticle.article.slug">Update article</wa-button>
+          </div>
+        </div>
+      </template>
+    </div>
+  </main>
+</body>
+</html>

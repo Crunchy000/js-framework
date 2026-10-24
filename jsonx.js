@@ -18,10 +18,10 @@
  *
  *   <script type="module" src="jsonx.js"></script>
  */
-import { compileTemplate } from "./templates.js?v=6";
+import { compileTemplate } from "./templates.js?v=7";
 
 var METHODS = ["get", "post", "put", "patch", "delete"];
-var SELECTOR = METHODS.map(function (m) { return "[jx-" + m + "]"; }).join(",") + ",[jx-region]";
+var SELECTOR = METHODS.map(function (m) { return "[jx-" + m + "]"; }).join(",") + ",[jx-region],[jx-query]";
 
 // Remember which elements already have listeners, so we never attach twice.
 var processed = new WeakSet();
@@ -82,6 +82,13 @@ function fillFromAddress(el) {
       return before + encodeURIComponent(addressValues.get(name) || "");
     }));
   });
+  // jx-vals='{"slug": ":slug"}' works the same way.
+  var vals = el.getAttribute("jx-vals");
+  if (vals && vals.indexOf('":') !== -1) {
+    el.setAttribute("jx-vals", vals.replace(/":(\w+)"/g, function (all, name) {
+      return JSON.stringify(addressValues.get(name));
+    }));
+  }
 }
 
 function attachTriggers(el) {
@@ -201,6 +208,8 @@ function getMethodAndUrl(el) {
     var url = el.getAttribute("jx-" + METHODS[i]);
     if (url !== null) return { method: METHODS[i].toUpperCase(), url: url };
   }
+  // A GraphQL query needs no URL: it goes to jsonx.graphql ("/graphql" unless you change it).
+  if (el.hasAttribute("jx-query")) return { method: "POST", url: api.graphql };
 }
 
 // A "region" is the nearest element (the element itself, or one of its parents)
@@ -280,8 +289,24 @@ function issueRequest(el, override) {
   var url = info.url;
   var options = { method: info.method, headers: { Accept: "application/json" } };
 
-  // GET and DELETE put values in the query string; the others send a JSON body.
-  if (info.method === "GET" || info.method === "DELETE") {
+  // jx-query="#home-query" makes it a GraphQL request: the query comes from that
+  // <script type="text/graphql"> (or several, for fragments), and the values
+  // become its variables.
+  var graphql = !override && el.getAttribute("jx-query");
+  if (graphql) {
+    var text = graphql.split(",").map(function (selector) {
+      var script = el.getRootNode().querySelector(selector.trim()) || document.querySelector(selector.trim());
+      if (!script) throw new Error('[jsonx] jx-query "' + selector + '" matched nothing');
+      return script.textContent;
+    }).join("\n");
+    options.method = "POST";
+    options.headers["Content-Type"] = "application/json";
+    var request = { query: text, variables: typedVariables(nest(values), text) };
+    // jx-operation="AddComment" picks one operation, when the script holds several.
+    if (el.hasAttribute("jx-operation")) request.operationName = el.getAttribute("jx-operation");
+    options.body = JSON.stringify(request);
+  } else if (info.method === "GET" || info.method === "DELETE") {
+    // GET and DELETE put values in the query string; the others send a JSON body.
     var query = new URLSearchParams(values).toString();
     if (query) url += (url.indexOf("?") === -1 ? "?" : "&") + query;
   } else {
@@ -307,6 +332,14 @@ function issueRequest(el, override) {
       return response.status === 204 ? null : response.json();
     })
     .then(function (data) {
+      // GraphQL answers { data, errors } with status 200, even when it failed.
+      if (graphql) {
+        if (data.errors && data.errors.length) throw problem(data, "GraphQL request");
+        data = data.data;
+      }
+      // jx-select="favoriteArticle.query" draws just that part of the answer.
+      var select = el.getAttribute("jx-select");
+      if (select) data = select.split(".").reduce(function (v, key) { return v == null ? v : v[key]; }, data);
       render(el, data, info.method === "GET" ? url : null);
       // jx-refresh="#comments": once this worked, reload those regions the way
       // they were last loaded. For APIs that answer with one thing, not the view.
@@ -335,15 +368,35 @@ function issueRequest(el, override) {
 // { "error": "Title is required" }, that message is used.
 function failed(response, what) {
   return response.json().catch(function () { return null; }).then(function (body) {
-    var errors = errorList(body);
-    var message = (body && (body.error || body.message)) ||
-      (errors.length ? errors.map(function (e) { return e.text; }).join(", ") : what + " failed with status " + response.status);
-    var error = new Error(message);
-    error.status = response.status;
-    error.data = body;
-    error.errors = errors;
-    throw error;
+    throw problem(body, what + " failed with status " + response.status, response.status);
   });
+}
+
+function problem(body, fallback, status) {
+  var errors = errorList(body);
+  var message = (body && (body.error || body.message)) ||
+    (errors.length ? errors.map(function (e) { return e.text; }).join(", ") : fallback);
+  var error = new Error(message);
+  error.status = status || 200;
+  error.data = body;
+  error.errors = errors;
+  return error;
+}
+
+// Form values are always text, but GraphQL variables have types. This reads the
+// query's "$offset: Int" declarations and converts: "10" -> 10, "true" -> true,
+// and "" -> null for numbers, booleans and anything that isn't a String.
+function typedVariables(values, query) {
+  var types = {};
+  query.replace(/\$(\w+)\s*:\s*\[?\s*(\w+)/g, function (all, name, type) { types[name] = type; });
+  Object.keys(values).forEach(function (name) {
+    var value = values[name], type = types[name];
+    if (typeof value !== "string" || !type || type === "String") return;
+    if (value === "") values[name] = null;
+    else if (type === "Int" || type === "Float") values[name] = Number(value);
+    else if (type === "Boolean") values[name] = value === "true";
+  });
+  return values;
 }
 
 // Many APIs (RealWorld, Rails, ...) send errors per field:
@@ -354,7 +407,12 @@ function errorList(body) {
   var errors = body && body.errors;
   if (!errors || typeof errors !== "object") return [];
   if (Array.isArray(errors)) {
-    return errors.map(function (e) { var m = typeof e === "string" ? e : e.message; return { field: "", message: m, text: m }; });
+    // A list of messages, or GraphQL's errors (with extensions.field, if any).
+    return errors.map(function (e) {
+      var message = typeof e === "string" ? e : e.message;
+      var field = (e.extensions && e.extensions.field) || "";
+      return { field: field, message: message, text: field ? field + " " + message : message };
+    });
   }
   var list = [];
   Object.keys(errors).forEach(function (field) {
@@ -485,7 +543,7 @@ function fire(el, name, detail) {
 // A small public API, for page code and web components.
 // Set jsonx.headers to add headers to every request (see issueRequest).
 // Page code that runs before jsonx can set window.jsonx = { headers: ... } first.
-var api = Object.assign({ headers: null }, window.jsonx, {
+var api = Object.assign({ headers: null, graphql: "/graphql" }, window.jsonx, {
   process: process,
   request: function (el) { return issueRequest(el); },
   reload: reload,

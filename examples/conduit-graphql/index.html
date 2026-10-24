@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en" class="wa-cloak">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Home — Conduit GraphQL</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/styles/webawesome.css">
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
+  <link rel="stylesheet" href="style.css?v=7">
+
+  <!-- Pretend servers: the RealWorld REST API, and a GraphQL server in front of it.
+       In real life they run on a server, and these two lines go away. -->
+  <script src="../conduit/mock-api.js?v=7"></script>
+  <script type="module" src="graphql-server.js?v=7"></script>
+
+  <script src="nav.js?v=7"></script>
+  <script type="module" src="../../jsonx.js?v=7"></script>
+  <script>if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("wa-dark");</script>
+</head>
+<body>
+  <conduit-nav></conduit-nav>
+  <header class="banner">
+    <h1>conduit</h1>
+    <p>A place to share your knowledge. This copy talks GraphQL.</p>
+  </header>
+
+  <!-- The page asks for exactly what it shows. Variables come from the region's
+       controls (the tabs, and the hidden tag and offset), like a form. -->
+  <script type="text/graphql" id="query">
+    query Home($scope: ArticleScope, $tag: String, $offset: Int) { ...View }
+  </script>
+  <script type="text/graphql" id="view">
+    fragment View on Query {
+      viewer { username }
+      tag(name: $tag) { name }
+      tags
+      articles(scope: $scope, tag: $tag, offset: $offset, limit: 10) {
+        scope offset
+        pages { number offset current }
+        nodes { ...Preview }
+      }
+    }
+  </script>
+  <!-- Every mutation answers with `query`, so it can ask for the same view again. -->
+  <script type="text/graphql" id="favorite">
+    mutation Favorite($slug: String!, $scope: ArticleScope, $tag: String, $offset: Int) {
+      favoriteArticle(slug: $slug) { query { ...View } }
+    }
+  </script>
+  <script type="text/graphql" id="unfavorite">
+    mutation Unfavorite($slug: String!, $scope: ArticleScope, $tag: String, $offset: Int) {
+      unfavoriteArticle(slug: $slug) { query { ...View } }
+    }
+  </script>
+
+  <div class="layout" jx-query="#query, #view, #preview-fields">
+    <p class="empty">Loading articles...</p>
+    <template>
+      <input type="hidden" name="tag" value="{{tag.name}}">
+      <input type="hidden" name="offset" value="{{articles.offset}}">
+
+      <main>
+        <!-- The tabs are a radio group named "scope": changing it reloads the list,
+             and value="{{articles.scope}}" shows the one the server used. -->
+        <wa-radio-group class="tabs-group" name="scope" orientation="horizontal" value="{{articles.scope}}"
+                        jx-query="#query, #view, #preview-fields" jx-vals='{"offset": 0}'>
+          <wa-radio jx-if="viewer" appearance="button" value="FEED">Your feed</wa-radio>
+          <wa-radio appearance="button" value="GLOBAL">Global feed</wa-radio>
+          <wa-radio jx-if="tag" appearance="button" value="TAG"># {{tag.name}}</wa-radio>
+        </wa-radio-group>
+        <wa-callout jx-if="error" variant="warning">{{error}} <a href="login.html">Sign in</a></wa-callout>
+        <template jx-use="#previews"></template>
+      </main>
+
+      <aside>
+        <wa-card>
+          <h2>Popular tags</h2>
+          <div class="wa-cluster wa-gap-2xs">
+            <a jx-each="tags" href="#" jx-query="#query, #view, #preview-fields"
+               jx-vals='{"tag": "{{.}}", "scope": "TAG", "offset": 0}'><wa-tag size="s" pill>{{.}}</wa-tag></a>
+          </div>
+        </wa-card>
+      </aside>
+    </template>
+  </div>
+
+  <!-- Article previews, shared by the page's template. The heart buttons run this
+       page's #favorite or #unfavorite mutation, which asks for the page's #view again. -->
+  <template id="previews">
+    <p class="empty" jx-if="!articles.nodes">No articles are here... yet.</p>
+    <article class="preview" jx-each="articles.nodes">
+      <div class="wa-split">
+        <a class="author" href="profile.html?username={{author.username}}">
+          <wa-avatar image="{{author.image}}" label="{{author.username}}"></wa-avatar>
+          <span><strong>{{author.username}}</strong><br><small>{{createdAt}}</small></span>
+        </a>
+        <wa-button jx-if="viewerHasFavorited" size="s" variant="success"
+                   jx-query="#unfavorite, #view, #preview-fields" jx-select="unfavoriteArticle.query" jx-vals='{"slug": "{{slug}}"}'>
+          <wa-icon slot="start" name="heart"></wa-icon>{{favoritesCount}}</wa-button>
+        <wa-button jx-if="!viewerHasFavorited" size="s" variant="success" appearance="outlined"
+                   jx-query="#favorite, #view, #preview-fields" jx-select="favoriteArticle.query" jx-vals='{"slug": "{{slug}}"}'>
+          <wa-icon slot="start" name="heart" variant="regular"></wa-icon>{{favoritesCount}}</wa-button>
+      </div>
+      <a class="title" href="article.html?slug={{slug}}">
+        <h2>{{title}}</h2>
+        <p>{{description}}</p>
+      </a>
+      <div class="wa-split">
+        <small>Read more...</small>
+        <div class="wa-cluster wa-gap-2xs"><wa-tag size="s" appearance="outlined" jx-each="tagList">{{.}}</wa-tag></div>
+      </div>
+    </article>
+    <div class="pages wa-cluster wa-gap-2xs" jx-if="articles.pages">
+      <wa-button jx-each="articles.pages" size="s" appearance="outlined" class:current="{{current}}"
+                 jx-query="#query, #view, #preview-fields" jx-vals='{"offset": {{offset}}}'>{{number}}</wa-button>
+    </div>
+  </template>
+
+  <script type="text/graphql" id="preview-fields">
+    fragment Preview on Article {
+      slug title description tagList favoritesCount viewerHasFavorited
+      createdAt(format: LONG)
+      author { username image }
+    }
+  </script>
+</body>
+</html>

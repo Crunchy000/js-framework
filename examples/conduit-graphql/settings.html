@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en" class="wa-cloak">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Settings — Conduit GraphQL</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/styles/webawesome.css">
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
+  <link rel="stylesheet" href="style.css?v=7">
+
+  <!-- Pretend servers: the RealWorld REST API, and a GraphQL server in front of it.
+       In real life they run on a server, and these two lines go away. -->
+  <script src="../conduit/mock-api.js?v=7"></script>
+  <script type="module" src="graphql-server.js?v=7"></script>
+
+  <script src="nav.js?v=7"></script>
+  <script type="module" src="../../jsonx.js?v=7"></script>
+  <script>if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("wa-dark");</script>
+</head>
+<body>
+  <conduit-nav></conduit-nav>
+
+  <script type="text/graphql" id="query">
+    query Settings { viewer { image username bio email } }
+  </script>
+  <script type="text/graphql" id="actions">
+    mutation Save($image: String, $username: String, $bio: String, $email: String, $password: String) {
+      updateSettings(image: $image, username: $username, bio: $bio, email: $email, password: $password) { user { username } }
+    }
+    mutation SignOut { logout { query { viewer { username } } } }
+  </script>
+
+  <main class="narrow">
+    <h1>Your settings</h1>
+    <div class="wa-stack" style="margin-top: var(--wa-space-l)" jx-query="#query">
+      <template>
+        <p jx-if="!viewer" class="empty"><a href="login.html">Sign in</a> to change your settings.</p>
+        <div jx-if="viewer" class="wa-stack">
+          <wa-callout jx-if="error" variant="danger">{{error}}</wa-callout>
+          <wa-input name="image" placeholder="URL of profile picture" value="{{viewer.image}}"></wa-input>
+          <wa-input name="username" placeholder="Username" size="l" value="{{viewer.username}}"></wa-input>
+          <wa-textarea name="bio" placeholder="Short bio about you" rows="5" value="{{viewer.bio}}"></wa-textarea>
+          <wa-input name="email" type="email" placeholder="Email" size="l" value="{{viewer.email}}"></wa-input>
+          <wa-input name="password" type="password" placeholder="New password (leave empty to keep it)" size="l"></wa-input>
+          <div><wa-button variant="success" size="l" jx-query="#actions" jx-operation="Save" jx-swap="none"
+                          jx-then="profile.html?username=:updateSettings.user.username">Update settings</wa-button></div>
+          <wa-divider></wa-divider>
+          <div><wa-button variant="danger" appearance="outlined" jx-query="#actions" jx-operation="SignOut" jx-swap="none" jx-then="index.html">Or click here to sign out.</wa-button></div>
+        </div>
+      </template>
+    </div>
+  </main>
+</body>
+</html>

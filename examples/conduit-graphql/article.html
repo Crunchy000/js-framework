@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en" class="wa-cloak">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Article — Conduit GraphQL</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/styles/webawesome.css">
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
+  <link rel="stylesheet" href="style.css?v=7">
+
+  <!-- Pretend servers: the RealWorld REST API, and a GraphQL server in front of it.
+       In real life they run on a server, and these two lines go away. -->
+  <script src="../conduit/mock-api.js?v=7"></script>
+  <script type="module" src="graphql-server.js?v=7"></script>
+
+  <script src="nav.js?v=7"></script>
+  <script type="module" src="../../jsonx.js?v=7"></script>
+  <script>if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("wa-dark");</script>
+</head>
+<body>
+  <conduit-nav></conduit-nav>
+
+  <script type="text/graphql" id="query">
+    query Article($slug: String!) { ...View }
+  </script>
+  <script type="text/graphql" id="view">
+    fragment View on Query {
+      viewer { username }
+      article(slug: $slug) {
+        slug title tagList favoritesCount viewerHasFavorited viewerIsAuthor
+        createdAt(format: LONG)
+        paragraphs { text }
+        author { username image viewerIsFollowing }
+        comments { id body viewerIsAuthor createdAt(format: LONG) author { username image } }
+      }
+    }
+  </script>
+  <script type="text/graphql" id="actions">
+    mutation Favorite($slug: String!) { favoriteArticle(slug: $slug) { query { ...View } } }
+    mutation Unfavorite($slug: String!) { unfavoriteArticle(slug: $slug) { query { ...View } } }
+    mutation Follow($slug: String!, $username: String!) { followProfile(username: $username) { query { ...View } } }
+    mutation Unfollow($slug: String!, $username: String!) { unfollowProfile(username: $username) { query { ...View } } }
+    mutation AddComment($slug: String!, $body: String) { addComment(slug: $slug, body: $body) { query { ...View } } }
+    mutation DeleteComment($slug: String!, $id: ID!) { deleteComment(slug: $slug, id: $id) { query { ...View } } }
+    mutation DeleteArticle($slug: String!) { deleteArticle(slug: $slug) { query { viewer { username } } } }
+  </script>
+
+  <!-- article.html?slug=hello: jsonx fills ":slug" in jx-vals from the address. -->
+  <div id="article" jx-query="#query, #view" jx-vals='{"slug": ":slug"}'>
+    <template>
+      <input type="hidden" name="slug" value="{{article.slug}}">
+      <header class="banner dark">
+        <h1>{{article.title}}</h1>
+        <template jx-use="#meta"></template>
+      </header>
+      <div class="article-body">
+        <p jx-each="article.paragraphs">{{text}}</p>
+        <div class="wa-cluster wa-gap-2xs"><wa-tag size="s" appearance="outlined" jx-each="article.tagList">{{.}}</wa-tag></div>
+        <hr>
+        <template jx-use="#meta"></template>
+      </div>
+
+      <section id="comments" class="comments wa-stack">
+        <wa-callout jx-if="error" variant="danger">{{error}}</wa-callout>
+        <div jx-if="viewer" class="wa-stack wa-gap-s">
+          <wa-textarea name="body" placeholder="Write a comment..." rows="3" value="{{draft}}"></wa-textarea>
+          <div><wa-button variant="success" jx-query="#actions, #view" jx-operation="AddComment" jx-select="addComment.query">Post comment</wa-button></div>
+        </div>
+        <p jx-if="!viewer"><a href="login.html">Sign in</a> or <a href="register.html">sign up</a> to add comments on this article.</p>
+        <wa-card jx-each="article.comments">
+          <p>{{body}}</p>
+          <div slot="footer" class="wa-split">
+            <a class="author" href="profile.html?username={{author.username}}">
+              <wa-avatar image="{{author.image}}" label="{{author.username}}" style="--size: 1.5rem"></wa-avatar>
+              <strong>{{author.username}}</strong> <small>{{createdAt}}</small>
+            </a>
+            <wa-button jx-if="viewerIsAuthor" size="s" appearance="plain" variant="danger" label="Delete comment"
+                       jx-query="#actions, #view" jx-operation="DeleteComment" jx-select="deleteComment.query"
+                       jx-vals='{"id": "{{id}}"}'><wa-icon name="trash"></wa-icon></wa-button>
+          </div>
+        </wa-card>
+      </section>
+    </template>
+  </div>
+
+  <template id="meta">
+    <div class="meta wa-cluster">
+      <a class="author" href="profile.html?username={{article.author.username}}">
+        <wa-avatar image="{{article.author.image}}" label="{{article.author.username}}"></wa-avatar>
+        <span><strong>{{article.author.username}}</strong><br><small>{{article.createdAt}}</small></span>
+      </a>
+      <div class="wa-cluster wa-gap-xs" jx-if="article.viewerIsAuthor">
+        <wa-button size="s" appearance="outlined" href="editor.html?slug={{article.slug}}"><wa-icon slot="start" name="pen"></wa-icon>Edit article</wa-button>
+        <wa-button size="s" variant="danger" appearance="outlined" jx-query="#actions, #view" jx-operation="DeleteArticle"
+                   jx-swap="none" jx-then="index.html"><wa-icon slot="start" name="trash"></wa-icon>Delete article</wa-button>
+      </div>
+      <div class="wa-cluster wa-gap-xs" jx-if="!article.viewerIsAuthor">
+        <wa-button jx-if="article.author.viewerIsFollowing" size="s" jx-query="#actions, #view" jx-operation="Unfollow"
+                   jx-select="unfollowProfile.query" jx-vals='{"username": "{{article.author.username}}"}'>
+          <wa-icon slot="start" name="minus"></wa-icon>Unfollow {{article.author.username}}</wa-button>
+        <wa-button jx-if="!article.author.viewerIsFollowing" size="s" appearance="outlined" jx-query="#actions, #view" jx-operation="Follow"
+                   jx-select="followProfile.query" jx-vals='{"username": "{{article.author.username}}"}'>
+          <wa-icon slot="start" name="plus"></wa-icon>Follow {{article.author.username}}</wa-button>
+        <wa-button jx-if="article.viewerHasFavorited" size="s" variant="success" jx-query="#actions, #view" jx-operation="Unfavorite"
+                   jx-select="unfavoriteArticle.query"><wa-icon slot="start" name="heart"></wa-icon>Unfavorite ({{article.favoritesCount}})</wa-button>
+        <wa-button jx-if="!article.viewerHasFavorited" size="s" variant="success" appearance="outlined" jx-query="#actions, #view" jx-operation="Favorite"
+                   jx-select="favoriteArticle.query"><wa-icon slot="start" name="heart" variant="regular"></wa-icon>Favorite ({{article.favoritesCount}})</wa-button>
+      </div>
+    </div>
+  </template>
+</body>
+</html>
