@@ -33,12 +33,11 @@
   <main class="wa-stack wa-gap-l">
     <header class="wa-stack wa-gap-xs">
       <h1 class="wa-heading-2xl">Rendering benchmark</h1>
-      <p>How long it takes to draw a todo list of Web Awesome components, and to update it after ticking one todo. Each number is the median of several runs, timed from the start of the render until the browser has drawn the next frame. No network is involved.</p>
-      <p>Four ways to draw the same list:</p>
+      <p>How long it takes to update a todo list after ticking one todo. Each number is the median of several runs, timed from the start of the update until the browser has drawn the next frame. No network is involved.</p>
+      <p>Five ways to update the same list:</p>
       <ul>
         <li><strong>jsonx</strong>: a jsonx template, which Lit updates in place.</li>
         <li><strong>React</strong>: React 18.3.1 (production build). Every update re-renders all rows, and React diffs them. Rows have keys.</li>
-        <li><strong>React + memo</strong>: the same, with each row wrapped in <code>React.memo</code>, so unchanged rows are skipped. This is how you'd tune a React list.</li>
         <li><strong>htmx</strong>: htmx 2.0.4 swaps in HTML from the server with its default <code>innerHTML</code> swap. Here the server's HTML is built in the page, so no network is involved.</li>
         <li><strong>htmx + morph</strong>: the same HTML, merged into the live page by idiomorph 0.3.0, which is what htmx's morph extension does. Unchanged elements are kept.</li>
         <li><strong>innerHTML</strong>: the simple approach, with no library. Build the HTML as a string and replace the whole list, every time.</li>
@@ -58,18 +57,10 @@
       <span id="status"></span>
     </div>
 
-    <h2 class="wa-heading-l">First draw (startup)</h2>
+    <h2 class="wa-heading-l">Tick one todo</h2>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Todos</th><th>jsonx</th><th>React</th><th>React + memo</th><th>htmx</th><th>htmx + morph</th><th>innerHTML</th></tr></thead>
-        <tbody id="first-results"></tbody>
-      </table>
-    </div>
-
-    <h2 class="wa-heading-l">Update: tick one todo</h2>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Todos</th><th>jsonx</th><th>React</th><th>React + memo</th><th>htmx</th><th>htmx + morph</th><th>innerHTML</th></tr></thead>
+        <thead><tr><th>Todos</th><th>jsonx</th><th>React</th><th>htmx</th><th>htmx + morph</th><th>innerHTML</th></tr></thead>
         <tbody id="tick-results"></tbody>
       </table>
     </div>
@@ -153,21 +144,15 @@
         h("wa-checkbox", todo.done ? { checked: "" } : null, todo.title),
         h("wa-button", { size: "s", appearance: "plain" }, "Delete"));
     }
-    var MemoRow = React.memo(Row);
     function List(props) {
-      var RowType = props.memo ? MemoRow : Row;
-      return h("ul", null, props.todos.map(function (todo) { return h(RowType, { key: todo.id, todo: todo, plain: props.plain }); }));
+      return h("ul", null, props.todos.map(function (todo) { return h(Row, { key: todo.id, todo: todo, plain: props.plain }); }));
     }
     var roots = new WeakMap();
-    function reactRenderer(memo) {
-      return function (container, data) {
-        if (!roots.has(container)) roots.set(container, ReactDOM.createRoot(container));
-        var root = roots.get(container);
-        ReactDOM.flushSync(function () { root.render(h(List, { todos: data.todos, memo: memo, plain: plain })); });
-      };
+    function reactRender(container, data) {
+      if (!roots.has(container)) roots.set(container, ReactDOM.createRoot(container));
+      var root = roots.get(container);
+      ReactDOM.flushSync(function () { root.render(h(List, { todos: data.todos, plain: plain })); });
     }
-    var reactRender = reactRenderer(false);
-    var reactMemoRender = reactRenderer(true);
 
     function makeView(n) {
       var todos = [];
@@ -199,22 +184,22 @@
     var stage = document.querySelector("#stage");
 
     async function measure(n, renderer, runs) {
-      var first = [], tick = [];
+      var tick = [];
       for (var r = 0; r < runs; r++) {
         var view = makeView(n);
         var container = document.createElement("div");
         container.setAttribute("jx-template", plain ? "#bench-list-plain" : "#bench-list");
         stage.replaceChildren(container);
         await nextFrame();
-        first.push(await time(function () { renderer(container, view); }));
+        await time(function () { renderer(container, view); }); // draw it first, untimed
         var ticked = tickMiddle(view);
         tick.push(await time(function () { renderer(container, ticked); }));
         if (roots.has(container)) { roots.get(container).unmount(); roots.delete(container); }
       }
-      return { first: median(first), tick: median(tick) };
+      return { tick: median(tick) };
     }
 
-    var renderers = [jsonxRender, reactRender, reactMemoRender, htmxRender, morphRender, innerHTMLRender];
+    var renderers = [jsonxRender, reactRender, htmxRender, morphRender, innerHTMLRender];
 
     // One table row: the fastest time is shown in green.
     function addRow(tbody, n, times) {
@@ -235,11 +220,9 @@
     async function run() {
       var button = document.querySelector("#run");
       var status = document.querySelector("#status");
-      var firstResults = document.querySelector("#first-results");
       var tickResults = document.querySelector("#tick-results");
       button.disabled = true;
       plain = document.querySelector("#markup").value === "plain";
-      firstResults.replaceChildren();
       tickResults.replaceChildren();
       window.benchResults = [];
       await customElements.whenDefined("wa-checkbox");
@@ -257,10 +240,8 @@
         }
         window.benchResults.push({
           todos: n,
-          first: results.map(function (x) { return Math.round(x.first * 10) / 10; }),
           tick: results.map(function (x) { return Math.round(x.tick * 10) / 10; })
         });
-        addRow(firstResults, n, results.map(function (x) { return x.first; }));
         addRow(tickResults, n, results.map(function (x) { return x.tick; }));
       }
       stage.replaceChildren();
