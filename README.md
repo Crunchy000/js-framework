@@ -23,6 +23,8 @@ The card loads `api/todos` when the page opens and draws it with the template in
 
 **Live demos:** https://crunchy000.github.io/js-framework/
 
+**New to jsonx?** Start with the [tutorial](https://crunchy000.github.io/js-framework/examples/tutorial/): ten live steps, from explicit ids to regions inside regions, with each request's JSON shown as it happens.
+
 - [Todo app](https://crunchy000.github.io/js-framework/examples/todo/), built with [Web Awesome](https://webawesome.com) components
 - [Feature tour](https://crunchy000.github.io/js-framework/examples/basic/), every attribute plus three web component patterns
 - [Conduit](https://crunchy000.github.io/js-framework/examples/conduit/), the [RealWorld](https://github.com/realworld-apps/realworld) Medium clone: feeds, articles, comments, profiles and sign-in, against an API that isn't shaped for the page

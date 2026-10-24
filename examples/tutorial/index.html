@@ -1,0 +1,544 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>jsonx tutorial</title>
+  <link rel="stylesheet" href="style.css?v=10">
+  <!-- A pretend server, so every example works without one. -->
+  <script src="mock-api.js?v=10"></script>
+  <script type="module" src="../../jsonx.js?v=10"></script>
+</head>
+<body>
+<header class="top">
+  <a href="../../">jsonx</a> / tutorial
+  <label class="switch"><input type="checkbox" id="outline" checked> Outline regions</label>
+</header>
+
+<main>
+  <h1>Learn jsonx in ten steps</h1>
+  <p class="lead">jsonx draws JSON into your page with plain HTML templates. Your server answers with the data for a part of the page, a template turns it into HTML, and only what changed is updated.</p>
+
+  <p>Every step below has three parts:</p>
+  <ul>
+    <li><strong>The code.</strong> It's copied from this page's own source, so it's exactly what runs.</li>
+    <li><strong>The result.</strong> It's live, so click and type in it.</li>
+    <li><strong>The data.</strong> Each request appears here as it happens: what was sent, and the JSON that came back. That JSON is called the <em>view</em>.</li>
+  </ul>
+  <p>The server is a pretend one in <a href="mock-api.js">mock-api.js</a>, running in your browser. Reload the page to start again. With <em>Outline regions</em> on, every region (see step 4) has a dashed border.</p>
+
+  <p>To use jsonx on your own page, load one file:</p>
+  <pre class="code"><code>&lt;script type="module" src="jsonx.js"&gt;&lt;/script&gt;</code></pre>
+
+  <nav class="toc">
+    <a href="#s1">1. Draw JSON</a>
+    <a href="#s2">2. Buttons</a>
+    <a href="#s3">3. Sending values</a>
+    <a href="#s4">4. Regions</a>
+    <a href="#s5">5. Region values</a>
+    <a href="#s6">6. Lists</a>
+    <a href="#s7">7. Conditions</a>
+    <a href="#s8">8. Nested regions</a>
+    <a href="#s9">9. Errors</a>
+    <a href="#s10">10. Reuse</a>
+    <a href="#cheatsheet">Cheat sheet</a>
+  </nav>
+
+  <!-- ===================================================================== -->
+  <section class="lesson" id="s1">
+    <h2>1. Draw JSON with a template</h2>
+    <p>We start with everything written out: an element to draw into, a URL to load, and a template, each named by id. Later steps show the shortcuts.</p>
+
+    <div class="example">
+      <pre class="code" data-example="greeting"></pre>
+      <div class="side">
+        <div class="result">
+          <!-- example:greeting -->
+          <div id="greeting" jx-get="/api/greeting" jx-template="#greeting-template">Loading…</div>
+
+          <template id="greeting-template">
+            <p>Hello, <strong>{{name}}</strong>!</p>
+            <p>You have {{inbox.unread}} unread messages.</p>
+            <p>{{motto}}</p>
+          </template>
+          <!-- /example:greeting -->
+        </div>
+        <div class="data"><div class="data-title">Data</div><div class="data-log"><p class="data-empty">Waiting for a request…</p></div></div>
+      </div>
+    </div>
+
+    <h3>What happens</h3>
+    <ol>
+      <li>When the page opens, jsonx finds <code>jx-get</code> on the <code>div</code>. You can't click a <code>div</code>, so it loads straight away.</li>
+      <li>The server answers with JSON. Look at it in the data panel.</li>
+      <li><code>jx-template="#greeting-template"</code> says which template draws it. The answer is drawn <em>into the element itself</em>, replacing "Loading…".</li>
+    </ol>
+
+    <h3>The rules for values</h3>
+    <ul>
+      <li><code>{{name}}</code> prints the <code>name</code> field of the view.</li>
+      <li>A dot reaches inside an object: <code>{{inbox.unread}}</code> is <code>3</code>.</li>
+      <li>Values are always printed as text, never as HTML. The motto contains <code>&lt;b&gt;</code> tags, and they show up as text. Anything a user typed is safe to print.</li>
+      <li>A name the view doesn't have prints nothing. It isn't an error.</li>
+    </ul>
+    <p>The <code>&lt;template&gt;</code> tag is standard HTML. The browser keeps its contents hidden and inactive, so the template never shows on the page by itself.</p>
+  </section>
+
+  <!-- ===================================================================== -->
+  <section class="lesson" id="s2">
+    <h2>2. A button that loads something</h2>
+    <p>Put the request on a button instead, and it runs when you click. <code>jx-target</code> says where the answer goes, and <code>jx-template</code> says how to draw it.</p>
+
+    <div class="example">
+      <pre class="code" data-example="quote"></pre>
+      <div class="side">
+        <div class="result">
+          <!-- example:quote -->
+          <button jx-get="/api/quote" jx-target="#quote" jx-template="#quote-template">Next quote</button>
+
+          <blockquote id="quote">Click the button.</blockquote>
+
+          <template id="quote-template">
+            “{{text}}”
+            <footer>{{author}} · {{number}} of {{total}}</footer>
+          </template>
+          <!-- /example:quote -->
+        </div>
+        <div class="data"><div class="data-title">Data</div><div class="data-log"><p class="data-empty">Click the button…</p></div></div>
+      </div>
+    </div>
+
+    <h3>When requests run</h3>
+    <p>Each element has a natural moment, called its <em>trigger</em>:</p>
+    <table>
+      <tr><th>Element</th><th>Runs on</th></tr>
+      <tr><td><code>&lt;button&gt;</code>, <code>&lt;a&gt;</code>, and button components like <code>&lt;wa-button&gt;</code></td><td>click</td></tr>
+      <tr><td><code>&lt;input&gt;</code>, <code>&lt;select&gt;</code>, <code>&lt;textarea&gt;</code>, and form components</td><td>change</td></tr>
+      <tr><td><code>&lt;form&gt;</code></td><td>submit</td></tr>
+      <tr><td>anything else (<code>&lt;div&gt;</code>, <code>&lt;ul&gt;</code>, …)</td><td>load: right away</td></tr>
+    </table>
+    <p>To choose a different trigger, use <code>jx-trigger</code>. For example, <code>jx-trigger="input delay:300ms"</code> waits until someone stops typing for 300ms, and <code>jx-trigger="keydown[key=Enter]"</code> runs when Enter is pressed.</p>
+    <p>Every click draws the whole template again with the new view. That doesn't mean rebuilding the HTML: jsonx only changes the text that's different.</p>
+  </section>
+
+  <!-- ===================================================================== -->
+  <section class="lesson" id="s3">
+    <h2>3. Sending values</h2>
+    <p>A control's <code>name</code> becomes a key in the request. <code>jx-include</code> picks which controls to send, by CSS selector.</p>
+
+    <div class="example">
+      <pre class="code" data-example="hello"></pre>
+      <div class="side">
+        <div class="result">
+          <!-- example:hello -->
+          <input id="who" name="name" placeholder="Your name">
+          <select id="language" name="language">
+            <option value="en">English</option>
+            <option value="fr">French</option>
+            <option value="es">Spanish</option>
+          </select>
+
+          <button jx-post="/api/hello" jx-include="#who, #language"
+                  jx-target="#hello" jx-template="#hello-template">Say hello</button>
+          <button jx-post="/api/hello" jx-include="#who" jx-vals='{"language": "fr"}'
+                  jx-target="#hello" jx-template="#hello-template">In French</button>
+
+          <p id="hello"></p>
+
+          <template id="hello-template">{{greeting}}</template>
+          <!-- /example:hello -->
+        </div>
+        <div class="data"><div class="data-title">Data</div><div class="data-log"><p class="data-empty">Type a name and click…</p></div></div>
+      </div>
+    </div>
+
+    <ul>
+      <li><code>jx-post</code>, <code>jx-put</code> and <code>jx-patch</code> send the values as a JSON body. <code>jx-get</code> and <code>jx-delete</code> put them in the URL, as <code>?name=Ada</code>.</li>
+      <li><code>jx-vals</code> adds fixed values, written as JSON. They win over controls with the same name, so "In French" always sends <code>"fr"</code>.</li>
+      <li>A name with dots builds nested JSON: <code>name="user.email"</code> sends <code>{"user": {"email": …}}</code>.</li>
+    </ul>
+    <p>That works, but notice how much we're repeating: two buttons each name the same target, the same template and the same inputs. The next step removes all of it.</p>
+  </section>
+
+  <!-- ===================================================================== -->
+  <section class="lesson" id="s4">
+    <h2>4. Regions: the template inside</h2>
+    <p>Put the <code>&lt;template&gt;</code> <em>inside</em> the element, and the element becomes a <strong>region</strong>. This is how most jsonx pages are written.</p>
+
+    <div class="example">
+      <pre class="code" data-example="counter"></pre>
+      <div class="side">
+        <div class="result">
+          <!-- example:counter -->
+          <div jx-get="/api/counter">
+            Loading…
+            <template>
+              <p>The count is <strong>{{count}}</strong>.</p>
+              <button jx-post="/api/counter/increment">Add one</button>
+              <button jx-post="/api/counter/reset">Reset</button>
+            </template>
+          </div>
+          <!-- /example:counter -->
+        </div>
+        <div class="data"><div class="data-title">Data</div><div class="data-log"><p class="data-empty">Waiting for a request…</p></div></div>
+      </div>
+    </div>
+
+    <h3>What a region means</h3>
+    <ol>
+      <li><strong>It draws itself.</strong> The template inside is its template. Its own <code>jx-get</code> loads when the page opens, just like step 1.</li>
+      <li><strong>Buttons inside it redraw it.</strong> A button with no <code>jx-target</code> draws its answer into its region, with the region's template. So the server answers every button with the region's whole view, here <code>{"count": 3}</code>.</li>
+      <li><strong>Its controls go with every request.</strong> That's the next step.</li>
+    </ol>
+    <p>A button's region is the nearest element around it that has a template. It works like <code>closest()</code> in JavaScript.</p>
+
+    <h3>The same thing, written out</h3>
+    <p>The region above is a shortcut for this explicit version. Both work, and they behave the same.</p>
+    <script type="text/plain" class="snippet">
+      <div id="counter" jx-get="/api/counter" jx-template="#counter-template">Loading…</div>
+
+      <template id="counter-template">
+        <p>The count is <strong>{{count}}</strong>.</p>
+        <button jx-post="/api/counter/increment" jx-target="#counter" jx-template="#counter-template">Add one</button>
+        <button jx-post="/api/counter/reset" jx-target="#counter" jx-template="#counter-template">Reset</button>
+      </template>
+    </script>
+    <p>An element with <code>jx-template="#id"</code> is a region too. The only difference is where the template lives. Use an id when several places share one template, and the inside version for everything else.</p>
+
+    <h3>Two more ways to write a region</h3>
+    <p>A region with nothing to load, like a sign-in form, uses <code>jx-region</code> instead of a URL. It draws its template once with an empty view, <code>{}</code>. Step 9 uses one.</p>
+    <p>If you don't need a wrapper element, put the request on the template itself. Step 10 uses one.</p>
+    <script type="text/plain" class="snippet">
+      <template jx-get="/api/counter">
+        <p>The count is {{count}}.</p>
+      </template>
+    </script>
+  </section>
+
+  <!-- ===================================================================== -->
+  <section class="lesson" id="s5">
+    <h2>5. Region values: every control, every request</h2>
+    <p>Any request from inside a region sends <em>every named control in the region</em>, the way a form does. You don't list them with <code>jx-include</code>.</p>
+
+    <div class="example">
+      <pre class="code" data-example="tip"></pre>
+      <div class="side">
+        <div class="result">
+          <!-- example:tip -->
+          <div class="tip" jx-get="/api/tip">
+            <template>
+              <input type="hidden" name="currency" value="{{currency}}">
+
+              <label>Bill <input name="bill" type="number" min="0" value="{{bill}}" jx-post="/api/tip"></label>
+              <label>Tip
+                <select name="tip" value="{{tip}}" jx-post="/api/tip">
+                  <option value="10">10%</option>
+                  <option value="15">15%</option>
+                  <option value="20">20%</option>
+                </select>
+              </label>
+              <label>People <input name="people" type="number" min="1" value="{{people}}" jx-post="/api/tip"></label>
+
+              <p>Each person pays <strong>{{symbol}}{{perPerson}}</strong> ({{symbol}}{{total}} in all).</p>
+
+              <button jx-post="/api/tip" jx-vals='{"currency": "GBP"}'>£</button>
+              <button jx-post="/api/tip" jx-vals='{"currency": "USD"}'>$</button>
+              <button jx-post="/api/tip" jx-vals='{"currency": "EUR"}'>€</button>
+            </template>
+          </div>
+          <!-- /example:tip -->
+        </div>
+        <div class="data"><div class="data-title">Data</div><div class="data-log"><p class="data-empty">Waiting for a request…</p></div></div>
+      </div>
+    </div>
+
+    <p>Change any box and look at <em>Sent</em> in the data panel. All four values go every time, so the server can work out the whole answer from one request.</p>
+    <ul>
+      <li><strong>Inputs as triggers.</strong> The inputs have <code>jx-post</code> too. Their trigger is <code>change</code>, so leaving a box after typing sends the request.</li>
+      <li><strong>Values come back.</strong> <code>value="{{bill}}"</code> puts the server's value into the box. If the server corrects something (try 0 people), the box shows the correction. When an attribute is exactly one <code>{{name}}</code> and the element has a property with that name, like <code>value</code> or <code>checked</code>, jsonx sets the live property. So the box always matches the view.</li>
+      <li><strong>Hidden inputs remember things.</strong> <code>currency</code> isn't on screen, but it's sent with every request, so changing the bill keeps your currency. The currency buttons override it with <code>jx-vals</code>, and the next view stores the new one.</li>
+    </ul>
+    <p>That's the pattern for state like a selected tab, a filter or a page number: the server puts it in the view, a hidden input holds it, and every request sends it back. The page itself remembers nothing.</p>
+  </section>
+
+  <!-- ===================================================================== -->
+  <section class="lesson" id="s6">
+    <h2>6. Lists, and where names are looked up</h2>
+    <p><code>&lt;jx-each items="items"&gt;</code> draws what's inside it once for each item in the list.</p>
+
+    <div class="example">
+      <pre class="code" data-example="list"></pre>
+      <div class="side">
+        <div class="result">
+          <!-- example:list -->
+          <div jx-get="/api/list">
+            <template>
+              <ul class="items">
+                <jx-each items="items">
+                  <li class:done="{{done}}">
+                    <input type="checkbox" checked="{{done}}" jx-post="/api/list/{{id}}/toggle">
+                    {{qty}} × {{name}} <small>from {{store}}</small>
+                    <button jx-delete="/api/list/{{id}}">Remove</button>
+                  </li>
+                </jx-each>
+              </ul>
+
+              <p>Tags: <jx-each items="tags"><span class="tag">{{.}}</span></jx-each></p>
+
+              <input name="item" placeholder="Add an item" value="{{draft}}"
+                     jx-post="/api/list" jx-trigger="keydown[key=Enter]">
+              <button jx-post="/api/list">Add</button>
+            </template>
+          </div>
+          <!-- /example:list -->
+        </div>
+        <div class="data"><div class="data-title">Data</div><div class="data-log"><p class="data-empty">Waiting for a request…</p></div></div>
+      </div>
+    </div>
+
+    <h3>Where names are looked up</h3>
+    <p>Inside <code>&lt;jx-each&gt;</code>, a name is looked up in the current item first, then outwards in the view around it:</p>
+    <script type="text/plain" class="snippet">
+      view:  { store: "the corner shop", items: [ ... ], tags: [ ... ], draft: "" }
+               ↑ 2. then here
+      item:  { id: 1, name: "Apples", qty: 6, done: false }
+               ↑ 1. first here
+    </script>
+    <ul>
+      <li><code>{{name}}</code>, <code>{{qty}}</code> and <code>{{id}}</code> come from the item.</li>
+      <li><code>{{store}}</code> isn't on the item, so it's found on the view outside.</li>
+      <li><code>{{.}}</code> is the item itself, for lists of plain strings like <code>tags</code>.</li>
+      <li>If an item had its own <code>store</code> field, that would win. Choose distinct names when that could be confusing.</li>
+    </ul>
+
+    <h3>Good to know</h3>
+    <ul>
+      <li>Values work in URLs too: <code>jx-post="/api/list/{{id}}/toggle"</code> gives each row its own address.</li>
+      <li><code>class:done="{{done}}"</code> turns the class <code>done</code> on or off.</li>
+      <li>Items with an <code>id</code> are tracked by it. Removing one row removes just that row's elements, and the others stay as they are, even mid-typing.</li>
+      <li><code>&lt;jx-each&gt;</code> isn't put on the page, so <code>ul &gt; li</code> still matches in your CSS.</li>
+      <li>Adding sends <code>item</code>, the region's only named control. The server answers with <code>draft: ""</code>, which empties the box.</li>
+    </ul>
+  </section>
+
+  <!-- ===================================================================== -->
+  <section class="lesson" id="s7">
+    <h2>7. Conditions</h2>
+    <p><code>&lt;jx-if&gt;</code> draws what's inside only when a value is there. <code>&lt;jx-else-if&gt;</code> and <code>&lt;jx-else&gt;</code> can follow it.</p>
+
+    <div class="example">
+      <pre class="code" data-example="delivery"></pre>
+      <div class="side">
+        <div class="result">
+          <!-- example:delivery -->
+          <div jx-get="/api/delivery">
+            <template>
+              <jx-if test="delivered">
+                <p class="big">Delivered!</p>
+              </jx-if>
+              <jx-else-if test="shipped">
+                <p class="big">On its way, arriving {{eta}}.</p>
+              </jx-else-if>
+              <jx-else>
+                <p class="big">Not shipped yet.</p>
+              </jx-else>
+
+              <jx-if test="!notes">
+                <p><small>No updates yet.</small></p>
+              </jx-if>
+              <ul>
+                <jx-each items="notes"><li>{{text}}</li></jx-each>
+              </ul>
+
+              <jx-if test="!delivered">
+                <button jx-post="/api/delivery/next">Next step</button>
+              </jx-if>
+              <button jx-post="/api/delivery/reset">Start over</button>
+            </template>
+          </div>
+          <!-- /example:delivery -->
+        </div>
+        <div class="data"><div class="data-title">Data</div><div class="data-log"><p class="data-empty">Waiting for a request…</p></div></div>
+      </div>
+    </div>
+
+    <ul>
+      <li><code>test="shipped"</code> passes when the value is there. Missing, <code>null</code>, <code>false</code>, <code>0</code>, <code>""</code> and an empty list <code>[]</code> all count as "not there".</li>
+      <li><code>test="!notes"</code> is the opposite. Here it's the empty-list message.</li>
+      <li>In a chain, the first branch that passes is drawn, and <code>&lt;jx-else&gt;</code> catches the rest. Only spaces and comments may sit between the branches.</li>
+      <li>There are no comparisons like <code>step &gt; 1</code>, on purpose. The server sends a ready answer, like <code>shipped: true</code>. Logic lives in one place, and templates stay easy to read.</li>
+    </ul>
+    <p class="note"><strong>Tables and selects:</strong> the browser moves unknown tags out of <code>&lt;table&gt;</code> and <code>&lt;select&gt;</code> before jsonx sees them. In those two places, put the logic on the element: <code>&lt;tr jx-each="rows"&gt;</code>, <code>&lt;option jx-if="x"&gt;</code>, and <code>jx-else-if</code> / <code>jx-else</code> on the elements that follow.</p>
+  </section>
+
+  <!-- ===================================================================== -->
+  <section class="lesson" id="s8">
+    <h2>8. Regions inside regions</h2>
+    <p>A region's template can hold another region. Each one is its own little world: its own URL, its own view, its own buttons and its own controls.</p>
+
+    <div class="example">
+      <pre class="code" data-example="nested"></pre>
+      <div class="side">
+        <div class="result">
+          <!-- example:nested -->
+          <article id="post" jx-get="/api/post">
+            <template>
+              <h3>{{title}}</h3>
+              <p>{{likes}} likes · drawn at {{drawnAt}}</p>
+              <button jx-post="/api/post/like">Like</button>
+              <button jx-post="/api/post/like" jx-refresh="#comments">Like, and reload comments</button>
+
+              <section id="comments" jx-get="/api/post/comments">
+                <template>
+                  <p><strong>{{count}} comments</strong> · loaded at {{loadedAt}}</p>
+                  <jx-if test="error"><p class="error">{{error}}</p></jx-if>
+                  <jx-each items="comments"><p class="comment">{{text}}</p></jx-each>
+                  <input name="text" placeholder="Write a comment" value="{{draft}}">
+                  <button jx-post="/api/post/comments">Comment</button>
+                  <button jx-post="/api/post/like" jx-target="#post">Like (from in here)</button>
+                </template>
+              </section>
+            </template>
+          </article>
+          <!-- /example:nested -->
+        </div>
+        <div class="data"><div class="data-title">Data</div><div class="data-log"><p class="data-empty">Waiting for a request…</p></div></div>
+      </div>
+    </div>
+
+    <p>Try each button, and watch the two clocks and the data panel.</p>
+    <table>
+      <tr><th></th><th>Outer region <code>#post</code></th><th>Inner region <code>#comments</code></th></tr>
+      <tr><td>Loads from</td><td><code>/api/post</code></td><td><code>/api/post/comments</code>, once the outer one has drawn it</td></tr>
+      <tr><td>Its view</td><td><code>{title, likes, drawnAt}</code></td><td><code>{comments, count, loadedAt, draft}</code></td></tr>
+      <tr><td>Its names</td><td>only the outer view's</td><td>only its own view's: <code>{{title}}</code> in here would print nothing</td></tr>
+      <tr><td>Buttons inside redraw</td><td>the outer region</td><td>the inner region</td></tr>
+      <tr><td>Requests send</td><td>the outer region's controls</td><td>the inner region's controls (<code>text</code>)</td></tr>
+    </table>
+
+    <h3>The rules</h3>
+    <ol>
+      <li><strong>Each region's names come only from its own view.</strong> Views don't flow from an outer region into an inner one. If the comments need the post's title, the comments view includes it. (Inside one template, <code>&lt;jx-each&gt;</code> looks outwards as in step 6. That lookup stops at the region's edge.)</li>
+      <li><strong>A button belongs to its nearest region.</strong> "Comment" redraws only the comments, and sends only <code>text</code>.</li>
+      <li><strong>Redrawing the outer region leaves the inner one alone.</strong> Click "Like": the post's clock changes, but the comments' clock doesn't, and a half-typed comment stays. jsonx only updates the outer view's values, and the inner region is not one of them.</li>
+      <li><strong>Reach across on purpose.</strong> <code>jx-target="#post"</code> sends the answer to another region, drawn with that region's template. <code>jx-refresh="#comments"</code> reloads another region once a request works, from wherever it last loaded.</li>
+    </ol>
+    <p>If an outer redraw removes an inner region, for example inside a <code>&lt;jx-if&gt;</code> that turns off, and later draws it again, it's a new region. It loads again from scratch.</p>
+    <p>Use nested regions when part of a page changes on its own, like comments under an article, or a live counter in a header. Each part then asks the server only for its own view.</p>  </section>
+
+  <!-- ===================================================================== -->
+  <section class="lesson" id="s9">
+    <h2>9. Errors</h2>
+    <p>When a request fails and the server explains why in JSON, jsonx redraws the region with its last view plus the error. You show it with ordinary template code.</p>
+
+    <div class="example">
+      <pre class="code" data-example="signup"></pre>
+      <div class="side">
+        <div class="result">
+          <!-- example:signup -->
+          <div class="signup" jx-region>
+            <template>
+              <jx-if test="done">
+                <p>Thanks! <strong>{{email}}</strong> is signed up.</p>
+                <button jx-get="/api/signup">Start again</button>
+              </jx-if>
+              <jx-else>
+                <jx-if test="errors"><p class="error">Please fix {{errors.length}} problem(s).</p></jx-if>
+                <label>Email <input name="email"></label>
+                <small class="error">{{fieldErrors.email}}</small>
+                <label>Age <input name="age" type="number"></label>
+                <small class="error">{{fieldErrors.age}}</small>
+                <button jx-post="/api/signup">Sign up</button>
+              </jx-else>
+            </template>
+          </div>
+          <!-- /example:signup -->
+        </div>
+        <div class="data"><div class="data-title">Data</div><div class="data-log"><p class="data-empty">Click "Sign up" with the boxes empty…</p></div></div>
+      </div>
+    </div>
+
+    <p>The server answers with status 422 and <code>{"errors": {"email": ["can't be blank"]}}</code>. jsonx adds three names to the last view for the redraw:</p>
+    <table>
+      <tr><th>Name</th><th>What it holds</th></tr>
+      <tr><td><code>error</code></td><td>One message for the whole thing: the server's <code>error</code> or <code>message</code>, or the errors joined together.</td></tr>
+      <tr><td><code>errors</code></td><td>A list for <code>&lt;jx-each&gt;</code>: <code>[{field, message, text}]</code>.</td></tr>
+      <tr><td><code>fieldErrors</code></td><td>The same by field, to show next to each input: <code>{{fieldErrors.email}}</code>.</td></tr>
+    </table>
+    <ul>
+      <li>What you typed stays in the boxes, so you only fix what's wrong.</li>
+      <li>The next successful answer replaces the view, so the errors disappear by themselves.</li>
+      <li><code>jx-region</code> is a region with no URL (see step 4). It draws the form once with an empty view.</li>
+    </ul>
+    <p>Step 8's comment box works the same way: post an empty comment to see its <code>error</code>.</p>
+  </section>
+
+  <!-- ===================================================================== -->
+  <section class="lesson" id="s10">
+    <h2>10. Reuse: partials, and templates that load themselves</h2>
+    <p>A template can draw another one with <code>&lt;template jx-use="#id"&gt;</code>. The partial sees the same names as the spot where it's used.</p>
+
+    <div class="example">
+      <pre class="code" data-example="team"></pre>
+      <div class="side">
+        <div class="result">
+          <!-- example:team -->
+          <template id="person">
+            <strong>{{name}}</strong> <small>{{role}}</small>
+          </template>
+
+          <template jx-get="/api/team">
+            <p>Lead:
+              <jx-each items="lead"><template jx-use="#person"></template></jx-each>
+            </p>
+            <ul>
+              <jx-each items="members">
+                <li><template jx-use="#person"></template></li>
+              </jx-each>
+            </ul>
+          </template>
+          <!-- /example:team -->
+        </div>
+        <div class="data"><div class="data-title">Data</div><div class="data-log"><p class="data-empty">Waiting for a request…</p></div></div>
+      </div>
+    </div>
+
+    <ul>
+      <li><strong>A template that loads itself.</strong> <code>&lt;template jx-get="…"&gt;</code> needs no wrapper element. jsonx swaps it for a <code>&lt;jx-view&gt;</code> element that takes no space in the layout, so its content sits in the page as if written there.</li>
+      <li><strong><code>&lt;jx-each&gt;</code> with one object</strong> draws once, with the object's fields in scope. Here it lets <code>#person</code> read <code>lead.name</code> as <code>{{name}}</code>.</li>
+      <li><strong>Across pages:</strong> <code>&lt;template src="nav.jx"&gt;&lt;/template&gt;</code> pulls in a file of HTML, such as a shared nav bar or partials. Conduit's pages share their nav bar this way.</li>
+    </ul>
+  </section>
+
+  <!-- ===================================================================== -->
+  <section id="cheatsheet">
+    <h2>Cheat sheet</h2>
+    <h3>Templates</h3>
+    <table>
+      <tr><td><code>{{name}}</code>, <code>{{a.b}}</code>, <code>{{.}}</code></td><td>Print a value (always as text)</td></tr>
+      <tr><td><code>&lt;jx-each items="list"&gt;</code></td><td>Repeat for each item; names look in the item, then outwards</td></tr>
+      <tr><td><code>&lt;jx-if test="x"&gt;</code>, <code>test="!x"</code></td><td>Draw if there / not there</td></tr>
+      <tr><td><code>&lt;jx-else-if test="y"&gt;</code>, <code>&lt;jx-else&gt;</code></td><td>The rest of the chain</td></tr>
+      <tr><td><code>value="{{draft}}"</code></td><td>Exactly one value: sets the live property if there is one</td></tr>
+      <tr><td><code>class:done="{{done}}"</code></td><td>Toggle a class</td></tr>
+      <tr><td><code>&lt;template jx-use="#id"&gt;</code></td><td>Draw another template here</td></tr>
+    </table>
+    <h3>Requests and regions</h3>
+    <table>
+      <tr><td><code>jx-get</code> / <code>jx-post</code> / <code>jx-put</code> / <code>jx-patch</code> / <code>jx-delete</code></td><td>The request</td></tr>
+      <tr><td><code>&lt;template&gt;</code> inside, or <code>jx-template="#id"</code></td><td>Makes a region</td></tr>
+      <tr><td><code>jx-region</code></td><td>A region with nothing to load</td></tr>
+      <tr><td><code>jx-trigger</code></td><td>When to run: <code>input delay:300ms</code>, <code>keydown[key=Enter]</code>, <code>change from:#other</code></td></tr>
+      <tr><td><code>jx-target</code></td><td>Draw somewhere else: a selector, or <code>closest .card</code></td></tr>
+      <tr><td><code>jx-include</code>, <code>jx-vals</code></td><td>Send more values</td></tr>
+      <tr><td><code>jx-refresh="#a, #b"</code></td><td>Reload other regions afterwards</td></tr>
+      <tr><td><code>jx-swap="none"</code></td><td>Call the server, draw nothing</td></tr>
+      <tr><td><code>jx-then="page.html?id=:id"</code></td><td>Go to another page afterwards</td></tr>
+    </table>
+    <p>Everything else, including GraphQL and web components, is in the <a href="https://github.com/Crunchy000/js-framework#readme">README</a>. To see it all together, try the <a href="../todo/">todo app</a>, then <a href="../conduit/">Conduit</a>.</p>
+  </section>
+</main>
+
+<script src="tutorial.js?v=10"></script>
+</body>
+</html>
