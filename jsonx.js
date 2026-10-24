@@ -8,7 +8,7 @@
  *   <wa-card jx-get="api/todos">              <- a region: loads itself
  *     <template>
  *       <jx-each items="todos">                <- template syntax: see templates.js
- *         <wa-checkbox checked="${done}" jx-post="api/todos/${id}/toggle">${title}</wa-checkbox>
+ *         <wa-checkbox checked="{{done}}" jx-post="api/todos/{{id}}/toggle">{{title}}</wa-checkbox>
  *       </jx-each>
  *     </template>
  *   </wa-card>
@@ -18,7 +18,7 @@
  *
  *   <script type="module" src="jsonx.js"></script>
  */
-import { compileTemplate } from "./templates.js?v=9";
+import { compileTemplate } from "./templates.js?v=10";
 
 var METHODS = ["get", "post", "put", "patch", "delete"];
 var SELECTOR = METHODS.map(function (m) { return "[jx-" + m + "]"; }).join(",") + ",[jx-region],[jx-query]";

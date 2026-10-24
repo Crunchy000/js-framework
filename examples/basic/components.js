@@ -88,8 +88,8 @@ class UserCard extends HTMLElement {
       </style>
 
       <template id="card">
-        <h3>\${name}</h3>
-        <div>\${role}</div>
+        <h3>{{name}}</h3>
+        <div>{{role}}</div>
       </template>
 
       <div id="body">User #${id}</div>

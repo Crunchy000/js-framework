@@ -27,8 +27,8 @@
   &lt;template&gt;
     &lt;ul&gt;
       &lt;jx-each items="todos"&gt;
-        &lt;li class:done="${done}"&gt;
-          &lt;wa-checkbox checked="${done}" jx-post="api/todos/${id}/toggle"&gt;${title}&lt;/wa-checkbox&gt;
+        &lt;li class:done="{{done}}"&gt;
+          &lt;wa-checkbox checked="{{done}}" jx-post="api/todos/{{id}}/toggle"&gt;{{title}}&lt;/wa-checkbox&gt;
         &lt;/li&gt;
       &lt;/jx-each&gt;
     &lt;/ul&gt;

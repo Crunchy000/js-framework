@@ -19,9 +19,9 @@
   </style>
 
   <!-- 1. The fake API. Remove this when you have a real server. -->
-  <script src="mock-api.js?v=9"></script>
+  <script src="mock-api.js?v=10"></script>
   <!-- 2. The framework itself -->
-  <script type="module" src="../../jsonx.js?v=9"></script>
+  <script type="module" src="../../jsonx.js?v=10"></script>
   <!-- 3. Demo web components (modules run in order, so jsonx is ready) -->
   <script type="module" src="components.js"></script>
 </head>
@@ -37,7 +37,7 @@
     <div id="likes" jx-get="/api/likes">
       Loading…
       <template>
-        <p>This page has <strong>${label}</strong>.</p>
+        <p>This page has <strong>{{label}}</strong>.</p>
         <button jx-post="/api/likes">Like it</button>
         <button jx-post="/api/broken">Break the server</button>
       </template>
@@ -57,10 +57,10 @@
 
     <template id="user-results">
       <jx-each items="users">
-        <li class:pioneer="${pioneer}"><strong>${name}</strong> — ${role}</li>
+        <li class:pioneer="{{pioneer}}"><strong>{{name}}</strong> — {{role}}</li>
       </jx-each>
       <jx-if test="!users">
-        <li><em>No one matches "${query}"</em></li>
+        <li><em>No one matches "{{query}}"</em></li>
       </jx-if>
     </template>
   </section>
@@ -76,7 +76,7 @@
                  jx-target="#feedback" jx-template="#thanks"></star-rating>
     <p id="feedback"></p>
 
-    <template id="thanks">${message}</template>
+    <template id="thanks">{{message}}</template>
 
     <h3>b) A component that receives JSON as a property</h3>
     <p><code>jx-swap="prop:stats"</code> sets <code>todoStats.stats = data</code> instead of drawing a template.</p>

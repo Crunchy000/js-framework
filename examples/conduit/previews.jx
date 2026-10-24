@@ -8,25 +8,25 @@
       <article class="preview">
         <div class="wa-split">
           <template jx-use="#author"></template>
-          <wa-button size="s" variant="success" appearance="${favoriteAppearance}" jx-post="${favoriteUrl}">
-            <wa-icon slot="start" name="heart"></wa-icon>${favoritesCount}
+          <wa-button size="s" variant="success" appearance="{{favoriteAppearance}}" jx-post="{{favoriteUrl}}">
+            <wa-icon slot="start" name="heart"></wa-icon>{{favoritesCount}}
           </wa-button>
         </div>
-        <a class="title" href="${url}">
-          <h2>${title}</h2>
-          <p>${description}</p>
+        <a class="title" href="{{url}}">
+          <h2>{{title}}</h2>
+          <p>{{description}}</p>
         </a>
         <div class="wa-split">
           <small>Read more...</small>
-          <div class="wa-cluster wa-gap-2xs"><jx-each items="tagList"><wa-tag size="s" appearance="outlined">${.}</wa-tag></jx-each></div>
+          <div class="wa-cluster wa-gap-2xs"><jx-each items="tagList"><wa-tag size="s" appearance="outlined">{{.}}</wa-tag></jx-each></div>
         </div>
       </article>
     </jx-each>
   </template>
 
   <template id="author">
-    <a class="author" href="${author.url}">
-      <wa-avatar initials="${author.initial}" image="${author.image}" label="${author.username}"></wa-avatar>
-      <span><strong>${author.username}</strong><br><small>${date}</small></span>
+    <a class="author" href="{{author.url}}">
+      <wa-avatar initials="{{author.initial}}" image="{{author.image}}" label="{{author.username}}"></wa-avatar>
+      <span><strong>{{author.username}}</strong><br><small>{{date}}</small></span>
     </a>
   </template>

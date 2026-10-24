@@ -6,13 +6,13 @@
   <title>Home — Conduit GraphQL</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/styles/webawesome.css">
   <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
-  <link rel="stylesheet" href="style.css?v=9">
+  <link rel="stylesheet" href="style.css?v=10">
 
   <!-- Pretend servers: the RealWorld REST API, and a GraphQL server in front of it.
        In real life they run on a server, and these two lines go away. -->
-  <script src="../conduit/mock-api.js?v=9"></script>
-  <script type="module" src="graphql-server.js?v=9"></script>
-  <script type="module" src="../../jsonx.js?v=9"></script>
+  <script src="../conduit/mock-api.js?v=10"></script>
+  <script type="module" src="graphql-server.js?v=10"></script>
+  <script type="module" src="../../jsonx.js?v=10"></script>
   <script>if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("wa-dark");</script>
 </head>
 <body>
@@ -54,24 +54,24 @@
   <div class="layout" jx-query="#query, #view, #preview-fields">
     <p class="empty">Loading articles...</p>
     <template>
-      <input type="hidden" name="tag" value="${tag.name}">
-      <input type="hidden" name="offset" value="${articles.offset}">
+      <input type="hidden" name="tag" value="{{tag.name}}">
+      <input type="hidden" name="offset" value="{{articles.offset}}">
 
       <main>
         <!-- The tabs are a radio group named "scope": changing it reloads the list,
-             and value="${articles.scope}" shows the one the server used. -->
-        <wa-radio-group class="tabs-group" name="scope" orientation="horizontal" value="${articles.scope}"
+             and value="{{articles.scope}}" shows the one the server used. -->
+        <wa-radio-group class="tabs-group" name="scope" orientation="horizontal" value="{{articles.scope}}"
                         jx-query="#query, #view, #preview-fields" jx-vals='{"offset": 0}'>
           <jx-if test="viewer">
             <wa-radio appearance="button" value="FEED">Your feed</wa-radio>
           </jx-if>
           <wa-radio appearance="button" value="GLOBAL">Global feed</wa-radio>
           <jx-if test="tag">
-            <wa-radio appearance="button" value="TAG"># ${tag.name}</wa-radio>
+            <wa-radio appearance="button" value="TAG"># {{tag.name}}</wa-radio>
           </jx-if>
         </wa-radio-group>
         <jx-if test="error">
-          <wa-callout variant="warning">${error} <a href="login.html">Sign in</a></wa-callout>
+          <wa-callout variant="warning">{{error}} <a href="login.html">Sign in</a></wa-callout>
         </jx-if>
         <template jx-use="#previews"></template>
       </main>
@@ -82,7 +82,7 @@
           <div class="wa-cluster wa-gap-2xs">
             <jx-each items="tags">
               <a href="#" jx-query="#query, #view, #preview-fields"
-                 jx-vals='{"tag": "${.}", "scope": "TAG", "offset": 0}'><wa-tag size="s" pill>${.}</wa-tag></a>
+                 jx-vals='{"tag": "{{.}}", "scope": "TAG", "offset": 0}'><wa-tag size="s" pill>{{.}}</wa-tag></a>
             </jx-each>
           </div>
         </wa-card>

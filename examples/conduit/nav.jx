@@ -9,7 +9,7 @@
         <jx-if test="signedIn">
           <a href="editor.html"><wa-icon name="pen-to-square"></wa-icon> New article</a>
           <a href="settings.html"><wa-icon name="gear"></wa-icon> Settings</a>
-          <a href="${profileUrl}"><wa-icon name="user"></wa-icon> ${username}</a>
+          <a href="{{profileUrl}}"><wa-icon name="user"></wa-icon> {{username}}</a>
         </jx-if>
         <jx-else>
           <a href="login.html">Sign in</a>

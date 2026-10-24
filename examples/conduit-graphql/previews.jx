@@ -8,36 +8,36 @@
     <jx-each items="articles.nodes">
       <article class="preview">
         <div class="wa-split">
-          <a class="author" href="profile.html?username=${author.username}">
-            <wa-avatar image="${author.image}" label="${author.username}"></wa-avatar>
-            <span><strong>${author.username}</strong><br><small>${createdAt}</small></span>
+          <a class="author" href="profile.html?username={{author.username}}">
+            <wa-avatar image="{{author.image}}" label="{{author.username}}"></wa-avatar>
+            <span><strong>{{author.username}}</strong><br><small>{{createdAt}}</small></span>
           </a>
           <jx-if test="viewerHasFavorited">
             <wa-button size="s" variant="success"
-                       jx-query="#unfavorite, #view, #preview-fields" jx-select="unfavoriteArticle.query" jx-vals='{"slug": "${slug}"}'>
-              <wa-icon slot="start" name="heart"></wa-icon>${favoritesCount}</wa-button>
+                       jx-query="#unfavorite, #view, #preview-fields" jx-select="unfavoriteArticle.query" jx-vals='{"slug": "{{slug}}"}'>
+              <wa-icon slot="start" name="heart"></wa-icon>{{favoritesCount}}</wa-button>
           </jx-if>
           <jx-else>
             <wa-button size="s" variant="success" appearance="outlined"
-                       jx-query="#favorite, #view, #preview-fields" jx-select="favoriteArticle.query" jx-vals='{"slug": "${slug}"}'>
-              <wa-icon slot="start" name="heart" variant="regular"></wa-icon>${favoritesCount}</wa-button>
+                       jx-query="#favorite, #view, #preview-fields" jx-select="favoriteArticle.query" jx-vals='{"slug": "{{slug}}"}'>
+              <wa-icon slot="start" name="heart" variant="regular"></wa-icon>{{favoritesCount}}</wa-button>
           </jx-else>
         </div>
-        <a class="title" href="article.html?slug=${slug}">
-          <h2>${title}</h2>
-          <p>${description}</p>
+        <a class="title" href="article.html?slug={{slug}}">
+          <h2>{{title}}</h2>
+          <p>{{description}}</p>
         </a>
         <div class="wa-split">
           <small>Read more...</small>
-          <div class="wa-cluster wa-gap-2xs"><jx-each items="tagList"><wa-tag size="s" appearance="outlined">${.}</wa-tag></jx-each></div>
+          <div class="wa-cluster wa-gap-2xs"><jx-each items="tagList"><wa-tag size="s" appearance="outlined">{{.}}</wa-tag></jx-each></div>
         </div>
       </article>
     </jx-each>
     <jx-if test="articles.pages">
       <div class="pages wa-cluster wa-gap-2xs">
         <jx-each items="articles.pages">
-          <wa-button size="s" appearance="outlined" class:current="${current}"
-                     jx-query="#query, #view, #preview-fields" jx-vals='{"offset": ${offset}}'>${number}</wa-button>
+          <wa-button size="s" appearance="outlined" class:current="{{current}}"
+                     jx-query="#query, #view, #preview-fields" jx-vals='{"offset": {{offset}}}'>{{number}}</wa-button>
         </jx-each>
       </div>
     </jx-if>

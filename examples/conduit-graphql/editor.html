@@ -6,13 +6,13 @@
   <title>Editor — Conduit GraphQL</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/styles/webawesome.css">
   <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
-  <link rel="stylesheet" href="style.css?v=9">
+  <link rel="stylesheet" href="style.css?v=10">
 
   <!-- Pretend servers: the RealWorld REST API, and a GraphQL server in front of it.
        In real life they run on a server, and these two lines go away. -->
-  <script src="../conduit/mock-api.js?v=9"></script>
-  <script type="module" src="graphql-server.js?v=9"></script>
-  <script type="module" src="../../jsonx.js?v=9"></script>
+  <script src="../conduit/mock-api.js?v=10"></script>
+  <script type="module" src="graphql-server.js?v=10"></script>
+  <script type="module" src="../../jsonx.js?v=10"></script>
   <script>if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("wa-dark");</script>
 </head>
 <body>
@@ -43,13 +43,13 @@
         <jx-else>
           <div class="wa-stack">
             <jx-if test="error">
-              <wa-callout variant="danger">${error}</wa-callout>
+              <wa-callout variant="danger">{{error}}</wa-callout>
             </jx-if>
-            <input type="hidden" name="slug" value="${article.slug}">
-            <wa-input name="title" placeholder="Article title" size="l" value="${article.title}"></wa-input>
-            <wa-input name="description" placeholder="What's this article about?" value="${article.description}"></wa-input>
-            <wa-textarea name="body" placeholder="Write your article (paragraphs are separated by a blank line)" rows="10" value="${article.body}"></wa-textarea>
-            <wa-input name="tags" placeholder="Enter tags, separated by commas" value="${article.tags}"></wa-input>
+            <input type="hidden" name="slug" value="{{article.slug}}">
+            <wa-input name="title" placeholder="Article title" size="l" value="{{article.title}}"></wa-input>
+            <wa-input name="description" placeholder="What's this article about?" value="{{article.description}}"></wa-input>
+            <wa-textarea name="body" placeholder="Write your article (paragraphs are separated by a blank line)" rows="10" value="{{article.body}}"></wa-textarea>
+            <wa-input name="tags" placeholder="Enter tags, separated by commas" value="{{article.tags}}"></wa-input>
             <div>
               <jx-if test="!article">
                 <wa-button variant="success" jx-query="#save" jx-operation="Create" jx-swap="none"

@@ -11,7 +11,7 @@
         <jx-if test="viewer">
           <a href="editor.html"><wa-icon name="pen-to-square"></wa-icon> New article</a>
           <a href="settings.html"><wa-icon name="gear"></wa-icon> Settings</a>
-          <a href="profile.html?username=${viewer.username}"><wa-icon name="user"></wa-icon> ${viewer.username}</a>
+          <a href="profile.html?username={{viewer.username}}"><wa-icon name="user"></wa-icon> {{viewer.username}}</a>
         </jx-if>
         <jx-else>
           <a href="login.html">Sign in</a>

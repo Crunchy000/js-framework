@@ -3,8 +3,8 @@
  *
  * Templates are plain HTML inside a <template> tag, plus four rules:
  *
- *   1. ${name} prints a value, between tags or inside an attribute value.
- *      It's always HTML-escaped. Dotted names work: ${stats.done}. ${.} is
+ *   1. {{name}} prints a value, between tags or inside an attribute value.
+ *      It's always HTML-escaped. Dotted names work: {{stats.done}}. {{.}} is
  *      the current item itself.
  *
  *   2. Logic is written as tags, which draw only what's inside them:
@@ -18,13 +18,13 @@
  *      there you put the logic on the element instead: <tr jx-each="rows">,
  *      <option jx-if="x">, jx-else-if="y", jx-else.
  *
- *   3. Attributes are smart. When an attribute's whole value is one ${name}:
+ *   3. Attributes are smart. When an attribute's whole value is one {{name}}:
  *        - if the element has a property with that name (value, checked, ...),
  *          the live property is set, so form controls always show the view
  *        - otherwise true/false adds/removes the attribute, and anything else
  *          becomes the attribute's text
  *
- *   4. class:done="${done}" turns the class "done" on or off.
+ *   4. class:done="{{done}}" turns the class "done" on or off.
  *
  *   Reuse another template with <template jx-use="#todo-item"></template>.
  *
@@ -43,7 +43,7 @@ import { repeat } from "./vendor/lit-html/directives/repeat.js";
 
 // `stack` is the list of contexts, innermost last: [view, todo, ...].
 // A name is looked up from the innermost context outwards, so inside
-// <jx-each items="todos">, ${title} is the todo's title and ${filter} still works.
+// <jx-each items="todos">, {{title}} is the todo's title and {{filter}} still works.
 function lookup(stack, name) {
   if (name === ".") return stack[stack.length - 1];
   var parts = name.split(".");
@@ -71,7 +71,7 @@ function text(value) {
 // The two special attribute behaviours, as Lit directives
 // ---------------------------------------------------------------------------
 
-// Rule 3: a whole-value attribute like checked="${done}" or value="${draft}".
+// Rule 3: a whole-value attribute like checked="{{done}}" or value="{{draft}}".
 // While an error is drawn on top of a view, form controls keep what you typed
 // (their value and checked properties are left alone).
 var keepTyping = false;
@@ -99,7 +99,7 @@ class SmartAttribute extends Directive {
 }
 var smartAttribute = directive(SmartAttribute);
 
-// Rule 4: class:done="${done}".
+// Rule 4: class:done="{{done}}".
 class ToggleClass extends Directive {
   update(part, [className, on]) {
     part.element.classList.toggle(className, !isEmpty(on));
@@ -113,8 +113,8 @@ var toggleClass = directive(ToggleClass);
 // Compiling: <template> -> a Lit template
 // ---------------------------------------------------------------------------
 
-var TAG = /\$\{\s*([^}]+?)\s*\}/g;
-var WHOLE = /^\$\{\s*([^}]+?)\s*\}$/;
+var TAG = /\{\{\s*([^}]+?)\s*\}\}/g;
+var WHOLE = /^\{\{\s*([^}]+?)\s*\}\}$/;
 var VOID = /^(area|base|br|col|embed|hr|img|input|link|meta|source|track|wbr)$/;
 
 function escapeText(s) {
@@ -280,11 +280,11 @@ function compileElement(node, b, ctx) {
     compileAttribute(attr.name, attr.value, b);
   });
 
-  // A <textarea>'s text can't hold a Lit hole, so ${x} inside it becomes its value.
+  // A <textarea>'s text can't hold a Lit hole, so {{x}} inside it becomes its value.
   if (tag === "textarea" && TAG.test(node.textContent)) {
     TAG.lastIndex = 0;
     var match = node.textContent.trim().match(WHOLE);
-    if (!match) throw new Error("[jsonx] a <textarea> can only hold one ${name}");
+    if (!match) throw new Error("[jsonx] a <textarea> can only hold one {{name}}");
     b.add(" value=");
     b.hole(function (stack) { return smartAttribute(lookup(stack, match[1])); });
     b.add("></textarea>");
@@ -318,9 +318,9 @@ function compileText(value, b) {
 function compileAttribute(name, value, b) {
   var whole = value.trim().match(WHOLE);
 
-  // class:done="${done}"
+  // class:done="{{done}}"
   if (name.startsWith("class:")) {
-    if (!whole) throw new Error('[jsonx] ' + name + '="…" must be exactly one ${name}');
+    if (!whole) throw new Error('[jsonx] ' + name + '="…" must be exactly one {{name}}');
     var className = name.slice(6);
     b.add(" " + name + "=");
     b.hole(function (stack) { return toggleClass(className, lookup(stack, whole[1])); });
