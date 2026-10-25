@@ -6,15 +6,15 @@
   <title>Editor — Conduit</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/styles/webawesome.css">
   <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
-  <link rel="stylesheet" href="../conduit/style.css?v=25">
+  <link rel="stylesheet" href="../conduit/style.css?v=26">
 
   <!-- A pretend RealWorld API (the same one the other Conduits use) -->
-  <script src="../conduit/mock-api.js?v=25"></script>
+  <script src="../conduit/mock-api.js?v=26"></script>
   <!-- The views: plain functions that pages call with fn:name -->
-  <script src="views.js?v=25"></script>
+  <script src="views.js?v=26"></script>
   <!-- <rich-editor>: a Tiptap editor that acts like a form field -->
-  <script type="module" src="../components/rich-editor.js?v=25"></script>
-  <script type="module" src="../../jsonx.js?v=25"></script>
+  <script type="module" src="../components/rich-editor.js?v=26"></script>
+  <script type="module" src="../../jsonx.js?v=26"></script>
   <script>if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("wa-dark");</script>
 </head>
 <body>
@@ -38,7 +38,7 @@
             <wa-input name="title" placeholder="Article title" size="l" value="{{article.title}}"></wa-input>
             <wa-input name="description" placeholder="What's this article about?" value="{{article.description}}"></wa-input>
             <!-- Tiptap: people see formatting, and the value sent is HTML. -->
-            <rich-editor name="body" placeholder="Write your article" value="{{article.body}}"></rich-editor>
+            <rich-editor name="body" placeholder="Write your article" upload="/api/uploads" value="{{article.body}}"></rich-editor>
             <wa-input name="tags" placeholder="Enter tags, separated by commas" value="{{article.tags}}"></wa-input>
             <div>
               <!-- On success the answer is { article: { slug } }, and jx-then goes to it. -->

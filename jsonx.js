@@ -18,8 +18,8 @@
  *
  *   <script type="module" src="jsonx.js"></script>
  */
-import { compileTemplate, compileView } from "./templates.js?v=25";
-import { defineComponent } from "./components.js?v=25";
+import { compileTemplate, compileView } from "./templates.js?v=26";
+import { defineComponent } from "./components.js?v=26";
 
 var METHODS = ["get", "post", "put", "patch", "delete"];
 var SELECTOR = METHODS.map(function (m) { return "[jx-" + m + "]"; }).join(",") + ",[jx-region],[jx-query],[jx-data],[jx-emit]";

@@ -264,6 +264,7 @@
 
     var path = url.pathname.slice(url.pathname.indexOf("/api/"));
     var method = (options.method || "GET").toUpperCase();
+    if (method === "POST" && path === "/api/uploads") return upload(options.body);
     var body = options.body ? JSON.parse(options.body) : {};
     var auth = (options.headers || {}).Authorization || "";
     var me = db.users.find(function (u) { return auth === "Token mock-jwt." + btoa(u.username); }) || null;
@@ -278,6 +279,22 @@
     }
     return later(404, { errors: { route: ["not found: " + method + " " + path] } });
   };
+
+  // POST /api/uploads, with a "file" field: not part of RealWorld, but most
+  // blogs need one. A real server would store the file and answer with its
+  // address. This one has nowhere to put it, so it answers with the image
+  // itself, as a data: address, and the article keeps it in localStorage.
+  function upload(form) {
+    var file = form && form.get ? form.get("file") : null;
+    if (!file) return later(422, { errors: { file: ["can't be blank"] } });
+    if (!/^image\/(jpeg|png|gif|webp)$/.test(file.type)) return later(422, { errors: { file: ["must be a JPEG, PNG, GIF or WebP image"] } });
+    if (file.size > 1500000) return later(422, { errors: { file: ["is too big (1.5 MB at most)"] } });
+    return new Promise(function (resolve) {
+      var reader = new FileReader();
+      reader.onload = function () { resolve(later(201, { url: reader.result })); };
+      reader.readAsDataURL(file);
+    });
+  }
 
   function later(status, data) {
     var response = status === 204
