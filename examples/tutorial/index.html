@@ -4,10 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>jsonx tutorial</title>
-  <link rel="stylesheet" href="style.css?v=32">
+  <link rel="stylesheet" href="style.css?v=33">
   <!-- A pretend server, so every example works without one. -->
-  <script src="mock-api.js?v=32"></script>
-  <script type="module" src="../../jsonx.js?v=32"></script>
+  <script src="mock-api.js?v=33"></script>
+  <script type="module" src="../../jsonx.js?v=33"></script>
 </head>
 <body>
 <header class="top">
@@ -655,6 +655,7 @@
       <tr><td><code>&lt;template&gt;</code> inside, or <code>jx-template="#id"</code></td><td>Makes a region</td></tr>
       <tr><td><code>jx-region</code></td><td>A region with nothing to load</td></tr>
       <tr><td><code>jx-action="name"</code></td><td>Call the function <code>name(values)</code> instead of a server</td></tr>
+      <tr><td><code>@click="name"</code>, <code>on:click="name"</code></td><td>Call the function on that event. Modifiers: <code>@input.delay-300</code>, <code>@keydown.enter</code>, <code>.once</code>, <code>.prevent</code>, <code>.stop</code></td></tr>
       <tr><td><code>&lt;template jx-component="tag-name" props="a b"&gt;</code></td><td>Define a web component from a template. In a .jx file, <code>&lt;template id="tag-name"&gt;</code> does the same</td></tr>
       <tr><td><code>jx-emit="name"</code></td><td>Fire an event (with the current item) on click</td></tr>
       <tr><td><code>jx-data="name"</code></td><td>Draw the variable <code>name</code>, again after every action</td></tr>
@@ -673,6 +674,6 @@
   </section>
 </main>
 
-<script src="tutorial.js?v=32"></script>
+<script src="tutorial.js?v=33"></script>
 </body>
 </html>

@@ -18,8 +18,8 @@
  *
  *   <script type="module" src="jsonx.js"></script>
  */
-import { compileTemplate, compileView } from "./templates.js?v=32";
-import { defineComponent, instances, compileScript } from "./components.js?v=32";
+import { compileTemplate, compileView } from "./templates.js?v=33";
+import { defineComponent, instances, compileScript } from "./components.js?v=33";
 
 var METHODS = ["get", "post", "put", "patch", "delete"];
 var SELECTOR = METHODS.map(function (m) { return "[jx-" + m + "]"; }).join(",") + ",[jx-action],[jx-region],[jx-query],[jx-data],[jx-emit],[jx-ws],[jx-ws-send]";
@@ -50,6 +50,7 @@ function process(root) {
   var elements = Array.from(root.querySelectorAll(SELECTOR));
   if (root.matches && root.matches(SELECTOR)) elements.unshift(root);
   elements.forEach(wire);
+  eventElements(root).forEach(attachEvents);
 
   // Shadow roots are invisible to the page-level observer, so watch each one we're given.
   if (root instanceof ShadowRoot) watch(root);
@@ -384,43 +385,109 @@ function attachTriggers(el) {
   }
 
   parseTriggers(el).forEach(function (trigger) {
-    // "load" means: run once, right now.
-    if (trigger.event === "load") {
-      issueRequest(el);
-      return;
+    listen(el, trigger, function () { issueRequest(el); });
+  });
+}
+
+// Runs `run` on el's trigger: { event, delay, from, filter, prevent, stop, once }.
+function listen(el, trigger, run) {
+  // "load" means: run once, right now.
+  if (trigger.event === "load") {
+    run();
+    return;
+  }
+  // "revealed" runs when the element scrolls into view, e.g. a "Load more"
+  // row at the bottom of a long list. It runs again each time it comes back.
+  if (trigger.event === "revealed") {
+    new IntersectionObserver(function (entries) {
+      if (entries.some(function (e) { return e.isIntersecting; }) && el.isConnected) run();
+    }, { rootMargin: "200px" }).observe(el);
+    return;
+  }
+
+  // Usually we listen on the element itself. "from:#list" listens somewhere else.
+  var source = findSource(el, trigger.from);
+  var timer = null;
+
+  // Any event name works here, including a web component's custom events
+  // (e.g. jx-trigger="rating-changed").
+  source.addEventListener(trigger.event, function (event) {
+    // The element may have been removed from the page since we started listening.
+    if (!el.isConnected) return;
+    if (trigger.filter && String(event[trigger.filter.property]) !== trigger.filter.value) return;
+
+    // Stop forms from reloading the page, and links from navigating.
+    if (event.type === "submit" || el.tagName === "A" || trigger.prevent) event.preventDefault();
+    if (trigger.stop) event.stopPropagation();
+
+    // "delay:300ms" waits until the events stop for 300ms (a debounce).
+    clearTimeout(timer);
+    if (trigger.delay > 0) {
+      timer = setTimeout(run, trigger.delay);
+    } else {
+      run();
     }
-    // "revealed" runs when the element scrolls into view, e.g. a "Load more"
-    // row at the bottom of a long list. It runs again each time it comes back.
-    if (trigger.event === "revealed") {
-      new IntersectionObserver(function (entries) {
-        if (entries.some(function (e) { return e.isIntersecting; }) && el.isConnected) issueRequest(el);
-      }, { rootMargin: "200px" }).observe(el);
-      return;
-    }
+  }, { once: !!trigger.once });
+}
 
-    // Usually we listen on the element itself. "from:#list" listens somewhere else.
-    var source = findSource(el, trigger.from);
-    var timer = null;
+// ---------------------------------------------------------------------------
+// @click="add" and on:click="add"
+// ---------------------------------------------------------------------------
+//
+// Calls the function add when the element is clicked, like jx-action="add"
+// with jx-trigger="click". Any event works (@input, @wa-change, @load), an
+// element can have several, and modifiers go after a dot:
+//   @input.delay-300="search"    wait until typing stops for 300ms
+//   @keydown.enter="add"         only for that key (enter, escape, space, tab, up, down...)
+//   @click.once  .prevent  .stop
+// Not onclick="...": that's the browser's own, and runs as code.
 
-    // Any event name works here, including a web component's custom events
-    // (e.g. jx-trigger="rating-changed").
-    source.addEventListener(trigger.event, function (event) {
-      // The element may have been removed from the page since we started listening.
-      if (!el.isConnected) return;
-      if (trigger.filter && String(event[trigger.filter.property]) !== trigger.filter.value) return;
+var KEYS = { enter: "Enter", escape: "Escape", esc: "Escape", space: " ", tab: "Tab", up: "ArrowUp", down: "ArrowDown", left: "ArrowLeft", right: "ArrowRight", delete: "Delete", backspace: "Backspace" };
+var withEvents = new WeakSet();
 
-      // Stop forms from reloading the page, and links from navigating.
-      if (event.type === "submit" || el.tagName === "A") event.preventDefault();
+function eventAttribute(name) {
+  return name.charAt(0) === "@" ? name.slice(1) : name.indexOf("on:") === 0 ? name.slice(3) : null;
+}
 
-      // "delay:300ms" waits until the events stop for 300ms (a debounce).
-      clearTimeout(timer);
-      if (trigger.delay > 0) {
-        timer = setTimeout(function () { issueRequest(el); }, trigger.delay);
-      } else {
-        issueRequest(el);
-      }
+function attachEvents(el) {
+  if (withEvents.has(el)) return;
+  var found = false;
+  Array.from(el.attributes).forEach(function (attribute) {
+    var spec = eventAttribute(attribute.name);
+    if (!spec) return;
+    found = true;
+    var parts = spec.split(".");
+    var trigger = { event: parts[0], delay: 0, from: null, filter: null };
+    parts.slice(1).forEach(function (mod) {
+      var delay = mod.match(/^delay-(\d+)(ms|s)?$/);
+      if (delay) trigger.delay = Number(delay[1]) * (delay[2] === "s" ? 1000 : 1);
+      else if (mod === "once" || mod === "prevent" || mod === "stop") trigger[mod] = true;
+      else trigger.filter = { property: "key", value: KEYS[mod] || mod };
+    });
+    var action = attribute.value.trim();
+    // :name is filled from the page address, like in jx-action.
+    if (action.indexOf(":") !== -1) action = action.replace(/([?&=]):(\w+)/g, function (all, before, key) {
+      return before + encodeURIComponent(addressValues.get(key) || "");
+    });
+    listen(el, trigger, function () {
+      issueRequest(el, null, false, { method: "POST", url: "fn:" + action, action: true });
     });
   });
+  if (found) withEvents.add(el);
+}
+
+// Elements with an @event or on:event attribute. CSS can't select by an
+// attribute's prefix, so this looks at each element's attribute names.
+function eventElements(root) {
+  var list = [];
+  var check = function (el) {
+    for (var i = 0; i < el.attributes.length; i++) {
+      if (eventAttribute(el.attributes[i].name)) { list.push(el); return; }
+    }
+  };
+  if (root.attributes) check(root);
+  root.querySelectorAll("*").forEach(check);
+  return list;
 }
 
 // The trigger you get when you don't write one, based on what the element is:
@@ -593,8 +660,9 @@ function closeGaps(value) {
 // jx-refresh uses it.
 // `fromAddress` (back and forward) sends only the element's own values, not
 // the controls drawn for the view it's leaving.
-function issueRequest(el, override, fromAddress) {
-  var info = override || getMethodAndUrl(el);
+// `action` ({ method, url }) calls that instead of the element's own jx- attribute.
+function issueRequest(el, override, fromAddress, action) {
+  var info = override || action || getMethodAndUrl(el);
   var values = override ? {} : fromAddress ? ownValues(el) : collectValues(el);
   var url = info.url;
   var options = { method: info.method, headers: { Accept: "application/json" } };
