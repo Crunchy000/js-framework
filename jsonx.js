@@ -18,8 +18,8 @@
  *
  *   <script type="module" src="jsonx.js"></script>
  */
-import { compileTemplate, compileView } from "./templates.js?v=29";
-import { defineComponent } from "./components.js?v=29";
+import { compileTemplate, compileView } from "./templates.js?v=30";
+import { defineComponent, instances } from "./components.js?v=30";
 
 var METHODS = ["get", "post", "put", "patch", "delete"];
 var SELECTOR = METHODS.map(function (m) { return "[jx-" + m + "]"; }).join(",") + ",[jx-region],[jx-query],[jx-data],[jx-emit],[jx-ws],[jx-ws-send]";
@@ -45,7 +45,7 @@ function process(root) {
   }
   // <template jx-component="user-card"> defines <user-card> (see components.js).
   root.querySelectorAll("template[jx-component]").forEach(function (template) {
-    defineComponent(template, { compileView: compileView, process: process, bindProps: bindProps, scopeValue: scopeValue });
+    defineComponent(template, { compileView: compileView, process: process, bindProps: bindProps, scopeValue: scopeValue, scopeGet: scopeGet, fingerprint: fingerprint, copy: copy });
   });
   var elements = Array.from(root.querySelectorAll(SELECTOR));
   if (root.matches && root.matches(SELECTOR)) elements.unshift(root);
@@ -217,6 +217,17 @@ function checkScopes() {
     if (el.__jxProps) el.requestUpdate(); // a component reading props from its scope
     else render(el, copy(viewFor(el)));
   });
+  // Components with setup() state redraw if their own data changed.
+  instances.forEach(function (component) { component.__jxCheck(); });
+}
+
+// The component instance (from setup()) nearest el with a function by this name.
+function instanceFor(el, name) {
+  for (var node = el; node; node = node.parentNode || node.host) {
+    var instance = node.__jxInstance;
+    if (instance && typeof instance[name] === "function") return instance;
+  }
+  return null;
 }
 
 // For components (see components.js): each prop its scope exports is bound,
@@ -342,7 +353,9 @@ function attachTriggers(el) {
       findSource(el, trigger.from).addEventListener(trigger.event, function (event) {
         if (trigger.filter && String(event[trigger.filter.property]) !== trigger.filter.value) return;
         if (event.type === "submit" || el.tagName === "A") event.preventDefault();
-        fire(el, el.getAttribute("jx-emit"), el.__jxItem);
+        // jx-detail='{"id": "{{id}}"}' sends that instead of the item.
+        var detail = el.hasAttribute("jx-detail") ? JSON.parse(el.getAttribute("jx-detail")) : el.__jxItem;
+        fire(el, el.getAttribute("jx-emit"), detail);
       });
     });
     return;
@@ -736,8 +749,10 @@ function send(url, options, el) {
   if (url.indexOf("fn:") !== 0) return fetch(url, options);
   var address = new URL(url.slice(3), "http://x/");
   var name = decodeURIComponent(address.pathname.slice(1));
-  var fnScope = el && scopeFor(el, name);
-  var fn = fnScope ? scopeGet(fnScope, name) : name in api.functions ? api.functions[name] : globalValue(name);
+  // Looked up in order: the component instance, the .jx module, then the page.
+  var instance = el && instanceFor(el, name);
+  var fnScope = !instance && el && scopeFor(el, name);
+  var fn = instance ? instance[name].bind(instance) : fnScope ? scopeGet(fnScope, name) : name in api.functions ? api.functions[name] : globalValue(name);
   var json = function (status, body, headers) {
     return new Response(body === undefined ? null : JSON.stringify(body), {
       status: status, headers: Object.assign({ "Content-Type": "application/json" }, headers)
@@ -756,7 +771,7 @@ function send(url, options, el) {
       // A module's function: its changes are found by comparing (checkScopes).
       var changes = el && el.getAttribute("jx-data");
       if (changes) changes.split(/[\s,]+/).filter(Boolean).forEach(function (n) { if (!scopeFor(el, n)) redraw(n); });
-      else if (!fnScope) update();
+      else if (!fnScope && !instance) update();
       checkScopes();
     })
     .then(function (view) {

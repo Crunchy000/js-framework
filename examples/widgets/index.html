@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>jsonx widgets</title>
+  <!-- No script of its own: the widgets' code is the module in widgets.jx. -->
+  <script type="module" src="../../jsonx.js?v=30"></script>
+  <style>
+    :root { --bg: #fafafa; --panel: #fff; --text: #18181b; --muted: #71717a; --line: #e4e4e7; --accent: #4f46e5; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #09090b; --panel: #18181b; --text: #fafafa; --muted: #a1a1aa; --line: #27272a; --accent: #818cf8; }
+    }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, sans-serif; }
+    main { max-width: 720px; margin: 0 auto; padding: 32px 16px 64px; }
+    h1 { font-size: 24px; margin: 0 0 4px; }
+    .intro { color: var(--muted); margin: 0 0 24px; }
+    .intro a { color: inherit; }
+    section { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; margin-bottom: 16px; }
+    h2 { font-size: 16px; margin: 0 0 4px; }
+    section p { color: var(--muted); margin: 0 0 12px; font-size: 14px; }
+    .row { display: flex; gap: 24px; flex-wrap: wrap; align-items: center; }
+  </style>
+</head>
+<body>
+  <template src="widgets.jx?v=30"></template>
+  <main>
+    <h1>Widgets</h1>
+    <p class="intro">Components written as templates, each with its own state, like hand-written Lit components. The code is one module in <code>widgets.jx</code>, and this page has no script. <a href="https://github.com/crunchy000/js-framework/blob/main/examples/widgets/widgets.jx">Source</a></p>
+
+    <section>
+      <h2>Counters: state for each element</h2>
+      <p>Two copies of one component count separately. Props are typed: <code>props="start:number step:number"</code>.</p>
+      <div class="row">
+        <my-counter id="a"></my-counter>
+        <my-counter id="b" start="10" step="5"></my-counter>
+      </div>
+    </section>
+
+    <section>
+      <h2>Countdown: lifecycle hooks</h2>
+      <p><code>connected()</code> starts the timer when the element appears, and <code>disconnected()</code> stops it when it's removed. "Done" is a getter.</p>
+      <div class="row">
+        <count-down seconds="5" autostart></count-down>
+        <count-down seconds="30"></count-down>
+      </div>
+    </section>
+
+    <section>
+      <h2>Feedback: a form field component</h2>
+      <p><code>&lt;star-rating&gt;</code> is a form field: the form sends its value under its name, like an input.</p>
+      <feedback-form></feedback-form>
+    </section>
+  </main>
+</body>
+</html>

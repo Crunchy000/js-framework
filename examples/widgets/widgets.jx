@@ -1,0 +1,120 @@
+<!-- widgets.jx: components with their own state, like hand-written Lit ones.
+
+     setup="counter" names a function the module exports. It runs once for
+     each element and returns that element's own object: its state, its
+     actions (fn:up inside it calls this object's up, with `this` as the
+     object), and optional hooks: connected(el), disconnected(el), rendered(el).
+     jsonx redraws an element when its object's data changes. -->
+
+<script type="module">
+  // <my-counter start="5" step="2">: two counters on a page count separately.
+  export function counter(el, props) {
+    return {
+      count: props.start ?? 0,
+      up() { this.count += props.step ?? 1; },
+      down() { this.count -= props.step ?? 1; },
+      reset() { this.count = props.start ?? 0; } // also el.reset() from outside
+    };
+  }
+
+  // <count-down seconds="10">: a timer that starts when it's on the page and
+  // stops when it's removed. Its changes come from a timer, not an fn: call,
+  // so it asks jsonx to look with jsonx.changed().
+  export function countdown(el, props) {
+    let timer = null;
+    return {
+      left: props.seconds ?? 10,
+      running: false,
+      get done() { return this.left === 0; },    // computed, drawn like data
+      start() {
+        if (this.running || this.left === 0) return;
+        this.running = true;
+        timer = setInterval(() => {
+          this.left -= 1;
+          if (this.left === 0) { clearInterval(timer); this.running = false; }
+          jsonx.changed();
+        }, 1000);
+      },
+      stop() { clearInterval(timer); this.running = false; },
+      again() { this.stop(); this.left = props.seconds ?? 10; this.start(); },
+      connected() { if (el.hasAttribute("autostart")) this.start(); },
+      disconnected() { this.stop(); }
+    };
+  }
+
+  // <star-rating name="rating" form>: a form field. `value` is what forms and
+  // jsonx send under its name. jx-ref="stars" puts that element in this.refs.
+  export function stars(el, props) {
+    return {
+      value: props.value ?? 0,
+      stars: [1, 2, 3, 4, 5].map((n) => ({ id: n, n, on: n <= (props.value ?? 0) })),
+      pick({ n }) {
+        this.value = Number(n);
+        this.stars = this.stars.map((s) => ({ ...s, on: s.n <= this.value }));
+        el.dispatchEvent(new Event("change", { bubbles: true })); // like an <input>
+      },
+      rendered() { this.refs.stars.setAttribute("aria-valuenow", this.value); }
+    };
+  }
+
+  // <feedback-form>: a form that sends its fields, star rating included.
+  export function feedback() {
+    return {
+      sent: "",
+      async send(values) {
+        await new Promise((done) => setTimeout(done, 300)); // a pretend server
+        this.sent = "Thanks! You gave " + values.rating + " stars and said: " + (values.comment || "nothing");
+      }
+    };
+  }
+</script>
+
+<template jx-component="my-counter" props="start:number step:number" setup="counter">
+  <style>
+    :host { display: inline-flex; align-items: center; gap: 8px; }
+    button { font: inherit; width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--line, #ddd); background: var(--panel, #fff); color: inherit; cursor: pointer; }
+    output { min-width: 3ch; text-align: center; font-size: 20px; font-variant-numeric: tabular-nums; }
+  </style>
+  <button jx-post="fn:down" aria-label="Down">−</button>
+  <output>{{count}}</output>
+  <button jx-post="fn:up" aria-label="Up">+</button>
+</template>
+
+<template jx-component="count-down" props="seconds:number" setup="countdown">
+  <style>
+    :host { display: inline-flex; align-items: center; gap: 10px; }
+    .time { font-size: 28px; font-variant-numeric: tabular-nums; min-width: 2ch; }
+    .done { color: #16a34a; }
+    button { font: inherit; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--line, #ddd); background: var(--panel, #fff); color: inherit; cursor: pointer; }
+  </style>
+  <span class="time" class:done="{{done}}">{{left}}</span>
+  <jx-if test="running"><button jx-post="fn:stop">Pause</button></jx-if>
+  <jx-else-if test="done"><button jx-post="fn:again">Again</button></jx-else-if>
+  <jx-else><button jx-post="fn:start">Start</button></jx-else>
+</template>
+
+<template jx-component="star-rating" props="value:number" setup="stars" form>
+  <style>
+    :host { display: inline-block; }
+    button { font-size: 26px; line-height: 1; padding: 2px; border: 0; background: none; cursor: pointer; color: #d4d4d8; }
+    button.on { color: #f59e0b; }
+  </style>
+  <span jx-ref="stars" role="slider" aria-valuemin="0" aria-valuemax="5" aria-label="Rating">
+    <button jx-each="stars" class:on="{{on}}" jx-post="fn:pick" jx-vals='{"n": {{n}}}' aria-label="{{n}} stars">★</button>
+  </span>
+</template>
+
+<template jx-component="feedback-form" setup="feedback">
+  <style>
+    form { display: grid; gap: 10px; max-width: 360px; }
+    textarea { font: inherit; padding: 8px; border-radius: 8px; border: 1px solid var(--line, #ddd); background: var(--panel, #fff); color: inherit; }
+    button { justify-self: start; font: inherit; padding: 8px 16px; border: 0; border-radius: 8px; background: var(--accent, #4f46e5); color: #fff; cursor: pointer; }
+    .sent { color: #16a34a; margin: 0; }
+  </style>
+  <form jx-post="fn:send" jx-swap="none">
+    <star-rating name="rating"></star-rating>
+    <textarea name="comment" rows="3" placeholder="Anything else?"></textarea>
+    <button>Send feedback</button>
+    <jx-if test="sent"><p class="sent">{{sent}}</p></jx-if>
+  </form>
+</template>
