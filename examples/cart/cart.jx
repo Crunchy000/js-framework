@@ -4,8 +4,11 @@
      total, busy, ordered, add, remove, checkout) are what fn: and jx-data in
      this file can see. What isn't exported (PRICES, find, changed) is private.
 
+     Each component's props come from the module: <cart-badge> declares
+     props="count" and shows the module's count, with nothing passed in.
+
      Nothing says what a button changes. After each fn: call, jsonx compares
-     the module's bound exports and redraws only the regions bound to the ones
+     the module's exports and redraws only the components that use the ones
      that changed: adding a cake redraws the badge and the list, not the buttons. -->
 
 <script type="module">
@@ -56,18 +59,17 @@
   }
 </script>
 
-<!-- <cart-badge>: the count, in the header. -->
-<template jx-component="cart-badge">
+<!-- <cart-badge>: the count, in the header. Its prop comes from the module. -->
+<template jx-component="cart-badge" props="count">
   <style>
     :host { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
     .n { background: var(--accent, #4f46e5); color: #fff; border-radius: 999px; padding: 0 8px; font-size: 13px; line-height: 22px; }
   </style>
-  <span jx-data="count">
-    <template>Cart <span class="n">{{count}}</span></template>
-  </span>
+  Cart <span class="n">{{count}}</span>
 </template>
 
-<!-- <add-to-cart product="tea">: a button for one product. -->
+<!-- <add-to-cart product="tea">: a button for one product. The module has no
+     product, so this prop comes from the attribute, like any web component's. -->
 <template jx-component="add-to-cart" props="product">
   <style>
     button { font: inherit; padding: 10px 16px; border-radius: 10px; border: 1px solid var(--line, #ddd); background: var(--panel, #fff); color: inherit; cursor: pointer; text-transform: capitalize; }
@@ -76,8 +78,9 @@
   <button jx-post="fn:add" jx-vals='{"product": "{{product}}"}'>Add {{product}}</button>
 </template>
 
-<!-- <cart-list>: the whole cart. Rows are keyed by id, so adding one row only adds one row. -->
-<template jx-component="cart-list">
+<!-- <cart-list>: the whole cart, its props from the module. Rows are keyed by
+     id, so adding one row only adds one row. -->
+<template jx-component="cart-list" props="items total busy ordered">
   <style>
     ul { list-style: none; margin: 0; padding: 0; }
     li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--line, #eee); text-transform: capitalize; }
@@ -89,21 +92,17 @@
     .note { color: var(--muted, #777); margin: 0; }
     .done { color: #16a34a; margin: 0 0 8px; }
   </style>
-  <section jx-data="items total busy ordered">
-    <template>
-      <jx-if test="ordered"><p class="done">{{ordered}}</p></jx-if>
-      <jx-if test="items">
-        <ul>
-          <li jx-each="items">
-            <span>{{name}} × {{qty}} <small>{{price}} each</small></span>
-            <button jx-post="fn:remove" jx-vals='{"id": "{{id}}"}' aria-label="Remove {{name}}">✕</button>
-          </li>
-        </ul>
-        <p class="total"><span>Total</span> <strong>{{total}}</strong></p>
-        <jx-if test="busy"><button class="checkout" disabled>Placing order…</button></jx-if>
-        <jx-else><button class="checkout" jx-post="fn:checkout">Check out</button></jx-else>
-      </jx-if>
-      <jx-else><p class="note">Your cart is empty.</p></jx-else>
-    </template>
-  </section>
+  <jx-if test="ordered"><p class="done">{{ordered}}</p></jx-if>
+  <jx-if test="items">
+    <ul>
+      <li jx-each="items">
+        <span>{{name}} × {{qty}} <small>{{price}} each</small></span>
+        <button jx-post="fn:remove" jx-vals='{"id": "{{id}}"}' aria-label="Remove {{name}}">✕</button>
+      </li>
+    </ul>
+    <p class="total"><span>Total</span> <strong>{{total}}</strong></p>
+    <jx-if test="busy"><button class="checkout" disabled>Placing order…</button></jx-if>
+    <jx-else><button class="checkout" jx-post="fn:checkout">Check out</button></jx-else>
+  </jx-if>
+  <jx-else><p class="note">Your cart is empty.</p></jx-else>
 </template>

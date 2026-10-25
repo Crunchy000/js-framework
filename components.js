@@ -18,6 +18,9 @@
  *     the current item as event.detail. The page decides what happens.
  *   - jx- attributes inside work as usual (jsonx processes the shadow root).
  *
+ * In a .jx file with a <script type="module">, a prop that isn't set comes
+ * from the module's export with the same name, and redraws when it changes.
+ *
  * jsonx defines these automatically when it finds them on the page or in a
  * .jx file pulled in with <template src="...">. It's a genuine LitElement, so
  * Lit apps can use it, subclass it, and await el.updateComplete.
@@ -54,7 +57,7 @@ function introduce(root) {
   });
 }
 
-// `tools` is { compileView, process } from jsonx.
+// `tools` is { compileView, process, bindProps, scopeValue } from jsonx.
 export function defineComponent(template, tools) {
   var tag = template.getAttribute("jx-component");
   if (customElements.get(tag)) return;
@@ -81,9 +84,21 @@ export function defineComponent(template, tools) {
       if (template.__jxScope) this.__jxScope = template.__jxScope;
     }
 
+    // A prop that isn't set (by attribute, property or the parent template)
+    // comes from the component's module scope, if its .jx file exports one by
+    // that name. So <cart-badge> with props="count" shows the module's count,
+    // and redraws when it changes. Setting it from outside still wins.
+    connectedCallback() {
+      super.connectedCallback();
+      tools.bindProps(this, props);
+    }
+
     render() {
       var data = {};
-      for (var i = 0; i < props.length; i++) data[props[i]] = this[props[i]];
+      for (var i = 0; i < props.length; i++) {
+        var value = this[props[i]];
+        data[props[i]] = value === undefined ? tools.scopeValue(this, props[i]) : value;
+      }
       return view(data);
     }
 

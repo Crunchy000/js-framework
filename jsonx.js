@@ -18,8 +18,8 @@
  *
  *   <script type="module" src="jsonx.js"></script>
  */
-import { compileTemplate, compileView } from "./templates.js?v=28";
-import { defineComponent } from "./components.js?v=28";
+import { compileTemplate, compileView } from "./templates.js?v=29";
+import { defineComponent } from "./components.js?v=29";
 
 var METHODS = ["get", "post", "put", "patch", "delete"];
 var SELECTOR = METHODS.map(function (m) { return "[jx-" + m + "]"; }).join(",") + ",[jx-region],[jx-query],[jx-data],[jx-emit],[jx-ws],[jx-ws-send]";
@@ -45,7 +45,7 @@ function process(root) {
   }
   // <template jx-component="user-card"> defines <user-card> (see components.js).
   root.querySelectorAll("template[jx-component]").forEach(function (template) {
-    defineComponent(template, { compileView: compileView, process: process });
+    defineComponent(template, { compileView: compileView, process: process, bindProps: bindProps, scopeValue: scopeValue });
   });
   var elements = Array.from(root.querySelectorAll(SELECTOR));
   if (root.matches && root.matches(SELECTOR)) elements.unshift(root);
@@ -213,7 +213,28 @@ function checkScopes() {
       });
     });
   });
-  dirty.forEach(function (el) { render(el, copy(viewFor(el))); });
+  dirty.forEach(function (el) {
+    if (el.__jxProps) el.requestUpdate(); // a component reading props from its scope
+    else render(el, copy(viewFor(el)));
+  });
+}
+
+// For components (see components.js): each prop its scope exports is bound,
+// so the component redraws when that export changes.
+function bindProps(host, props) {
+  props.forEach(function (name) {
+    var scope = scopeFor(host, name);
+    if (!scope) return;
+    host.__jxProps = true;
+    (scope.bound[name] = scope.bound[name] || new Set()).add(host);
+    if (!(name in scope.last)) scope.last[name] = fingerprint(scopeGet(scope, name));
+  });
+}
+
+// A copy, so the template sees a change made in place (qty++) as a change.
+function scopeValue(host, name) {
+  var scope = scopeFor(host, name);
+  return scope ? copy(scopeGet(scope, name)) : undefined;
 }
 
 // On article.html?slug=hello, jx-get="/view/article/:slug" becomes
@@ -309,7 +330,7 @@ function attachTriggers(el) {
       var scope = scopeFor(el, name);
       var list = scope ? scope.bound : bound;
       (list[name] = list[name] || new Set()).add(el);
-      if (scope) scope.last[name] = fingerprint(scopeGet(scope, name));
+      if (scope && !(name in scope.last)) scope.last[name] = fingerprint(scopeGet(scope, name));
     });
     render(el, copy(viewFor(el)));
     return;

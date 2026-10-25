@@ -247,12 +247,15 @@ A `.jx` file can hold a `<script type="module">`. Its exports are that file's sc
   export function add({ product }) { items.push({ id: product, qty: 1 }); count++; }
 </script>
 
-<template jx-component="cart-badge">
-  <span jx-data="count"><template>Cart {{count}}</template></span>
+<!-- props="count": with nothing passed in, it's the module's count -->
+<template jx-component="cart-badge" props="count">
+  Cart {{count}}
 </template>
 ```
 
-Nothing says what a button changes. After each `fn:` call, jsonx compares the module's bound exports with how they looked before (lists and objects by their contents, so `items.push()` counts) and redraws only the regions bound to the ones that changed. Exports are live bindings, so jsonx always reads the current value. For changes made outside an `fn:` call, like a timer or a socket, call `jsonx.changed()`. Async functions are fine: change the data after the `await`, not before, and a double click can't lose anything.
+**Props come from the module.** A component's prop that isn't set by an attribute, a property or a parent template is read from the module's export with the same name, and the component redraws when that export changes. So `<cart-badge>` needs nothing passed in, and `<cart-badge count="99">` still overrides it, like any web component. Props the module doesn't export, like `<add-to-cart product="tea">`, work as usual.
+
+Nothing says what a button changes. After each `fn:` call, jsonx compares the module's bound exports with how they looked before (lists and objects by their contents, so `items.push()` counts) and redraws only the components and `jx-data` regions that use the ones that changed. Exports are live bindings, so jsonx always reads the current value. For changes made outside an `fn:` call, like a timer or a socket, call `jsonx.changed()`. Async functions are fine: change the data after the `await`, not before, and a double click can't lose anything.
 
 `jx-data` can name several things: `jx-data="items total"` draws `{ items, total }`. One name holding an object draws the object itself, as before.
 
