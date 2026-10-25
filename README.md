@@ -258,6 +258,7 @@ Both Conduit apps share `examples/components/article-preview.jx`: the REST versi
 - **Components that fire events.** `jx-trigger` accepts any event name, so `<star-rating jx-post="/api/feedback" jx-trigger="rating-changed">` works. jsonx sends the component's `name` attribute and `value` property, like an `<input>`. [Form-associated](https://developer.mozilla.org/en-US/docs/Web/API/ElementInternals) components inside a form are picked up by the form.
 - **Components that take JSON as a property.** `jx-swap="prop:stats"` skips templates and does `target.stats = data`, and the component draws itself. Inside a template, `stats="{{stats}}"` does the same.
 - **Hand-written components that use jsonx inside.** Call `jsonx.process(this.shadowRoot)` once in `connectedCallback`. Then `jx-target` and `jx-template` look inside the shadow root first, so the component can keep private templates.
+- **Wrapping a library as a form field.** Conduit's editor uses `<rich-editor name="body" value="{{article.body}}">`, a [Tiptap](https://tiptap.dev) editor in about 150 lines (`examples/components/rich-editor.js`). It has a `name` and a `value` property, and fires `input` as you type, so jsonx sends it like a textarea and doesn't redraw over your typing. Its value is Markdown, so people see formatting and the server still stores Markdown. It's a hand-written element rather than a `.jx` one because Tiptap needs script, and it stays in the page's DOM because text selection inside shadow DOM is unreliable.
 
 ## APIs that aren't shaped for the page
 
@@ -364,6 +365,7 @@ At 1,000 rows every action takes about 100 ms. At 10,000 rows the browser itself
 | `vendor/lit-html/` | lit-html 3.3.1 and its `repeat` directive (BSD-3-Clause, see `vendor/lit-html/LICENSE.txt`). |
 | `vendor/lit-element/` | LitElement 4.2.1, the base class for components (BSD-3-Clause). |
 | `vendor/dompurify/`, `vendor/marked/` | DOMPurify 3.4.16 (Apache-2.0 or MPL-2.0) and marked 18.1.0 (MIT), for `jx-markdown` and `jx-html`. |
+| `vendor/tiptap/` | Tiptap 3.31.4 with StarterKit and Markdown, bundled into one file for `<rich-editor>` (MIT, see `vendor/tiptap/LICENSES.txt`). |
 | `vendor/react/`, `vendor/htmx/` | React 18.3.1, htmx 2.0.4 and idiomorph 0.3.0, for the benchmark only. |
 | `examples/todo/` | The Web Awesome todo app, with its mock API. |
 | `examples/todo-functions/` | The same app, with plain `fn:` functions in the page instead of a server. |
@@ -371,7 +373,7 @@ At 1,000 rows every action takes about 100 ms. At 10,000 rows the browser itself
 | `examples/table-graphql/` | A paged, sortable table with no script: one GraphQL query, over a pretend GraphQL server (`people-server.js`). |
 | `examples/data-table/` | A 10,000-row table with search, sort and infinite scroll (`jx-trigger="revealed"`), from one plain function. |
 | `examples/basic/` | The feature tour: one live example per feature. |
-| `examples/components/` | `article-preview.jx`, a component shared by both Conduit apps. |
+| `examples/components/` | `article-preview.jx`, a component shared by the Conduit apps, and `rich-editor.js`, their Tiptap editor. |
 | `examples/tutorial/` | The tutorial. |
 | `examples/conduit/` | The RealWorld app: one HTML file per page and no page script. `view-api.js` is a pretend backend-for-frontend that turns the RealWorld API (`mock-api.js`) into page-shaped views. |
 | `examples/conduit-functions/` | Conduit again, with no server of its own: `views.js` holds the view API as plain `fn:` functions that call the RealWorld API. It shares Conduit's styles, mock and article list. |
