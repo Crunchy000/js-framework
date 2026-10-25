@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>jsonx people, on GraphQL</title>
+
+  <!-- A pretend GraphQL server (in real life it's on your server), then jsonx.
+       There's no other script: paging, sorting and search are all HTML. -->
+  <script type="module" src="people-server.js?v=22"></script>
+  <script type="module" src="../../jsonx.js?v=22"></script>
+
+  <!-- The page's one query. The region's controls are its variables. -->
+  <script type="text/graphql" id="people">
+    query People($sort: PersonSort, $order: Order, $search: String, $page: Int, $perPage: Int) {
+      people(sort: $sort, order: $order, search: $search, page: $page, perPage: $perPage) {
+        sort order search page perPage total from to previous next
+        columns { sort label arrow nextOrder active }
+        pages { number label current gap }
+        rows { id name team city joined }
+      }
+    }
+  </script>
+
+  <style>
+    :root { --bg: #fafafa; --panel: #fff; --text: #18181b; --muted: #71717a; --line: #e4e4e7; --head: #f4f4f5; --accent: #e10098; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #09090b; --panel: #18181b; --text: #fafafa; --muted: #a1a1aa; --line: #27272a; --head: #202024; --accent: #ff4fc1; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 64px; }
+    h1 { font-size: 24px; margin: 0 0 4px; }
+    .intro { color: var(--muted); margin: 0 0 20px; }
+    .intro a { color: inherit; }
+    input, select, button { font: inherit; color: inherit; }
+
+    .bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+    .bar input { flex: 1 1 240px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+    .bar label { color: var(--muted); font-size: 14px; }
+    .bar select { padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+
+    .table { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: clip; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background: var(--head); text-align: left; padding: 0; border-bottom: 1px solid var(--line); }
+    th button { all: unset; display: block; width: 100%; box-sizing: border-box; padding: 10px 12px; font-weight: 600; cursor: pointer; }
+    th button:hover, th button.active { color: var(--accent); }
+    th button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+    td { padding: 8px 12px; border-bottom: 1px solid var(--line); }
+    tr:last-child td { border-bottom: 0; }
+    .empty { text-align: center; color: var(--muted); padding: 24px; margin: 0; }
+
+    .pager { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 12px; color: var(--muted); font-size: 14px; }
+    .pages { display: flex; gap: 4px; flex-wrap: wrap; }
+    .pages button { min-width: 34px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); cursor: pointer; }
+    .pages button:hover:not(:disabled) { border-color: var(--accent); }
+    .pages button.current { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .pages button:disabled { opacity: .4; cursor: default; }
+    .pages .gap { padding: 4px 4px; }
+    .jx-loading { opacity: .6; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>People, on GraphQL</h1>
+    <p class="intro">Search, sorting and paging with no script: one GraphQL query, and HTML that says which variables each button changes. The address bar keeps up, so refresh and back work. Built with <a href="../../">jsonx</a>. <a href="https://github.com/crunchy000/js-framework/blob/main/examples/table-graphql/index.html">Source</a></p>
+
+    <!-- The region runs the query on load, with the address's values as variables,
+         and puts what it sends back in the address (jx-push-url). -->
+    <div jx-query="#people"
+         jx-vals='{"sort": ":sort", "order": ":order", "search": ":search", "page": ":page", "perPage": ":perPage"}'
+         jx-push-url="sort order search page perPage">
+      <p class="empty">Loading…</p>
+      <template>
+        <!-- What's shown now. Every button sends these, plus what it changes. -->
+        <input type="hidden" name="sort" value="{{people.sort}}">
+        <input type="hidden" name="order" value="{{people.order}}">
+        <input type="hidden" name="page" value="{{people.page}}">
+
+        <div class="bar">
+          <input type="search" name="search" value="{{people.search}}" placeholder="Search names, teams and cities" aria-label="Search"
+                 jx-query="#people" jx-trigger="input delay:250ms" jx-vals='{"page": 1}'>
+          <label>Rows
+            <select name="perPage" value="{{people.perPage}}" jx-query="#people" jx-vals='{"page": 1}'>
+              <option>10</option><option>20</option><option>50</option><option>100</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="table">
+          <table>
+            <thead>
+              <tr>
+                <th jx-each="people.columns">
+                  <button class:active="{{active}}" jx-query="#people"
+                          jx-vals='{"sort": "{{sort}}", "order": "{{nextOrder}}", "page": 1}'>{{label}} {{arrow}}</button>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr jx-each="people.rows">
+                <td>{{name}}</td><td>{{team}}</td><td>{{city}}</td><td>{{joined}}</td>
+              </tr>
+            </tbody>
+          </table>
+          <jx-if test="!people.total"><p class="empty">No one matches "{{people.search}}".</p></jx-if>
+        </div>
+
+        <div class="pager">
+          <span>{{people.from}}–{{people.to}} of {{people.total}}</span>
+          <div class="pages">
+            <jx-if test="people.previous"><button jx-query="#people" jx-vals='{"page": {{people.previous}}}' aria-label="Previous page">‹</button></jx-if>
+            <jx-else><button disabled aria-label="Previous page">‹</button></jx-else>
+            <jx-each items="people.pages">
+              <jx-if test="gap"><span class="gap">…</span></jx-if>
+              <jx-else><button class:current="{{current}}" jx-query="#people" jx-vals='{"page": {{number}}}'>{{label}}</button></jx-else>
+            </jx-each>
+            <jx-if test="people.next"><button jx-query="#people" jx-vals='{"page": {{people.next}}}' aria-label="Next page">›</button></jx-if>
+            <jx-else><button disabled aria-label="Next page">›</button></jx-else>
+          </div>
+        </div>
+      </template>
+    </div>
+  </main>
+</body>
+</html>
