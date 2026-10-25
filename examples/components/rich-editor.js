@@ -11,7 +11,8 @@
  * Tiptap itself is bundled in vendor/tiptap and loads only when an editor appears.
  */
 
-const TIPTAP = new URL("../../vendor/tiptap/tiptap.js", import.meta.url).href;
+// Carries this file's ?v= along, so a new version is fetched fresh.
+const TIPTAP = new URL("../../vendor/tiptap/tiptap.js" + new URL(import.meta.url).search, import.meta.url).href;
 let loading = null;
 const loadTiptap = () => (loading = loading || import(TIPTAP));
 
@@ -79,10 +80,10 @@ class RichEditor extends HTMLElement {
       return { button, active };
     });
 
-    const { Editor, StarterKit, Markdown } = await loadTiptap();
+    const { Editor, StarterKit, Markdown, Image, Mark } = await loadTiptap();
     this.editor = new Editor({
       element: this.querySelector(".re-body"),
-      extensions: [StarterKit.configure({ link: { openOnClick: false } }), Markdown],
+      extensions: [StarterKit.configure({ link: { openOnClick: false } }), Markdown, Image, kbd(Mark)],
       content: this.pending,
       contentType: "markdown",
       editorProps: { attributes: { class: "markdown re-content", "aria-label": this.getAttribute("placeholder") || "Editor", "aria-multiline": "true", role: "textbox" } },
@@ -134,6 +135,19 @@ class RichEditor extends HTMLElement {
     this.classList.toggle("empty", this.editor.isEmpty);
     this.querySelector(".re-content").dataset.placeholder = this.getAttribute("placeholder") || "";
   }
+}
+
+// Tiptap keeps only what its extensions know, so anything else in an article's
+// HTML is dropped when it's edited. <kbd> is taught here, and Image comes with
+// Tiptap. Both are written back out the way the article had them.
+function kbd(Mark) {
+  return Mark.create({
+    name: "kbd",
+    excludes: "_",
+    parseHTML: () => [{ tag: "kbd" }],
+    renderHTML: () => ["kbd", 0],
+    renderMarkdown: (node, h) => "<kbd>" + h.renderChildren(node) + "</kbd>"
+  });
 }
 
 function addStyles() {
