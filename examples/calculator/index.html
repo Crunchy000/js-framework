@@ -101,7 +101,7 @@
       return String(Number(n.toPrecision(12)));
     }
   </script>
-  <script type="module" src="../../jsonx.js?v=34"></script>
+  <script type="module" src="../../jsonx.js?v=35"></script>
 
   <style>
     :root { --bg: #f4f4f5; --panel: #fff; --text: #18181b; --muted: #71717a; --line: #e4e4e7;
@@ -148,7 +148,7 @@
     <p class="intro">Built with <a href="../../">jsonx</a>. Each key calls <code>press()</code>, a plain function that returns the whole view, and one template draws it. <a href="https://github.com/crunchy000/js-framework/blob/main/examples/calculator/index.html">Source</a></p>
 
     <!-- The region: show() draws it when the page opens, and every key redraws it. -->
-    <div class="calc" on:fire="show">
+    <div class="calc" on:load="show">
       <template>
         <div class="screen">
           <div class="sum">{{sum}}</div>
@@ -160,7 +160,7 @@
             <div class="row">
               <jx-each items="keys">
                 <button class="{{kind}}" class:active="{{active}}"
-                        on:fire="press" jx-vals='{"key": "{{key}}"}'>{{key}}</button>
+                        on:click="press" jx-vals='{"key": "{{key}}"}'>{{key}}</button>
               </jx-each>
             </div>
           </jx-each>
@@ -168,7 +168,7 @@
 
         <jx-if test="tape">
           <div class="tape">
-            <div class="tape-head">History <button on:fire="clearTape">Clear</button></div>
+            <div class="tape-head">History <button on:click="clearTape">Clear</button></div>
             <ol>
               <jx-each items="tape">
                 <li><span>{{text}}</span> <strong>{{result}}</strong></li>

@@ -133,8 +133,8 @@ Each file is fetched once. Nothing on the page is wired until every file is in, 
 | Attribute | What it does | Default |
 |---|---|---|
 | `jx-get`, `jx-post`, `jx-put`, `jx-patch`, `jx-delete` | The URL to call, and with which HTTP method. It can use `{{name}}` when it's inside a template. `fn:name` calls the function `name` instead. | (required) |
-| `on:fire` | The function to call on the element's usual event, like `on:fire="add"`: a click for a button, submit for a form, change for an input, and straight away for anything else, so a region fills itself in. The same as `jx-post="fn:add"`. See [Functions and shared data](#functions-and-shared-data-optional). | |
-| `on:click="add"` | Calls the function `add` on that event instead: any event works (`on:input`, `on:keydown`, `on:wa-change`), an element can have several, and modifiers go after a dot: `on:input.delay-300="search"` waits until typing stops, `on:keydown.enter="add"` only listens for that key, and `.once`, `.prevent` and `.stop` do what they say. Not `onclick`: that's the browser's own, and runs as code. | |
+| `on:click` | The function to call on a click, like `on:click="add"`, instead of a server. Any event works the same way: `on:submit` for a form, `on:change` for a checkbox or select, and `on:load` runs straight away, so an element with a `<template>` inside fills itself in. See [Functions and shared data](#functions-and-shared-data-optional). | |
+| `on:event` modifiers | An element can have several, and modifiers go after a dot: `on:input.delay-300="search"` waits until typing stops, `on:keydown.enter="add"` only listens for that key, and `.once`, `.prevent` and `.stop` do what they say. Not `onclick`: that's the browser's own, and runs as code. | |
 | `jx-trigger` | The event that starts the request. Any event name works, including custom events. Add `delay:300ms` to wait until events stop (good for search boxes), or `from:#other` to listen on another element. Use `keydown[key=Enter]` to fire only for one key. Use `load` to run once on page load, and `revealed` to run when the element scrolls into view (a "load more" row). List several with commas. | depends on the element, see below |
 | `jx-template` | Selector of a `<template>` that draws the JSON, for when it isn't inside the element. An element with a template is a region. | the template inside, or the region's |
 | `jx-target` | Where the result goes: a CSS selector, `this`, or `closest <selector>`. | the region, or else the element itself |
@@ -229,10 +229,10 @@ Views usually come from a server. Two opt-in features let the browser supply the
 </script>
 
 <p>Basket: <span jx-data="cart"><template>{{count}} items</template></span></p>
-<button on:fire="add">Add</button>
+<button on:click="add">Add</button>
 ```
 
-**`on:fire="name"`** calls the function `name(values)` instead of a server, on the element's usual event (a click for a button, submit for a form, and straight away for a region). `on:click="name"`, `on:input.delay-300="name"` and so on name the event instead. Anywhere a URL goes, `fn:name` does the same (`jx-get="fn:home?tab=:tab"`), which is how a function-backed region keeps the address in step with `jx-push-url`. It gets the values a request would send, and returns the view or a promise of one. Throw `{ error }` or `{ errors }` to fail, and it's shown like a server's error answer. Return nothing when there's nothing to draw. Templates can't tell the difference, so a region can move from a function to a real URL later. The [todo app with functions](examples/todo-functions/) is the whole todo app this way.
+**`on:click="name"`** calls the function `name(values)` instead of a server when the element is clicked. Name any event the same way: `on:submit`, `on:change`, `on:input.delay-300`. `on:load="name"` runs straight away, so `<div on:load="show"><template>…</template></div>` is a region drawn from what `show` returns. jsonx only ever listens for the event you name; there's no guessing which one an element means. Anywhere a URL goes, `fn:name` does the same (`jx-get="fn:home?tab=:tab"`), which is how a function-backed region keeps the address in step with `jx-push-url`. It gets the values a request would send, and returns the view or a promise of one. Throw `{ error }` or `{ errors }` to fail, and it's shown like a server's error answer. Return nothing when there's nothing to draw. Templates can't tell the difference, so a region can move from a function to a real URL later. The [todo app with functions](examples/todo-functions/) is the whole todo app this way.
 
 **`jx-data="cart"`** makes a region that draws the variable `cart`. After any action, every `jx-data` region is drawn again from its variable, so a function just changes (or replaces) the data. Regions and rows that didn't change are skipped, but each item still takes about a microsecond to check, so with big lists, name what the button changes: `<button jx-post="fn:add" jx-data="cart">` redraws only the `cart` regions. When other code changes the data, like a timer or a `fetch`, call `jsonx.update()` to redraw.
 
@@ -240,7 +240,7 @@ jsonx finds them by name, so on a page put them in a plain `<script>`, not a mod
 
 ### Code in .jx files
 
-A `.jx` file can hold ordinary code in a `<script>`. Its top-level variables and functions are what `on:fire`, `jx-data` and the file's components see, with nothing to export, and they don't leak into the page: two files can each have their own `count`.
+A `.jx` file can hold ordinary code in a `<script>`. Its top-level variables and functions are what `on:click`, `jx-data` and the file's components see, with nothing to export, and they don't leak into the page: two files can each have their own `count`.
 
 **Inside a component, the script is that component's own code.** It runs once for each element, so two `<my-counter>`s count separately, and the component's props are variables in it:
 
@@ -250,7 +250,7 @@ A `.jx` file can hold ordinary code in a `<script>`. Its top-level variables and
     let count = start ?? 0;
     function up() { count += step ?? 1; }
   </script>
-  <button on:fire="up">{{count}}</button>
+  <button on:click="up">{{count}}</button>
 </template>
 ```
 

@@ -18,11 +18,11 @@
  *
  *   <script type="module" src="jsonx.js"></script>
  */
-import { compileTemplate, compileView } from "./templates.js?v=34";
-import { defineComponent, instances, compileScript } from "./components.js?v=34";
+import { compileTemplate, compileView } from "./templates.js?v=35";
+import { defineComponent, instances, compileScript } from "./components.js?v=35";
 
 var METHODS = ["get", "post", "put", "patch", "delete"];
-var SELECTOR = METHODS.map(function (m) { return "[jx-" + m + "]"; }).join(",") + ",[on\\:fire],[jx-region],[jx-query],[jx-data],[jx-emit],[jx-ws],[jx-ws-send]";
+var SELECTOR = METHODS.map(function (m) { return "[jx-" + m + "]"; }).join(",") + ",[jx-region],[jx-query],[jx-data],[jx-emit],[jx-ws],[jx-ws-send]";
 
 // Remember which elements already have listeners, so we never attach twice.
 var processed = new WeakSet();
@@ -75,16 +75,7 @@ function wire(el) {
 
   fillFromAddress(el);
 
-  // A region can keep its template inside itself: <wa-card jx-get="..."><template>.
-  // We take it out (so it isn't wiped by the first render) and remember it.
-  var inline = Array.from(el.children).find(function (child) {
-    return child.localName === "template" && !child.hasAttribute("jx-use");
-  });
-  if (inline && !el.hasAttribute("jx-template")) {
-    el.__jxTemplate = inline;
-    el.setAttribute("jx-template", "");
-    inline.remove();
-  }
+  adoptTemplate(el);
 
   // A web component's tag can appear before its code has loaded (Web Awesome
   // loads components on demand). We can only tell what kind of element it is
@@ -94,6 +85,19 @@ function wire(el) {
     customElements.whenDefined(tag).then(function () { attachTriggers(el); });
   } else {
     attachTriggers(el);
+  }
+}
+
+// A region can keep its template inside itself: <wa-card jx-get="..."><template>.
+// We take it out (so it isn't wiped by the first render) and remember it.
+function adoptTemplate(el, plainOnly) {
+  var inline = Array.from(el.children).find(function (child) {
+    return child.localName === "template" && !child.hasAttribute("jx-use") && !(plainOnly && child.attributes.length);
+  });
+  if (inline && !el.hasAttribute("jx-template")) {
+    el.__jxTemplate = inline;
+    el.setAttribute("jx-template", "");
+    inline.remove();
   }
 }
 
@@ -273,7 +277,7 @@ var addressValues = new URLSearchParams(location.search);
 function fillFromAddress(el) {
   // Keep the originals, so back and forward can fill them again (jx-push-url).
   var originals = el.__jxAddress || {};
-  METHODS.map(function (m) { return "jx-" + m; }).concat("on:fire").forEach(function (attr) {
+  METHODS.map(function (m) { return "jx-" + m; }).forEach(function (attr) {
     var url = originals[attr] || el.getAttribute(attr);
     if (url === null || url.indexOf(":") === -1) return;
     originals[attr] = url;
@@ -430,36 +434,42 @@ function listen(el, trigger, run) {
 }
 
 // ---------------------------------------------------------------------------
-// on:fire="add", on:click="add", on:input.delay-300="search"
+// on:click="add", on:load="show", on:input.delay-300="search"
 // ---------------------------------------------------------------------------
 //
-// on:fire="add" calls the function add on the element's usual event: a click
-// for a button, submit for a form, change for an input, and straight away
-// for anything else (so a region fills itself in). See defaultTrigger.
-//
-// on:click="add" names the event instead. Any event works (on:input,
-// on:wa-change, on:load), an element can have several, and modifiers go
-// after a dot:
+// on:click="add" calls the function add when the element is clicked. Any
+// event works (on:submit, on:change, on:input, on:wa-change), an element can
+// have several, and modifiers go after a dot:
 //   on:input.delay-300="search"   wait until typing stops for 300ms
 //   on:keydown.enter="add"        only for that key (enter, escape, space, tab, up, down...)
 //   on:click.once  .prevent  .stop
+// Two aren't browser events: on:load="show" runs straight away, and
+// on:revealed when the element scrolls into view. An element with a
+// <template> inside and on:load is a region: show() returns its view.
 // Not onclick="...": that's the browser's own, and runs as code.
 
 var KEYS = { enter: "Enter", escape: "Escape", esc: "Escape", space: " ", tab: "Tab", up: "ArrowUp", down: "ArrowDown", left: "ArrowLeft", right: "ArrowRight", delete: "Delete", backspace: "Backspace" };
 var withEvents = new WeakSet();
 
-// on:click -> "click". on:fire is handled with the jx- attributes (it can make a region).
+// on:click -> "click".
 function eventAttribute(name) {
-  return name.indexOf("on:") === 0 && name !== "on:fire" ? name.slice(3) : null;
+  return name.indexOf("on:") === 0 ? name.slice(3) : null;
+}
+
+// fn:name?slug=:slug, with :slug filled from the page address.
+function fillAddress(action) {
+  return action.replace(/([?&=]):(\w+)/g, function (all, before, key) {
+    return before + encodeURIComponent(addressValues.get(key) || "");
+  });
 }
 
 function attachEvents(el) {
   if (withEvents.has(el)) return;
-  var found = false;
+  withEvents.add(el);
+  adoptTemplate(el, true);
   Array.from(el.attributes).forEach(function (attribute) {
     var spec = eventAttribute(attribute.name);
     if (!spec) return;
-    found = true;
     var parts = spec.split(".");
     var trigger = { event: parts[0], delay: 0, from: null, filter: null };
     parts.slice(1).forEach(function (mod) {
@@ -469,15 +479,11 @@ function attachEvents(el) {
       else trigger.filter = { property: "key", value: KEYS[mod] || mod };
     });
     var action = attribute.value.trim();
-    // :name is filled from the page address, like in on:fire.
-    if (action.indexOf(":") !== -1) action = action.replace(/([?&=]):(\w+)/g, function (all, before, key) {
-      return before + encodeURIComponent(addressValues.get(key) || "");
-    });
-    listen(el, trigger, function () {
-      issueRequest(el, null, false, { method: "POST", url: "fn:" + action, action: true });
-    });
+    var request = function () { return { method: "POST", url: "fn:" + fillAddress(action), action: true }; };
+    // A region's own load is what back, forward and jx-refresh repeat.
+    if (trigger.event === "load" && el.hasAttribute("jx-template")) el.__jxLoad = request;
+    listen(el, trigger, function () { issueRequest(el, null, false, request()); });
   });
-  if (found) withEvents.add(el);
 }
 
 // Elements with an on:event attribute. CSS can't select by an
@@ -571,12 +577,10 @@ function getMethodAndUrl(el) {
     var url = el.getAttribute("jx-" + METHODS[i]);
     if (url !== null) return { method: METHODS[i].toUpperCase(), url: url };
   }
-  // on:fire="add" calls the function add on the element's usual event: the
-  // same as jx-post="fn:add".
-  var action = el.getAttribute("on:fire");
-  if (action !== null) return { method: "POST", url: "fn:" + action, action: true };
   // A GraphQL query needs no URL: it goes to jsonx.graphql ("/graphql" unless you change it).
   if (el.hasAttribute("jx-query")) return { method: "POST", url: api.graphql };
+  // A region that loads itself with on:load="show" (see attachEvents).
+  if (el.__jxLoad) return el.__jxLoad();
 }
 
 // A "region" is the nearest element (the element itself, or one of its parents)
@@ -740,7 +744,7 @@ function issueRequest(el, override, fromAddress, action) {
       if (select) data = select.split(".").reduce(function (v, key) { return v == null ? v : v[key]; }, data);
       render(el, data, info.method === "GET" ? url : null, sentAt);
       // jx-push-url: put what a GET (or a GraphQL query) sent in the address bar.
-      // A region that loads itself with on:fire counts as a GET here.
+      // A region that loads itself with on:load counts as a GET here.
       var reads = info.method === "GET" || (info.action && el.hasAttribute("jx-template")) || (graphql && !/^\s*mutation\b/m.test(text));
       if (!fromAddress && !override && reads) {
         var sent = Object.fromEntries(new URL(url.replace(/^fn:/, ""), location.href).searchParams);

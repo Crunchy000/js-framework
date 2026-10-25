@@ -82,7 +82,7 @@
       try { localStorage.setItem("jsonx-todo-functions", JSON.stringify(todos)); } catch (e) {}
     }
   </script>
-  <script type="module" src="../../jsonx.js?v=34"></script>
+  <script type="module" src="../../jsonx.js?v=35"></script>
 
   <!-- Follow the visitor's light/dark setting -->
   <script>
@@ -120,10 +120,10 @@
 
     <!--
       This card is the whole app: a region that draws what the functions return.
-      on:fire="show" runs when the page opens, and each button calls a function and
+      on:load="show" runs when the page opens, and each button calls a function and
       redraws the card with its answer. Only the parts that changed are updated.
     -->
-    <wa-card id="app" on:fire="show">
+    <wa-card id="app" on:load="show">
       <wa-skeleton effect="sheen"></wa-skeleton>
 
       <template>
@@ -135,7 +135,7 @@
           <div class="add wa-cluster wa-gap-s">
             <wa-input name="title" value="{{draft}}" placeholder="What needs doing?" aria-label="New todo"
                       autocomplete="off" autofocus on:keydown.enter="add"></wa-input>
-            <wa-button variant="brand" on:fire="add">
+            <wa-button variant="brand" on:click="add">
               <wa-icon slot="start" name="plus"></wa-icon>
               Add
             </wa-button>
@@ -153,19 +153,19 @@
               <!-- jx-vals overrides the hidden filter for this one request -->
               <jx-each items="filters">
                 <wa-button size="s" variant="{{variant}}" appearance="{{appearance}}"
-                           on:fire="show" jx-vals='{"filter": "{{name}}"}'>{{label}}</wa-button>
+                           on:click="show" jx-vals='{"filter": "{{name}}"}'>{{label}}</wa-button>
               </jx-each>
             </wa-button-group>
 
-            <wa-button size="s" appearance="plain" on:fire="clearDone">Clear completed</wa-button>
+            <wa-button size="s" appearance="plain" on:click="clearDone">Clear completed</wa-button>
           </div>
 
           <ul class="todos">
             <jx-each items="todos">
               <li class:done="{{done}}">
-                <!-- A form control, so its default trigger is "change" -->
-                <wa-checkbox checked="{{done}}" on:fire="toggle" jx-vals='{"id": {{id}}}'>{{title}}</wa-checkbox>
-                <wa-button size="s" appearance="plain" variant="danger" on:fire="remove" jx-vals='{"id": {{id}}}'>
+                <!-- A checkbox changes rather than clicks -->
+                <wa-checkbox checked="{{done}}" on:change="toggle" jx-vals='{"id": {{id}}}'>{{title}}</wa-checkbox>
+                <wa-button size="s" appearance="plain" variant="danger" on:click="remove" jx-vals='{"id": {{id}}}'>
                   <wa-icon name="trash" label="Delete {{title}}"></wa-icon>
                 </wa-button>
               </li>

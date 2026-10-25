@@ -1,7 +1,7 @@
 <!-- cart.jx: a café's cart as three components that share one module.
 
      The <script> at the top is ordinary code, run once and shared by the
-     whole file. Its variables and functions are what on:fire and the components
+     whole file. Its variables and functions are what on:click and the components
      see, with nothing to export: <cart-badge> declares props="count" and shows
      this count, with nothing passed in.
 
@@ -26,7 +26,7 @@
     total = money(items.reduce((sum, item) => sum + item.qty * PRICES[item.id], 0));
   }
 
-  // Each action gets the values its button sends, like any on:fire.
+  // Each action gets the values its button sends, like any on:click.
   function add({ product }) {
     const item = find(product);
     if (item) item.qty++;
@@ -71,7 +71,7 @@
     button { font: inherit; padding: 10px 16px; border-radius: 10px; border: 1px solid var(--line, #ddd); background: var(--panel, #fff); color: inherit; cursor: pointer; text-transform: capitalize; }
     button:hover { border-color: var(--accent, #4f46e5); }
   </style>
-  <button on:fire="add" jx-vals='{"product": "{{product}}"}'>Add {{product}}</button>
+  <button on:click="add" jx-vals='{"product": "{{product}}"}'>Add {{product}}</button>
 </template>
 
 <!-- <cart-list>: the whole cart, its props from the module. Rows are keyed by
@@ -93,12 +93,12 @@
     <ul>
       <li jx-each="items">
         <span>{{name}} × {{qty}} <small>{{price}} each</small></span>
-        <button on:fire="remove" jx-vals='{"id": "{{id}}"}' aria-label="Remove {{name}}">✕</button>
+        <button on:click="remove" jx-vals='{"id": "{{id}}"}' aria-label="Remove {{name}}">✕</button>
       </li>
     </ul>
     <p class="total"><span>Total</span> <strong>{{total}}</strong></p>
     <jx-if test="busy"><button class="checkout" disabled>Placing order…</button></jx-if>
-    <jx-else><button class="checkout" on:fire="checkout">Check out</button></jx-else>
+    <jx-else><button class="checkout" on:click="checkout">Check out</button></jx-else>
   </jx-if>
   <jx-else><p class="note">Your cart is empty.</p></jx-else>
 </template>
