@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>jsonx feature tour</title>
-  <link rel="stylesheet" href="../tutorial/style.css?v=33">
+  <link rel="stylesheet" href="../tutorial/style.css?v=34">
   <style>
     .results li.pioneer strong::after { content: " ★"; color: #e0a800; }
     .results { list-style: none; padding: 0 !important; }
@@ -13,11 +13,11 @@
     #event-log { font: 12.5px/1.5 ui-monospace, Menlo, monospace; max-height: 220px; overflow: auto; }
   </style>
   <!-- 1. A pretend server, so the page works without one. -->
-  <script src="mock-api.js?v=33"></script>
+  <script src="mock-api.js?v=34"></script>
   <!-- 2. jsonx itself. -->
-  <script type="module" src="../../jsonx.js?v=33"></script>
+  <script type="module" src="../../jsonx.js?v=34"></script>
   <!-- 3. Two hand-written web components, for features 9 and 10. -->
-  <script type="module" src="components.js?v=33"></script>
+  <script type="module" src="components.js?v=34"></script>
 </head>
 <body>
 <header class="top">
@@ -278,7 +278,7 @@
   <!-- ===================================================================== -->
   <section class="lesson" id="f11">
     <h2>Functions and shared data</h2>
-    <p><code>jx-action="click"</code> calls the function <code>click(values)</code> instead of a server. <code>jx-data="clicks"</code> draws the variable <code>clicks</code>, and after any action every <code>jx-data</code> region is drawn again. Use a plain script, not a module, so jsonx can find them by name.</p>
+    <p><code>on:fire="click"</code> calls the function <code>click(values)</code> instead of a server. <code>jx-data="clicks"</code> draws the variable <code>clicks</code>, and after any action every <code>jx-data</code> region is drawn again. Use a plain script, not a module, so jsonx can find them by name.</p>
     <div class="example">
       <pre class="code" data-example="functions"></pre>
       <div class="side">
@@ -299,13 +299,13 @@
           </script>
 
           <p>Clicked <span jx-data="clicks"><template><strong>{{count}}</strong></template></span> times.</p>
-          <button jx-action="click">Click</button>
+          <button on:fire="click">Click</button>
           <p jx-data="clicks"><template>Same data, another region: {{count}}</template></p>
 
           <div jx-region>
             <template>
               <input name="word" placeholder="A word"> <small class="error">{{fieldErrors.word}}</small>
-              <button jx-action="shout">Shout it</button>
+              <button on:fire="shout">Shout it</button>
               <p>{{shouted}}</p>
             </template>
           </div>
@@ -361,6 +361,6 @@
   </section>
 </main>
 
-<script src="../tutorial/tutorial.js?v=33"></script>
+<script src="../tutorial/tutorial.js?v=34"></script>
 </body>
 </html>

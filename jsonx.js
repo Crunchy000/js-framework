@@ -18,11 +18,11 @@
  *
  *   <script type="module" src="jsonx.js"></script>
  */
-import { compileTemplate, compileView } from "./templates.js?v=33";
-import { defineComponent, instances, compileScript } from "./components.js?v=33";
+import { compileTemplate, compileView } from "./templates.js?v=34";
+import { defineComponent, instances, compileScript } from "./components.js?v=34";
 
 var METHODS = ["get", "post", "put", "patch", "delete"];
-var SELECTOR = METHODS.map(function (m) { return "[jx-" + m + "]"; }).join(",") + ",[jx-action],[jx-region],[jx-query],[jx-data],[jx-emit],[jx-ws],[jx-ws-send]";
+var SELECTOR = METHODS.map(function (m) { return "[jx-" + m + "]"; }).join(",") + ",[on\\:fire],[jx-region],[jx-query],[jx-data],[jx-emit],[jx-ws],[jx-ws-send]";
 
 // Remember which elements already have listeners, so we never attach twice.
 var processed = new WeakSet();
@@ -273,8 +273,7 @@ var addressValues = new URLSearchParams(location.search);
 function fillFromAddress(el) {
   // Keep the originals, so back and forward can fill them again (jx-push-url).
   var originals = el.__jxAddress || {};
-  METHODS.concat("action").forEach(function (m) {
-    var attr = "jx-" + m;
+  METHODS.map(function (m) { return "jx-" + m; }).concat("on:fire").forEach(function (attr) {
     var url = originals[attr] || el.getAttribute(attr);
     if (url === null || url.indexOf(":") === -1) return;
     originals[attr] = url;
@@ -431,22 +430,27 @@ function listen(el, trigger, run) {
 }
 
 // ---------------------------------------------------------------------------
-// @click="add" and on:click="add"
+// on:fire="add", on:click="add", on:input.delay-300="search"
 // ---------------------------------------------------------------------------
 //
-// Calls the function add when the element is clicked, like jx-action="add"
-// with jx-trigger="click". Any event works (@input, @wa-change, @load), an
-// element can have several, and modifiers go after a dot:
-//   @input.delay-300="search"    wait until typing stops for 300ms
-//   @keydown.enter="add"         only for that key (enter, escape, space, tab, up, down...)
-//   @click.once  .prevent  .stop
+// on:fire="add" calls the function add on the element's usual event: a click
+// for a button, submit for a form, change for an input, and straight away
+// for anything else (so a region fills itself in). See defaultTrigger.
+//
+// on:click="add" names the event instead. Any event works (on:input,
+// on:wa-change, on:load), an element can have several, and modifiers go
+// after a dot:
+//   on:input.delay-300="search"   wait until typing stops for 300ms
+//   on:keydown.enter="add"        only for that key (enter, escape, space, tab, up, down...)
+//   on:click.once  .prevent  .stop
 // Not onclick="...": that's the browser's own, and runs as code.
 
 var KEYS = { enter: "Enter", escape: "Escape", esc: "Escape", space: " ", tab: "Tab", up: "ArrowUp", down: "ArrowDown", left: "ArrowLeft", right: "ArrowRight", delete: "Delete", backspace: "Backspace" };
 var withEvents = new WeakSet();
 
+// on:click -> "click". on:fire is handled with the jx- attributes (it can make a region).
 function eventAttribute(name) {
-  return name.charAt(0) === "@" ? name.slice(1) : name.indexOf("on:") === 0 ? name.slice(3) : null;
+  return name.indexOf("on:") === 0 && name !== "on:fire" ? name.slice(3) : null;
 }
 
 function attachEvents(el) {
@@ -465,7 +469,7 @@ function attachEvents(el) {
       else trigger.filter = { property: "key", value: KEYS[mod] || mod };
     });
     var action = attribute.value.trim();
-    // :name is filled from the page address, like in jx-action.
+    // :name is filled from the page address, like in on:fire.
     if (action.indexOf(":") !== -1) action = action.replace(/([?&=]):(\w+)/g, function (all, before, key) {
       return before + encodeURIComponent(addressValues.get(key) || "");
     });
@@ -476,7 +480,7 @@ function attachEvents(el) {
   if (found) withEvents.add(el);
 }
 
-// Elements with an @event or on:event attribute. CSS can't select by an
+// Elements with an on:event attribute. CSS can't select by an
 // attribute's prefix, so this looks at each element's attribute names.
 function eventElements(root) {
   var list = [];
@@ -567,8 +571,9 @@ function getMethodAndUrl(el) {
     var url = el.getAttribute("jx-" + METHODS[i]);
     if (url !== null) return { method: METHODS[i].toUpperCase(), url: url };
   }
-  // jx-action="add" calls the function add: the same as jx-post="fn:add".
-  var action = el.getAttribute("jx-action");
+  // on:fire="add" calls the function add on the element's usual event: the
+  // same as jx-post="fn:add".
+  var action = el.getAttribute("on:fire");
   if (action !== null) return { method: "POST", url: "fn:" + action, action: true };
   // A GraphQL query needs no URL: it goes to jsonx.graphql ("/graphql" unless you change it).
   if (el.hasAttribute("jx-query")) return { method: "POST", url: api.graphql };
@@ -735,7 +740,7 @@ function issueRequest(el, override, fromAddress, action) {
       if (select) data = select.split(".").reduce(function (v, key) { return v == null ? v : v[key]; }, data);
       render(el, data, info.method === "GET" ? url : null, sentAt);
       // jx-push-url: put what a GET (or a GraphQL query) sent in the address bar.
-      // A region that loads itself with jx-action counts as a GET here.
+      // A region that loads itself with on:fire counts as a GET here.
       var reads = info.method === "GET" || (info.action && el.hasAttribute("jx-template")) || (graphql && !/^\s*mutation\b/m.test(text));
       if (!fromAddress && !override && reads) {
         var sent = Object.fromEntries(new URL(url.replace(/^fn:/, ""), location.href).searchParams);
