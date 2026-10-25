@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>jsonx calculator</title>
+
+  <!--
+    The calculator's logic: plain functions that return the whole view, like a
+    JSON endpoint would. A plain script, not a module, so jsonx can find them.
+  -->
+  <script>
+    let current = "0";      // what's on the display
+    let previous = null;    // the number before the operator
+    let op = null;          // "+", "−", "×" or "÷"
+    let fresh = true;       // the next digit starts a new number
+    let error = null;
+    let tape = [];          // finished sums, newest first
+    let sums = 0;
+
+    const KEYS = [
+      ["C", "±", "%", "÷"],
+      ["7", "8", "9", "×"],
+      ["4", "5", "6", "−"],
+      ["1", "2", "3", "+"],
+      ["0", ".", "⌫", "="]
+    ];
+
+    // The view the page draws. Which key looks like what is decided here,
+    // so the template needs no logic.
+    function show() {
+      return {
+        display: error || current,
+        error: error,
+        sum: previous !== null ? previous + " " + op : "",
+        rows: KEYS.map((row) => ({
+          keys: row.map((key) => ({
+            key: key,
+            kind: "+−×÷=".includes(key) ? "op" : "C±%⌫".includes(key) ? "fn" : "digit",
+            active: key === op && fresh
+          }))
+        })),
+        tape: tape
+      };
+    }
+
+    // Every key calls this, with { key: "7" } from its jx-vals.
+    function press(values) {
+      const key = values.key;
+      if (error && key !== "C") return show();
+
+      if ("0123456789".includes(key)) {
+        if (fresh) { current = key; fresh = false; }
+        else if (current.length < 12) current = current === "0" ? key : current + key;
+      } else if (key === ".") {
+        if (fresh) { current = "0."; fresh = false; }
+        else if (!current.includes(".")) current += ".";
+      } else if ("+−×÷".includes(key)) {
+        if (op && !fresh) equals();
+        if (error) return show();
+        previous = current;
+        op = key;
+        fresh = true;
+      } else if (key === "=") {
+        if (op) equals();
+      } else if (key === "C") {
+        current = "0"; previous = null; op = null; fresh = true; error = null;
+      } else if (key === "±") {
+        current = current.startsWith("-") ? current.slice(1) : current === "0" ? "0" : "-" + current;
+      } else if (key === "%") {
+        current = format(Number(current) / 100);
+      } else if (key === "⌫") {
+        if (!fresh) current = current.length > 1 && current !== "-0" ? current.slice(0, -1) : "0";
+        if (current === "-") current = "0";
+      }
+      return show();
+    }
+
+    function equals() {
+      const a = Number(previous), b = Number(current);
+      if (op === "÷" && b === 0) {
+        error = "Can't divide by 0";
+        return;
+      }
+      const result = format(op === "+" ? a + b : op === "−" ? a - b : op === "×" ? a * b : a / b);
+      tape.unshift({ id: ++sums, text: previous + " " + op + " " + current + " =", result: result });
+      tape = tape.slice(0, 8);
+      current = result;
+      previous = null;
+      op = null;
+      fresh = true;
+    }
+
+    function clearTape() {
+      tape = [];
+      return show();
+    }
+
+    // 0.1 + 0.2 shows 0.3, not 0.30000000000000004.
+    function format(n) {
+      return String(Number(n.toPrecision(12)));
+    }
+  </script>
+  <script type="module" src="../../jsonx.js?v=17"></script>
+
+  <style>
+    :root { --bg: #f4f4f5; --panel: #fff; --text: #18181b; --muted: #71717a; --line: #e4e4e7;
+            --key: #f4f4f5; --fn: #e4e4e7; --op: #f59e0b; --op-text: #fff; --error: #dc2626; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #09090b; --panel: #18181b; --text: #fafafa; --muted: #a1a1aa; --line: #27272a;
+              --key: #27272a; --fn: #3f3f46; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--text);
+           font: 16px/1.5 system-ui, -apple-system, sans-serif; display: grid; place-items: center; padding: 24px 16px; }
+    main { width: 100%; max-width: 340px; }
+    h1 { font-size: 20px; margin: 0 0 4px; }
+    .intro { color: var(--muted); font-size: 14px; margin: 0 0 16px; }
+    .intro a { color: inherit; }
+
+    .calc { background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 16px; }
+    .screen { text-align: right; padding: 8px 8px 16px; min-height: 92px; }
+    .sum { color: var(--muted); font-size: 15px; min-height: 22px; }
+    .display { font-size: 44px; font-weight: 300; overflow-wrap: anywhere; line-height: 1.2; }
+    .display.error { font-size: 22px; color: var(--error); padding-top: 14px; }
+
+    .keys { display: grid; gap: 10px; }
+    .row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .keys button { height: 60px; border: 0; border-radius: 14px; font: inherit; font-size: 22px;
+                   background: var(--key); color: var(--text); cursor: pointer; transition: filter .1s; }
+    .keys button:hover { filter: brightness(.95); }
+    .keys button:active { filter: brightness(.88); }
+    .keys button.fn { background: var(--fn); }
+    .keys button.op { background: var(--op); color: var(--op-text); }
+    .keys button.op.active { background: var(--op-text); color: var(--op); box-shadow: inset 0 0 0 2px var(--op); }
+
+    .tape { margin-top: 16px; font-size: 14px; }
+    .tape-head { display: flex; justify-content: space-between; align-items: center; color: var(--muted); }
+    .tape-head button { border: 0; background: none; color: var(--muted); cursor: pointer; font: inherit; text-decoration: underline; }
+    .tape ol { list-style: none; margin: 6px 0 0; padding: 0; }
+    .tape li { display: flex; justify-content: space-between; padding: 4px 0; border-top: 1px solid var(--line); }
+    .tape li span { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Calculator</h1>
+    <p class="intro">Built with <a href="../../">jsonx</a>. Each key calls <code>press()</code>, a plain function that returns the whole view, and one template draws it. <a href="https://github.com/crunchy000/js-framework/blob/main/examples/calculator/index.html">Source</a></p>
+
+    <!-- The region: fn:show draws it when the page opens, and every key redraws it. -->
+    <div class="calc" jx-get="fn:show">
+      <template>
+        <div class="screen">
+          <div class="sum">{{sum}}</div>
+          <div class="display" class:error="{{error}}">{{display}}</div>
+        </div>
+
+        <div class="keys">
+          <jx-each items="rows">
+            <div class="row">
+              <jx-each items="keys">
+                <button class="{{kind}}" class:active="{{active}}"
+                        jx-post="fn:press" jx-vals='{"key": "{{key}}"}'>{{key}}</button>
+              </jx-each>
+            </div>
+          </jx-each>
+        </div>
+
+        <jx-if test="tape">
+          <div class="tape">
+            <div class="tape-head">History <button jx-post="fn:clearTape">Clear</button></div>
+            <ol>
+              <jx-each items="tape">
+                <li><span>{{text}}</span> <strong>{{result}}</strong></li>
+              </jx-each>
+            </ol>
+          </div>
+        </jx-if>
+      </template>
+    </div>
+  </main>
+</body>
+</html>
