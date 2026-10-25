@@ -133,6 +133,7 @@ Each file is fetched once. Nothing on the page is wired until every file is in, 
 | Attribute | What it does | Default |
 |---|---|---|
 | `jx-get`, `jx-post`, `jx-put`, `jx-patch`, `jx-delete` | The URL to call, and with which HTTP method. It can use `{{name}}` when it's inside a template. `fn:name` calls the function `name` instead. | (required) |
+| `jx-action` | The function to call, like `jx-action="add"`: the same as `jx-post="fn:add"`. See [Functions and shared data](#functions-and-shared-data-optional). | |
 | `jx-trigger` | The event that starts the request. Any event name works, including custom events. Add `delay:300ms` to wait until events stop (good for search boxes), or `from:#other` to listen on another element. Use `keydown[key=Enter]` to fire only for one key. Use `load` to run once on page load, and `revealed` to run when the element scrolls into view (a "load more" row). List several with commas. | depends on the element, see below |
 | `jx-template` | Selector of a `<template>` that draws the JSON, for when it isn't inside the element. An element with a template is a region. | the template inside, or the region's |
 | `jx-target` | Where the result goes: a CSS selector, `this`, or `closest <selector>`. | the region, or else the element itself |
@@ -227,34 +228,36 @@ Views usually come from a server. Two opt-in features let the browser supply the
 </script>
 
 <p>Basket: <span jx-data="cart"><template>{{count}} items</template></span></p>
-<button jx-post="fn:add">Add</button>
+<button jx-action="add">Add</button>
 ```
 
-**`fn:name` in place of a URL** calls the function `name(values)`. It gets the values a request would send, and returns the view or a promise of one. Throw `{ error }` or `{ errors }` to fail, and it's shown like a server's error answer. Return nothing when there's nothing to draw. Templates can't tell the difference, so a region can move from a function to a real URL later. The [todo app with functions](examples/todo-functions/) is the whole todo app this way.
+**`jx-action="name"`** calls the function `name(values)` instead of a server. Anywhere a URL goes, `fn:name` does the same (`jx-get="fn:home?tab=:tab"`), which is how a function-backed region keeps the address in step with `jx-push-url`. It gets the values a request would send, and returns the view or a promise of one. Throw `{ error }` or `{ errors }` to fail, and it's shown like a server's error answer. Return nothing when there's nothing to draw. Templates can't tell the difference, so a region can move from a function to a real URL later. The [todo app with functions](examples/todo-functions/) is the whole todo app this way.
 
-**`jx-data="cart"`** makes a region that draws the variable `cart`. After any `fn:` call, every `jx-data` region is drawn again from its variable, so a function just changes (or replaces) the data. Regions and rows that didn't change are skipped, but each item still takes about a microsecond to check, so with big lists, name what the button changes: `<button jx-post="fn:add" jx-data="cart">` redraws only the `cart` regions. When other code changes the data, like a timer or a `fetch`, call `jsonx.update()` to redraw.
+**`jx-data="cart"`** makes a region that draws the variable `cart`. After any action, every `jx-data` region is drawn again from its variable, so a function just changes (or replaces) the data. Regions and rows that didn't change are skipped, but each item still takes about a microsecond to check, so with big lists, name what the button changes: `<button jx-post="fn:add" jx-data="cart">` redraws only the `cart` regions. When other code changes the data, like a timer or a `fetch`, call `jsonx.update()` to redraw.
 
 jsonx finds them by name, so on a page put them in a plain `<script>`, not a module (a module's variables are private). In a `.jx` file, a module is the better way: see [Code in .jx files](#code-in-jx-files). In a module, use `jsonx.functions.add = …` and `jsonx.data.cart = …`, which are looked up first. `jsonx.update("cart", function (cart) { … })` changes one piece of data and redraws its regions.
 
 ### Code in .jx files
 
-A `.jx` file can hold ordinary code in a `<script>`. Its top-level variables and functions are what `fn:`, `jx-data` and the file's components see, with nothing to export, and they don't leak into the page: two files can each have their own `count`.
+A `.jx` file can hold ordinary code in a `<script>`. Its top-level variables and functions are what `jx-action`, `jx-data` and the file's components see, with nothing to export, and they don't leak into the page: two files can each have their own `count`.
 
 **Inside a component, the script is that component's own code.** It runs once for each element, so two `<my-counter>`s count separately, and the component's props are variables in it:
 
 ```html
-<template jx-component="my-counter" props="start:number step:number">
+<template id="my-counter" props="start:number step:number">
   <script>
     let count = start ?? 0;
     function up() { count += step ?? 1; }
   </script>
-  <button jx-post="fn:up">{{count}}</button>
+  <button jx-action="up">{{count}}</button>
 </template>
 ```
 
+In a `.jx` file, `<template id="my-counter">` is the same as `jx-component="my-counter"`: an id with a dash names a component (on a page, template ids stay for `jx-template`).
+
 **At the top of the file, it's shared** by everything in the file. The [café cart](examples/cart/) is three components in different parts of the page sharing one script in `cart.jx`. A component's prop that isn't set from outside comes from the shared script, so `<cart-badge>` with `props="count"` shows the cart's count with nothing passed in, and `<cart-badge count="99">` still overrides it.
 
-**Nothing says what a button changes.** After each `fn:` call, jsonx compares the variables things on the page use with how they were before (lists and objects by their contents, so `items.push()` counts), and redraws only what uses the ones that changed. For changes made outside an `fn:` call, like a timer or a socket, call `jsonx.changed()`. Async functions are fine: change the data after the `await`, not before, and a double click can't lose anything.
+**Nothing says what a button changes.** After each action, jsonx compares the variables things on the page use with how they were before (lists and objects by their contents, so `items.push()` counts), and redraws only what uses the ones that changed. For changes made outside an `fn:` call, like a timer or a socket, call `jsonx.changed()`. Async functions are fine: change the data after the `await`, not before, and a double click can't lose anything.
 
 **In a component's script:**
 - `el` is the element, and `props` its props.

@@ -1,11 +1,11 @@
 <!-- cart.jx: a café's cart as three components that share one module.
 
      The <script> at the top is ordinary code, run once and shared by the
-     whole file. Its variables and functions are what fn: and the components
+     whole file. Its variables and functions are what jx-action and the components
      see, with nothing to export: <cart-badge> declares props="count" and shows
      this count, with nothing passed in.
 
-     Nothing says what a button changes. After each fn: call, jsonx compares
+     Nothing says what a button changes. After each action, jsonx compares
      the script's variables and redraws only the components that use the ones
      that changed: adding a cake redraws the badge and the list, not the buttons. -->
 
@@ -26,7 +26,7 @@
     total = money(items.reduce((sum, item) => sum + item.qty * PRICES[item.id], 0));
   }
 
-  // Each action gets the values its button sends, like any fn: function.
+  // Each action gets the values its button sends, like any jx-action.
   function add({ product }) {
     const item = find(product);
     if (item) item.qty++;
@@ -56,7 +56,7 @@
 </script>
 
 <!-- <cart-badge>: the count, in the header. Its prop comes from the module. -->
-<template jx-component="cart-badge" props="count">
+<template id="cart-badge" props="count">
   <style>
     :host { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
     .n { background: var(--accent, #4f46e5); color: #fff; border-radius: 999px; padding: 0 8px; font-size: 13px; line-height: 22px; }
@@ -66,17 +66,17 @@
 
 <!-- <add-to-cart product="tea">: a button for one product. The module has no
      product, so this prop comes from the attribute, like any web component's. -->
-<template jx-component="add-to-cart" props="product">
+<template id="add-to-cart" props="product">
   <style>
     button { font: inherit; padding: 10px 16px; border-radius: 10px; border: 1px solid var(--line, #ddd); background: var(--panel, #fff); color: inherit; cursor: pointer; text-transform: capitalize; }
     button:hover { border-color: var(--accent, #4f46e5); }
   </style>
-  <button jx-post="fn:add" jx-vals='{"product": "{{product}}"}'>Add {{product}}</button>
+  <button jx-action="add" jx-vals='{"product": "{{product}}"}'>Add {{product}}</button>
 </template>
 
 <!-- <cart-list>: the whole cart, its props from the module. Rows are keyed by
      id, so adding one row only adds one row. -->
-<template jx-component="cart-list" props="items total busy ordered">
+<template id="cart-list" props="items total busy ordered">
   <style>
     ul { list-style: none; margin: 0; padding: 0; }
     li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--line, #eee); text-transform: capitalize; }
@@ -93,12 +93,12 @@
     <ul>
       <li jx-each="items">
         <span>{{name}} × {{qty}} <small>{{price}} each</small></span>
-        <button jx-post="fn:remove" jx-vals='{"id": "{{id}}"}' aria-label="Remove {{name}}">✕</button>
+        <button jx-action="remove" jx-vals='{"id": "{{id}}"}' aria-label="Remove {{name}}">✕</button>
       </li>
     </ul>
     <p class="total"><span>Total</span> <strong>{{total}}</strong></p>
     <jx-if test="busy"><button class="checkout" disabled>Placing order…</button></jx-if>
-    <jx-else><button class="checkout" jx-post="fn:checkout">Check out</button></jx-else>
+    <jx-else><button class="checkout" jx-action="checkout">Check out</button></jx-else>
   </jx-if>
   <jx-else><p class="note">Your cart is empty.</p></jx-else>
 </template>

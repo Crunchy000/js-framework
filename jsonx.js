@@ -18,11 +18,11 @@
  *
  *   <script type="module" src="jsonx.js"></script>
  */
-import { compileTemplate, compileView } from "./templates.js?v=31";
-import { defineComponent, instances, compileScript } from "./components.js?v=31";
+import { compileTemplate, compileView } from "./templates.js?v=32";
+import { defineComponent, instances, compileScript } from "./components.js?v=32";
 
 var METHODS = ["get", "post", "put", "patch", "delete"];
-var SELECTOR = METHODS.map(function (m) { return "[jx-" + m + "]"; }).join(",") + ",[jx-region],[jx-query],[jx-data],[jx-emit],[jx-ws],[jx-ws-send]";
+var SELECTOR = METHODS.map(function (m) { return "[jx-" + m + "]"; }).join(",") + ",[jx-action],[jx-region],[jx-query],[jx-data],[jx-emit],[jx-ws],[jx-ws-send]";
 
 // Remember which elements already have listeners, so we never attach twice.
 var processed = new WeakSet();
@@ -115,6 +115,13 @@ function include(template) {
   return files[url].then(function (html) {
     var holder = document.createElement("template");
     holder.innerHTML = html;
+    // In a .jx file, <template id="my-counter"> defines <my-counter>: an id
+    // with a dash is a component's name (on a page, ids are for jx-template).
+    Array.from(holder.content.children).forEach(function (child) {
+      if (child.localName === "template" && child.id.indexOf("-") > 0 && !child.hasAttribute("jx-component")) {
+        child.setAttribute("jx-component", child.id);
+      }
+    });
     // <script type="module"> in the file becomes the file's scope (see below).
     return fileScope(holder.content, url).then(function (scope) {
       if (getMethodAndUrl(template) || template.hasAttribute("jx-region")) {
@@ -265,7 +272,7 @@ var addressValues = new URLSearchParams(location.search);
 function fillFromAddress(el) {
   // Keep the originals, so back and forward can fill them again (jx-push-url).
   var originals = el.__jxAddress || {};
-  METHODS.forEach(function (m) {
+  METHODS.concat("action").forEach(function (m) {
     var attr = "jx-" + m;
     var url = originals[attr] || el.getAttribute(attr);
     if (url === null || url.indexOf(":") === -1) return;
@@ -493,6 +500,9 @@ function getMethodAndUrl(el) {
     var url = el.getAttribute("jx-" + METHODS[i]);
     if (url !== null) return { method: METHODS[i].toUpperCase(), url: url };
   }
+  // jx-action="add" calls the function add: the same as jx-post="fn:add".
+  var action = el.getAttribute("jx-action");
+  if (action !== null) return { method: "POST", url: "fn:" + action, action: true };
   // A GraphQL query needs no URL: it goes to jsonx.graphql ("/graphql" unless you change it).
   if (el.hasAttribute("jx-query")) return { method: "POST", url: api.graphql };
 }
@@ -657,7 +667,9 @@ function issueRequest(el, override, fromAddress) {
       if (select) data = select.split(".").reduce(function (v, key) { return v == null ? v : v[key]; }, data);
       render(el, data, info.method === "GET" ? url : null, sentAt);
       // jx-push-url: put what a GET (or a GraphQL query) sent in the address bar.
-      if (!fromAddress && !override && (info.method === "GET" || (graphql && !/^\s*mutation\b/m.test(text)))) {
+      // A region that loads itself with jx-action counts as a GET here.
+      var reads = info.method === "GET" || (info.action && el.hasAttribute("jx-template")) || (graphql && !/^\s*mutation\b/m.test(text));
+      if (!fromAddress && !override && reads) {
         var sent = Object.fromEntries(new URL(url.replace(/^fn:/, ""), location.href).searchParams);
         pushAddress(el, Object.assign(sent, values));
       }

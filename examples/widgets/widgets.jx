@@ -2,12 +2,12 @@
 
      A plain <script> inside a component is that component's code. It runs once
      for each element, so two counters count separately. Its variables and
-     functions are what the template and fn: see, with nothing to export, and
+     functions are what the template and jx-action see, with nothing to export, and
      the component's props are variables in it too. Functions called
      connected, disconnected and rendered run at those moments, and `el` is
      the element. jsonx redraws an element when its variables change. -->
 
-<template jx-component="my-counter" props="start:number step:number">
+<template id="my-counter" props="start:number step:number">
   <script>
     let count = start ?? 0;
     function up() { count += step ?? 1; }
@@ -19,12 +19,12 @@
     button { font: inherit; width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--line, #ddd); background: var(--panel, #fff); color: inherit; cursor: pointer; }
     output { min-width: 3ch; text-align: center; font-size: 20px; font-variant-numeric: tabular-nums; }
   </style>
-  <button jx-post="fn:down" aria-label="Down">−</button>
+  <button jx-action="down" aria-label="Down">−</button>
   <output>{{count}}</output>
-  <button jx-post="fn:up" aria-label="Up">+</button>
+  <button jx-action="up" aria-label="Up">+</button>
 </template>
 
-<template jx-component="count-down" props="seconds:number">
+<template id="count-down" props="seconds:number">
   <script>
     let left = seconds ?? 10;
     let running = false;
@@ -36,7 +36,7 @@
       running = true;
       timer = setInterval(tick, 1000);
     }
-    // A timer isn't an fn: call, so it tells jsonx to look for changes.
+    // A timer isn't an action, so it tells jsonx to look for changes.
     function tick() {
       left -= 1;
       if (left === 0) { stop(); done = true; }
@@ -55,12 +55,12 @@
     button { font: inherit; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--line, #ddd); background: var(--panel, #fff); color: inherit; cursor: pointer; }
   </style>
   <span class="time" class:done="{{done}}">{{left}}</span>
-  <jx-if test="running"><button jx-post="fn:stop">Pause</button></jx-if>
-  <jx-else-if test="done"><button jx-post="fn:again">Again</button></jx-else-if>
-  <jx-else><button jx-post="fn:start">Start</button></jx-else>
+  <jx-if test="running"><button jx-action="stop">Pause</button></jx-if>
+  <jx-else-if test="done"><button jx-action="again">Again</button></jx-else-if>
+  <jx-else><button jx-action="start">Start</button></jx-else>
 </template>
 
-<template jx-component="star-rating" form>
+<template id="star-rating" form>
   <script>
     let value = 0;
     let stars = [];
@@ -81,11 +81,11 @@
     button.on { color: #f59e0b; }
   </style>
   <span jx-ref="stars" role="slider" aria-valuemin="0" aria-valuemax="5" aria-label="Rating">
-    <button jx-each="stars" class:on="{{on}}" jx-post="fn:pick" jx-vals='{"n": {{n}}}' aria-label="{{n}} stars">★</button>
+    <button jx-each="stars" class:on="{{on}}" jx-action="pick" jx-vals='{"n": {{n}}}' aria-label="{{n}} stars">★</button>
   </span>
 </template>
 
-<template jx-component="feedback-form">
+<template id="feedback-form">
   <script>
     let sent = "";
     async function send(values) {
@@ -99,7 +99,7 @@
     button { justify-self: start; font: inherit; padding: 8px 16px; border: 0; border-radius: 8px; background: var(--accent, #4f46e5); color: #fff; cursor: pointer; }
     .sent { color: #16a34a; margin: 0; }
   </style>
-  <form jx-post="fn:send" jx-swap="none">
+  <form jx-action="send" jx-swap="none">
     <star-rating name="rating"></star-rating>
     <textarea name="comment" rows="3" placeholder="Anything else?"></textarea>
     <button>Send feedback</button>

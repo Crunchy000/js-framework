@@ -4,10 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>jsonx tutorial</title>
-  <link rel="stylesheet" href="style.css?v=31">
+  <link rel="stylesheet" href="style.css?v=32">
   <!-- A pretend server, so every example works without one. -->
-  <script src="mock-api.js?v=31"></script>
-  <script type="module" src="../../jsonx.js?v=31"></script>
+  <script src="mock-api.js?v=32"></script>
+  <script type="module" src="../../jsonx.js?v=32"></script>
 </head>
 <body>
 <header class="top">
@@ -551,11 +551,11 @@
 
           <p>Basket: <span jx-data="cart"><template>{{count}} items</template></span></p>
 
-          <div jx-get="fn:products">
+          <div jx-action="products">
             <template>
               <jx-if test="error"><p class="error">{{error}}</p></jx-if>
               <jx-each items="products">
-                <button jx-post="fn:add" jx-vals='{"id": {{id}}, "name": "{{name}}"}'>Add {{name}} (£{{price}})</button>
+                <button jx-action="add" jx-vals='{"id": {{id}}, "name": "{{name}}"}'>Add {{name}} (£{{price}})</button>
               </jx-each>
             </template>
           </div>
@@ -563,7 +563,7 @@
           <div jx-data="cart">
             <template>
               <jx-each items="items"><p>{{qty}} × {{name}}</p></jx-each>
-              <jx-if test="count"><button jx-post="fn:empty">Empty the basket</button></jx-if>
+              <jx-if test="count"><button jx-action="empty">Empty the basket</button></jx-if>
               <jx-else><p><small>Your basket is empty.</small></p></jx-else>
             </template>
           </div>
@@ -573,9 +573,9 @@
       </div>
     </div>
 
-    <h3>Functions: <code>fn:name</code></h3>
+    <h3>Functions: <code>jx-action</code></h3>
     <ul>
-      <li>Anywhere a URL goes, <code>fn:products</code> calls the function <code>products</code> instead. It gets the same values a request would send (the region's controls and <code>jx-vals</code>), and returns the view, or a promise of one.</li>
+      <li><code>jx-action="products"</code> calls the function <code>products</code> instead of a server. (Anywhere a URL goes, <code>fn:products</code> does the same.) It gets the same values a request would send (the region's controls and <code>jx-vals</code>), and returns the view, or a promise of one.</li>
       <li>So templates don't care where a view comes from. A region can start on a function and later point at a real URL.</li>
       <li>To fail, <code>throw</code> an error answer like <code>{ error: "…" }</code> or <code>{ errors: {…} }</code>. It's shown like a server's error from step 9. Try adding a fourth tea.</li>
       <li>Returning nothing means there's nothing to draw here, like <code>empty()</code>.</li>
@@ -585,8 +585,8 @@
     <h3>Shared data: <code>jx-data</code></h3>
     <ul>
       <li><code>jx-data="cart"</code> makes a region that draws the variable <code>cart</code>. Both the basket count and the basket list use it.</li>
-      <li>After <em>any</em> <code>fn:</code> call, every <code>jx-data</code> region is drawn again from its variable. So <code>add()</code> just changes <code>cart</code>, and <code>empty()</code> just replaces it. Regions whose data didn't change are skipped.</li>
-      <li>With big lists on the page, say what a button changes: <code>&lt;button jx-post="fn:add" jx-data="cart"&gt;</code> redraws only the <code>cart</code> regions, instead of checking them all.</li>
+      <li>After <em>any</em> action, every <code>jx-data</code> region is drawn again from its variable. So <code>add()</code> just changes <code>cart</code>, and <code>empty()</code> just replaces it. Regions whose data didn't change are skipped.</li>
+      <li>With big lists on the page, say what a button changes: <code>&lt;button jx-action="add" jx-data="cart"&gt;</code> redraws only the <code>cart</code> regions, instead of checking them all.</li>
       <li>This is how two distant parts of a page stay in step without <code>jx-refresh</code>.</li>
       <li>Changing the data from other code, like a timer? Call <code>jsonx.update()</code> to redraw.</li>
       <li>Use a plain <code>&lt;script&gt;</code>, as above, not a module: jsonx finds functions and variables by name, and a module's are private. In a module, put them on <code>jsonx.functions</code> and <code>jsonx.data</code> instead.</li>
@@ -654,10 +654,10 @@
       <tr><td><code>jx-get</code> / <code>jx-post</code> / <code>jx-put</code> / <code>jx-patch</code> / <code>jx-delete</code></td><td>The request</td></tr>
       <tr><td><code>&lt;template&gt;</code> inside, or <code>jx-template="#id"</code></td><td>Makes a region</td></tr>
       <tr><td><code>jx-region</code></td><td>A region with nothing to load</td></tr>
-      <tr><td><code>jx-post="fn:name"</code></td><td>Call the function <code>name(values)</code> instead of a server</td></tr>
-      <tr><td><code>&lt;template jx-component="tag-name" props="a b"&gt;</code></td><td>Define a web component from a template</td></tr>
+      <tr><td><code>jx-action="name"</code></td><td>Call the function <code>name(values)</code> instead of a server</td></tr>
+      <tr><td><code>&lt;template jx-component="tag-name" props="a b"&gt;</code></td><td>Define a web component from a template. In a .jx file, <code>&lt;template id="tag-name"&gt;</code> does the same</td></tr>
       <tr><td><code>jx-emit="name"</code></td><td>Fire an event (with the current item) on click</td></tr>
-      <tr><td><code>jx-data="name"</code></td><td>Draw the variable <code>name</code>, again after every <code>fn:</code> call</td></tr>
+      <tr><td><code>jx-data="name"</code></td><td>Draw the variable <code>name</code>, again after every action</td></tr>
       <tr><td><code>jx-trigger</code></td><td>When to run: <code>input delay:300ms</code>, <code>keydown[key=Enter]</code>, <code>change from:#other</code></td></tr>
       <tr><td><code>jx-target</code></td><td>Draw somewhere else: a selector, or <code>closest .card</code></td></tr>
       <tr><td><code>jx-include</code>, <code>jx-vals</code></td><td>Send more values</td></tr>
@@ -665,7 +665,7 @@
       <tr><td><code>jx-swap="none"</code></td><td>Call the server, draw nothing</td></tr>
       <tr><td><code>jx-then="page.html?id=:id"</code></td><td>Go to another page afterwards</td></tr>
       <tr><td><code>jx-markdown="{{body}}"</code></td><td>Draw Markdown (or <code>jx-html</code>: HTML) inside the element, cleaned of anything unsafe</td></tr>
-      <tr><td><code>&lt;script&gt;</code> in a .jx file</td><td>Ordinary code: its variables and functions are what the file's templates and <code>fn:</code> see. Inside a component, it runs once per element</td></tr>
+      <tr><td><code>&lt;script&gt;</code> in a .jx file</td><td>Ordinary code: its variables and functions are what the file's templates and <code>jx-action</code> see. Inside a component, it runs once per element</td></tr>
       <tr><td><code>jx-ws="/ws/chat"</code></td><td>A region drawn from a WebSocket: each message is its whole view. <code>jx-ws-send</code> on a form inside sends its values</td></tr>
       <tr><td><code>jx-push-url</code></td><td>On a region: keep its values in the address bar, so refresh and back work</td></tr>
     </table>
@@ -673,6 +673,6 @@
   </section>
 </main>
 
-<script src="tutorial.js?v=31"></script>
+<script src="tutorial.js?v=32"></script>
 </body>
 </html>
