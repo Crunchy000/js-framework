@@ -18,8 +18,8 @@
  *
  *   <script type="module" src="jsonx.js"></script>
  */
-import { compileTemplate, compileView } from "./templates.js?v=17";
-import { defineComponent } from "./components.js?v=17";
+import { compileTemplate, compileView } from "./templates.js?v=18";
+import { defineComponent } from "./components.js?v=18";
 
 var METHODS = ["get", "post", "put", "patch", "delete"];
 var SELECTOR = METHODS.map(function (m) { return "[jx-" + m + "]"; }).join(",") + ",[jx-region],[jx-query],[jx-data],[jx-emit]";
@@ -465,7 +465,8 @@ function send(url, options, el) {
     });
   };
   if (typeof fn !== "function") return Promise.resolve(json(404, { error: "There's no function called " + name }));
-  var values = options.body ? JSON.parse(options.body) : Object.fromEntries(address.searchParams);
+  // fn:favorite?slug=hello sends slug too, for any method.
+  var values = Object.assign(Object.fromEntries(address.searchParams), options.body ? JSON.parse(options.body) : {});
   return Promise.resolve()
     .then(function () { return fn(values); })
     .finally(function () {

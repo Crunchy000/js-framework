@@ -1,0 +1,21 @@
+<!-- nav.jx: the navigation bar, shared by every page with <template src="nav.jx">.
+     It's a template with its own jx-get, so it loads and draws itself. -->
+<header class="conduit-nav">
+  <template jx-get="fn:nav">
+    <nav class="wa-split">
+      <a class="brand" href="index.html">conduit</a>
+      <div class="wa-cluster wa-gap-l">
+        <a href="index.html">Home</a>
+        <jx-if test="signedIn">
+          <a href="editor.html"><wa-icon name="pen-to-square"></wa-icon> New article</a>
+          <a href="settings.html"><wa-icon name="gear"></wa-icon> Settings</a>
+          <a href="{{profileUrl}}"><wa-icon name="user"></wa-icon> {{username}}</a>
+        </jx-if>
+        <jx-else>
+          <a href="login.html">Sign in</a>
+          <a href="register.html">Sign up</a>
+        </jx-else>
+      </div>
+    </nav>
+  </template>
+</header>

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en" class="wa-cloak">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign up — Conduit</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/styles/webawesome.css">
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
+  <link rel="stylesheet" href="../conduit/style.css?v=18">
+
+  <!-- A pretend RealWorld API (the same one the other Conduits use) -->
+  <script src="../conduit/mock-api.js?v=18"></script>
+  <!-- The views: plain functions that pages call with fn:name -->
+  <script src="views.js?v=18"></script>
+  <script type="module" src="../../jsonx.js?v=18"></script>
+  <script>if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("wa-dark");</script>
+</head>
+<body>
+  <template src="nav.jx"></template>
+
+  <main class="narrow">
+    <h1>Sign up</h1>
+    <p class="switch"><a href="login.html">Have an account?</a></p>
+
+    <!-- Nothing to load, so it's a jx-region: it just draws its template. -->
+    <div class="wa-stack" jx-region>
+      <template>
+        <jx-if test="error">
+          <wa-callout variant="danger">
+            <ul class="wa-stack wa-gap-3xs" style="margin: 0; padding-left: 1em;"><jx-each items="errors"><li>{{text}}</li></jx-each></ul>
+          </wa-callout>
+        </jx-if>
+        <wa-input name="username" placeholder="Username" size="l" autofocus></wa-input>
+        <wa-input name="email" type="email" placeholder="Email" size="l"></wa-input>
+        <wa-input name="password" type="password" placeholder="Password" size="l" password-toggle></wa-input>
+        <div><wa-button variant="success" size="l" jx-post="fn:register" jx-swap="none" jx-then="index.html">Sign up</wa-button></div>
+      </template>
+    </div>
+  </main>
+</body>
+</html>

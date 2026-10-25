@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en" class="wa-cloak">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Editor — Conduit</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/styles/webawesome.css">
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
+  <link rel="stylesheet" href="../conduit/style.css?v=18">
+
+  <!-- A pretend RealWorld API (the same one the other Conduits use) -->
+  <script src="../conduit/mock-api.js?v=18"></script>
+  <!-- The views: plain functions that pages call with fn:name -->
+  <script src="views.js?v=18"></script>
+  <script type="module" src="../../jsonx.js?v=18"></script>
+  <script>if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("wa-dark");</script>
+</head>
+<body>
+  <template src="nav.jx"></template>
+
+  <main class="narrow">
+    <!-- editor.html?slug=hello edits that article; editor.html alone starts a new one. -->
+    <div class="wa-stack" jx-get="fn:editor?slug=:slug">
+      <template>
+        <jx-if test="!signedIn">
+          <p class="empty"><a href="login.html">Sign in</a> to see this page.</p>
+        </jx-if>
+        <jx-else>
+          <div class="wa-stack">
+            <jx-if test="error">
+              <wa-callout variant="danger">
+                <ul class="wa-stack wa-gap-3xs" style="margin: 0; padding-left: 1em;"><jx-each items="errors"><li>{{text}}</li></jx-each></ul>
+              </wa-callout>
+            </jx-if>
+            <input type="hidden" name="slug" value="{{article.slug}}">
+            <wa-input name="title" placeholder="Article title" size="l" value="{{article.title}}"></wa-input>
+            <wa-input name="description" placeholder="What's this article about?" value="{{article.description}}"></wa-input>
+            <wa-textarea name="body" placeholder="Write your article (paragraphs are separated by a blank line)" rows="10" value="{{article.body}}"></wa-textarea>
+            <wa-input name="tags" placeholder="Enter tags, separated by commas" value="{{article.tags}}"></wa-input>
+            <div>
+              <!-- On success the answer is { article: { slug } }, and jx-then goes to it. -->
+              <wa-button variant="success" jx-post="fn:saveArticle" jx-swap="none" jx-then="article.html?slug=:article.slug">
+                <jx-if test="isNew">Publish article</jx-if>
+                <jx-else>Update article</jx-else>
+              </wa-button>
+            </div>
+          </div>
+        </jx-else>
+      </template>
+    </div>
+  </main>
+</body>
+</html>

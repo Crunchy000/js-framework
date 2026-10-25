@@ -31,6 +31,7 @@ The card loads `api/todos` when the page opens and draws it with the template in
 - [Feature tour](https://crunchy000.github.io/js-framework/examples/basic/), one live example per feature, with its code and data
 - [Conduit](https://crunchy000.github.io/js-framework/examples/conduit/), the [RealWorld](https://github.com/realworld-apps/realworld) Medium clone: feeds, articles, comments, profiles and sign-in, against an API that isn't shaped for the page
 - [Conduit on GraphQL](https://crunchy000.github.io/js-framework/examples/conduit-graphql/), the same app with no view API: each page sends its own GraphQL query
+- [Conduit with functions](https://crunchy000.github.io/js-framework/examples/conduit-functions/), the same app again, with its view API as plain functions in the page
 - [Beacon](https://crunchy000.github.io/js-framework/examples/marketing/), a marketing site whose pages are built from a Contentful-style CMS
 - [Benchmark](https://crunchy000.github.io/js-framework/examples/benchmark/), jsonx against React, htmx and `innerHTML`
 
@@ -262,6 +263,8 @@ The view API also keeps the sign-in token, the way a real one keeps it in a serv
 
 Article bodies are Markdown, but Conduit shows them as plain paragraphs: templates never insert raw HTML, so an article can't inject anything into the page.
 
+The view API can also live in the page, as plain functions: `jx-get="fn:home"` calls `async function home(values)`, which calls the RealWorld API and returns the same view. [Conduit with functions](examples/conduit-functions/) works this way. You lose the server-side session (the token sits in the browser) and the views only serve this page, but there's nothing to deploy except the page.
+
 If you can't add a view API, jsonx has three tools for working with the real one from the page:
 
 - **`jx-refresh="#comments"`** reloads regions after a change, the way they were last loaded.
@@ -345,6 +348,7 @@ If you call `jsonx.render(el, data)` yourself, jsonx copies `data` first, so cha
 | `examples/components/` | `article-preview.jx`, a component shared by both Conduit apps. |
 | `examples/tutorial/` | The tutorial. |
 | `examples/conduit/` | The RealWorld app: one HTML file per page and no page script. `view-api.js` is a pretend backend-for-frontend that turns the RealWorld API (`mock-api.js`) into page-shaped views. |
+| `examples/conduit-functions/` | Conduit again, with no server of its own: `views.js` holds the view API as plain `fn:` functions that call the RealWorld API. It shares Conduit's styles, mock and article list. |
 | `examples/conduit-graphql/` | Conduit again, talking GraphQL. Queries live in the pages; `graphql-server.js` is a pretend GraphQL server (the real graphql-js, in `vendor/`) over the RealWorld mock. |
 | `examples/marketing/` | A marketing site in one HTML file. `cms-api.js` is a pretend Contentful (entries, links, rich text) and `view-api.js` turns its entries into page sections. |
 | `examples/benchmark/` | Times an update in jsonx, React, htmx (swap and morph) and plain `innerHTML`. |
