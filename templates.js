@@ -152,18 +152,21 @@ var emitItem = directive(EmitItem);
 // Markdown or HTML, inside that element. Everything is cleaned with DOMPurify
 // first: no scripts, no onclick=, no javascript: links. Anything jsonx would
 // act on is removed too (jx- attributes, templates, forms), so the text can't
-// make requests. The libraries load the first time a page needs them.
-var libraries = null;
-function loadLibraries() {
-  if (!libraries) {
-    libraries = Promise.all([
-      import(new URL("./vendor/dompurify/purify.js", import.meta.url).href),
-      import(new URL("./vendor/marked/marked.js", import.meta.url).href)
-    ]).then(function (mods) {
-      libraries.ready = { purify: mods[0].default, marked: mods[1].marked };
-    });
-  }
-  return libraries;
+// make requests. Each library loads the first time a page needs it: a page
+// with only jx-html never loads marked.
+var libraries = {};
+var LIBRARIES = {
+  purify: ["./vendor/dompurify/purify.js", function (m) { return m.default; }],
+  marked: ["./vendor/marked/marked.js", function (m) { return m.marked; }]
+};
+function needs(kind) { return kind === "markdown" ? ["purify", "marked"] : ["purify"]; }
+function loaded(kind) { return needs(kind).every(function (name) { return libraries[name]; }); }
+function loadLibraries(kind) {
+  return Promise.all(needs(kind).map(function (name) {
+    var lib = LIBRARIES[name];
+    lib.loading = lib.loading || import(new URL(lib[0], import.meta.url).href).then(function (m) { libraries[name] = lib[1](m); });
+    return lib.loading;
+  }));
 }
 
 var CLEAN = {
@@ -175,10 +178,9 @@ var CLEAN = {
 };
 
 export function cleanHTML(kind, value) {
-  var lib = libraries.ready;
   var source = value == null ? "" : String(value);
-  var html = kind === "markdown" ? lib.marked.parse(source, { async: false }) : source;
-  return lib.purify.sanitize(html, CLEAN);
+  var html = kind === "markdown" ? libraries.marked.parse(source, { async: false }) : source;
+  return libraries.purify.sanitize(html, CLEAN);
 }
 
 class RichText extends Directive {
@@ -188,8 +190,8 @@ class RichText extends Directive {
     var el = part.element;
     var draw = function () { if (part.element.__jxRich === value) el.innerHTML = cleanHTML(kind, value); };
     el.__jxRich = value;
-    if (libraries && libraries.ready) draw();
-    else loadLibraries().then(draw);
+    if (loaded(kind)) draw();
+    else loadLibraries(kind).then(draw);
     return noChange;
   }
   render() { return noChange; }
@@ -533,8 +535,8 @@ function compileAttribute(name, value, b) {
   // jx-markdown="{{body}}", jx-html="{{body}}": the element's content.
   if (name === "jx-markdown" || name === "jx-html") {
     if (!whole) throw new Error('[jsonx] ' + name + '="…" must be exactly one {{name}}');
-    loadLibraries();
     var kind = name === "jx-markdown" ? "markdown" : "html";
+    loadLibraries(kind); // start now, so they're likely ready by the first draw
     var richPath = path(whole[1]);
     b.add(" " + name + "=");
     b.hole(function (stack) { return richText(kind, lookup(stack, richPath)); });

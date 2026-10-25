@@ -14,7 +14,7 @@
 (function () {
   "use strict";
 
-  var KEY = "conduit-db-v2"; // v2: article bodies are Markdown
+  var KEY = "conduit-db-v3"; // v3: article bodies are HTML
 
   function seed() {
     var users = [
@@ -23,18 +23,18 @@
       { email: "grace@conduit.dev", password: "password123", username: "grace", bio: "Rear admiral. Found the first bug.", image: null, following: ["ada"] }
     ];
     var texts = [
-      ["ada", "Notes on the Analytical Engine", "Why a machine can do more than arithmetic", "The engine weaves algebraic patterns just as the loom weaves flowers and leaves.\n\nIt might act upon other things besides number.", ["history", "computing"]],
-      ["grace", "The first actual bug", "A moth, a relay, and a logbook", "We found a moth stuck in **relay 70** of the Mark II.\n\nIt was taped into the logbook, with a note:\n\n> First actual case of bug being found.\n\nArticles can mix in a little HTML too: the moth is now in the <mark>Smithsonian</mark>.", ["history", "debugging"]],
-      ["demo", "Why JSON views beat HTML partials", "Same API for the web and for apps", "Send the **whole view** as JSON, shaped for the page, and let a small template draw it.\n\n## Why\n\n- The same API serves the web and mobile apps\n- The server still decides what the page shows\n- Templates stay plain HTML\n\nRead more in the [jsonx README](https://github.com/crunchy000/js-framework).", ["jsonx", "webdev"]],
-      ["grace", "It's easier to ask forgiveness", "On getting things done in big organisations", "It's easier to ask forgiveness than it is to get permission.", ["leadership"]],
-      ["ada", "Imagination is the discovering faculty", "On science and poetry", "Imagination is the discovering faculty, pre-eminently.\n\nIt is that which penetrates into the unseen worlds around us.", ["science"]],
-      ["demo", "Web components and templates", "Using Web Awesome with jsonx", "Web components are just elements, so templates can use them like any other tag.\n\nForm controls are picked up by name, the same as inputs.", ["jsonx", "webcomponents"]],
-      ["grace", "Writing a compiler", "Teaching computers to speak English", "I had a running compiler and nobody would touch it. They told me computers could only do arithmetic.", ["computing", "compilers"]],
-      ["ada", "That brain of mine", "More than merely mortal", "That brain of mine is something more than merely mortal, as time will show.", ["history"]],
-      ["demo", "Keyed lists in five minutes", "Why rows need an id", "When each row has an `id`, adding one row only adds one row.\n\n```html\n<jx-each items=\"todos\">\n  <li>{{title}}</li>\n</jx-each>\n```\n\nWithout ids, rows are matched by position.", ["jsonx", "performance"]],
-      ["grace", "Nanoseconds", "A foot of wire", "A nanosecond is the distance light travels in a billionth of a second: about a foot.", ["computing", "science"]],
-      ["ada", "The science of operations", "A new name for a new subject", "The science of operations is a science of itself, and has its own abstract truth and value.", ["computing", "science"]],
-      ["demo", "Hello, Conduit", "My first article", "This whole app is a few HTML templates and one small script.\n\n### Markdown and HTML, safely\n\nArticle bodies are **Markdown**, and they can hold *some* HTML, like <kbd>Ctrl</kbd> + <kbd>C</kbd>.\n\nAnything dangerous is removed before it's drawn. This article tries four attacks, and none of them work:\n\n<img src=\"x\" onerror=\"document.body.dataset.hacked = 'yes'\" alt=\"a broken image, harmless\">\n\n<script>document.body.dataset.hacked = 'yes'</script>\n\n[A link that tries to run code](javascript:document.body.dataset.hacked='yes')\n\n<button jx-post=\"/view/logout\">A button that tries to sign you out</button>", ["jsonx"]]
+      ["ada", "Notes on the Analytical Engine", "Why a machine can do more than arithmetic", "<p>The engine weaves algebraic patterns just as the loom weaves flowers and leaves.</p>\n<p>It might act upon other things besides number.</p>", ["history", "computing"]],
+      ["grace", "The first actual bug", "A moth, a relay, and a logbook", "<p>We found a moth stuck in <strong>relay 70</strong> of the Mark II.</p>\n<p>It was taped into the logbook, with a note:</p>\n<blockquote>\n<p>First actual case of bug being found.</p>\n</blockquote>\n<p>Articles can mix in a little HTML too: the moth is now in the <mark>Smithsonian</mark>.</p>", ["history", "debugging"]],
+      ["demo", "Why JSON views beat HTML partials", "Same API for the web and for apps", "<p>Send the <strong>whole view</strong> as JSON, shaped for the page, and let a small template draw it.</p>\n<h2>Why</h2>\n<ul>\n<li>The same API serves the web and mobile apps</li>\n<li>The server still decides what the page shows</li>\n<li>Templates stay plain HTML</li>\n</ul>\n<p>Read more in the <a href=\"https://github.com/crunchy000/js-framework\">jsonx README</a>.</p>", ["jsonx", "webdev"]],
+      ["grace", "It's easier to ask forgiveness", "On getting things done in big organisations", "<p>It's easier to ask forgiveness than it is to get permission.</p>", ["leadership"]],
+      ["ada", "Imagination is the discovering faculty", "On science and poetry", "<p>Imagination is the discovering faculty, pre-eminently.</p>\n<p>It is that which penetrates into the unseen worlds around us.</p>", ["science"]],
+      ["demo", "Web components and templates", "Using Web Awesome with jsonx", "<p>Web components are just elements, so templates can use them like any other tag.</p>\n<p>Form controls are picked up by name, the same as inputs.</p>", ["jsonx", "webcomponents"]],
+      ["grace", "Writing a compiler", "Teaching computers to speak English", "<p>I had a running compiler and nobody would touch it. They told me computers could only do arithmetic.</p>", ["computing", "compilers"]],
+      ["ada", "That brain of mine", "More than merely mortal", "<p>That brain of mine is something more than merely mortal, as time will show.</p>", ["history"]],
+      ["demo", "Keyed lists in five minutes", "Why rows need an id", "<p>When each row has an <code>id</code>, adding one row only adds one row.</p>\n<pre><code class=\"language-html\">&lt;jx-each items=\"todos\"&gt;\n  &lt;li&gt;{{title}}&lt;/li&gt;\n&lt;/jx-each&gt;\n</code></pre>\n<p>Without ids, rows are matched by position.</p>", ["jsonx", "performance"]],
+      ["grace", "Nanoseconds", "A foot of wire", "<p>A nanosecond is the distance light travels in a billionth of a second: about a foot.</p>", ["computing", "science"]],
+      ["ada", "The science of operations", "A new name for a new subject", "<p>The science of operations is a science of itself, and has its own abstract truth and value.</p>", ["computing", "science"]],
+      ["demo", "Hello, Conduit", "My first article", "<p>This whole app is a few HTML templates and one small script.</p>\n<h3>HTML, safely</h3>\n<p>Article bodies are <strong>HTML</strong>, written in a rich text editor. They can hold <em>formatting</em>, links, images and keys like <kbd>Ctrl</kbd> + <kbd>C</kbd>.</p>\n<p>Anything dangerous is removed before it's drawn. This article tries four attacks, and none of them work:</p>\n<img src=\"x\" onerror=\"document.body.dataset.hacked = 'yes'\" alt=\"a broken image, harmless\"><script>document.body.dataset.hacked = 'yes'</script><p><a href=\"javascript:document.body.dataset.hacked='yes'\">A link that tries to run code</a></p>\n<p><button jx-post=\"/view/logout\">A button that tries to sign you out</button></p>", ["jsonx"]]
     ];
     var start = Date.parse("2026-09-01T10:00:00Z");
     var articles = texts.map(function (t, i) {

@@ -85,7 +85,7 @@
     view.mine = view.author.mine;
     view.favoriteLabel = (a.favorited ? "Unfavorite" : "Favorite") + " (" + a.favoritesCount + ")";
     view.editUrl = "editor.html?slug=" + encodeURIComponent(a.slug);
-    view.body = a.body; // Markdown: the page draws it with jx-markdown, cleaned
+    view.body = a.body; // HTML: the page draws it with jx-html, cleaned
     return view;
   }
   function pageButtons(count, page) {

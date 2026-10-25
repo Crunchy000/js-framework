@@ -258,7 +258,7 @@ Both Conduit apps share `examples/components/article-preview.jx`: the REST versi
 - **Components that fire events.** `jx-trigger` accepts any event name, so `<star-rating jx-post="/api/feedback" jx-trigger="rating-changed">` works. jsonx sends the component's `name` attribute and `value` property, like an `<input>`. [Form-associated](https://developer.mozilla.org/en-US/docs/Web/API/ElementInternals) components inside a form are picked up by the form.
 - **Components that take JSON as a property.** `jx-swap="prop:stats"` skips templates and does `target.stats = data`, and the component draws itself. Inside a template, `stats="{{stats}}"` does the same.
 - **Hand-written components that use jsonx inside.** Call `jsonx.process(this.shadowRoot)` once in `connectedCallback`. Then `jx-target` and `jx-template` look inside the shadow root first, so the component can keep private templates.
-- **Wrapping a library as a form field.** Conduit's editor uses `<rich-editor name="body" value="{{article.body}}">`, a [Tiptap](https://tiptap.dev) editor in about 150 lines (`examples/components/rich-editor.js`). It has a `name` and a `value` property, and fires `input` as you type, so jsonx sends it like a textarea and doesn't redraw over your typing. Its value is Markdown, so people see formatting and the server still stores Markdown. Tiptap keeps only the tags its extensions know, so the editor adds images and a small `<kbd>` extension. Anything else in an article's HTML, like a `<script>`, is dropped when the article is edited. It's a hand-written element rather than a `.jx` one because Tiptap needs script, and it stays in the page's DOM because text selection inside shadow DOM is unreliable.
+- **Wrapping a library as a form field.** Conduit's editor uses `<rich-editor name="body" value="{{article.body}}">`, a [Tiptap](https://tiptap.dev) editor in about 170 lines (`examples/components/rich-editor.js`). It has a `name` and a `value` property, and fires `input` as you type, so jsonx sends it like a textarea and doesn't redraw over your typing. Its value is HTML, which the article page draws with `jx-html`. Tiptap keeps only the tags its extensions know, so the editor adds images, `<kbd>` and `<mark>`. Anything else in an article, like a `<script>`, is dropped when it's opened in the editor. It's a hand-written element rather than a `.jx` one because Tiptap needs script, and it stays in the page's DOM because text selection inside shadow DOM is unreliable.
 
 ## APIs that aren't shaped for the page
 
@@ -274,7 +274,7 @@ browser (jsonx)  --GET /view/home?tab=feed-->  view API  --GET /api/articles/fee
 
 The view API also keeps the sign-in token, the way a real one keeps it in a server-side session behind a cookie, so the browser never handles it. In the demo it's `view-api.js`, running in the browser like the other mocks.
 
-Article bodies are Markdown, drawn with `jx-markdown` (see Templates). Everything is cleaned first, so an article can't inject anything into the page.
+Article bodies are HTML, written in a Tiptap editor and drawn with `jx-html` (see Templates). Everything is cleaned first, so an article can't inject anything into the page.
 
 The view API can also live in the page, as plain functions: `jx-get="fn:home"` calls `async function home(values)`, which calls the RealWorld API and returns the same view. [Conduit with functions](examples/conduit-functions/) works this way. You lose the server-side session (the token sits in the browser) and the views only serve this page, but there's nothing to deploy except the page.
 
@@ -364,8 +364,8 @@ At 1,000 rows every action takes about 100 ms. At 10,000 rows the browser itself
 | `components.js` | Web components written as templates (`jx-component`). |
 | `vendor/lit-html/` | lit-html 3.3.1 and its `repeat` directive (BSD-3-Clause, see `vendor/lit-html/LICENSE.txt`). |
 | `vendor/lit-element/` | LitElement 4.2.1, the base class for components (BSD-3-Clause). |
-| `vendor/dompurify/`, `vendor/marked/` | DOMPurify 3.4.16 (Apache-2.0 or MPL-2.0) and marked 18.1.0 (MIT), for `jx-markdown` and `jx-html`. |
-| `vendor/tiptap/` | Tiptap 3.31.4 with StarterKit and Markdown, bundled into one file for `<rich-editor>` (MIT, see `vendor/tiptap/LICENSES.txt`). |
+| `vendor/dompurify/`, `vendor/marked/` | DOMPurify 3.4.16 (Apache-2.0 or MPL-2.0) and marked 18.1.0 (MIT), for `jx-markdown` and `jx-html`. Pages that only use `jx-html` don't load marked. |
+| `vendor/tiptap/` | Tiptap 3.31.4 with StarterKit and Image, bundled into one file for `<rich-editor>` (MIT, see `vendor/tiptap/LICENSES.txt`). |
 | `vendor/react/`, `vendor/htmx/` | React 18.3.1, htmx 2.0.4 and idiomorph 0.3.0, for the benchmark only. |
 | `examples/todo/` | The Web Awesome todo app, with its mock API. |
 | `examples/todo-functions/` | The same app, with plain `fn:` functions in the page instead of a server. |

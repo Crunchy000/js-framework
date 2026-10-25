@@ -3,8 +3,8 @@
  *
  *   <rich-editor name="body" value="{{article.body}}" placeholder="..."></rich-editor>
  *
- * Its value is Markdown, so jsonx sends it like any other field and the server
- * keeps storing Markdown. People see bold, headings and lists, not asterisks.
+ * Its value is HTML, so jsonx sends it like any other field. The page that shows
+ * the article draws it with jx-html, which cleans it first.
  *
  * Why a plain custom element and not a .jx component: Tiptap needs script, and
  * it works in the page's own DOM (selection inside shadow DOM is unreliable).
@@ -28,7 +28,9 @@ const BUTTONS = [
   ["❝", "Quote", (c) => c.toggleBlockquote(), "blockquote"],
   ["</>", "Code", (c) => c.toggleCode(), "code"],
   ["{ }", "Code block", (c) => c.toggleCodeBlock(), "codeBlock"],
-  ["🔗", "Link", null, "link"],
+  ["⌨", "Keyboard key", (c) => c.toggleMark("kbd"), "kbd"],
+  ["🔗", "Link", "link", "link"],
+  ["🖼", "Image", "image", "image"],
   ["↶", "Undo (Ctrl+Z)", (c) => c.undo(), null],
   ["↷", "Redo (Ctrl+Shift+Z)", (c) => c.redo(), null]
 ];
@@ -44,17 +46,19 @@ class RichEditor extends HTMLElement {
     this.editor = null;
   }
 
+  // An empty editor is "", not <p></p>, so "body can't be blank" still works.
   get value() {
-    return this.editor ? this.editor.getMarkdown() : this.pending;
+    if (!this.editor) return this.pending;
+    return this.editor.isEmpty ? "" : this.editor.getHTML();
   }
 
-  set value(markdown) {
-    markdown = markdown == null ? "" : String(markdown);
-    if (!this.editor) { this.pending = markdown; return; }
+  set value(html) {
+    html = html == null ? "" : String(html);
+    if (!this.editor) { this.pending = html; return; }
     // Setting the same text again would move the cursor, so leave it alone.
-    if (markdown === this.editor.getMarkdown()) return;
-    this.editor.commands.setContent(markdown, { contentType: "markdown", emitUpdate: false });
-    this.internals?.setFormValue(markdown);
+    if (html === this.value) return;
+    this.editor.commands.setContent(html, { emitUpdate: false });
+    this.internals?.setFormValue(this.value);
   }
 
   attributeChangedCallback(name, old, value) {
@@ -75,18 +79,17 @@ class RichEditor extends HTMLElement {
       button.title = title;
       button.setAttribute("aria-label", title);
       button.addEventListener("mousedown", (e) => e.preventDefault()); // keep the selection
-      button.addEventListener("click", () => run ? run(this.editor.chain().focus()).run() : this.link());
+      button.addEventListener("click", () => typeof run === "function" ? run(this.editor.chain().focus()).run() : this[run]());
       toolbar.append(button);
       return { button, active };
     });
 
-    const { Editor, StarterKit, Markdown, Image, Mark } = await loadTiptap();
+    const { Editor, StarterKit, Image, Mark } = await loadTiptap();
     this.editor = new Editor({
       element: this.querySelector(".re-body"),
-      extensions: [StarterKit.configure({ link: { openOnClick: false } }), Markdown, Image, kbd(Mark)],
+      extensions: [StarterKit.configure({ link: { openOnClick: false } }), Image, simpleMark(Mark, "kbd"), simpleMark(Mark, "mark")],
       content: this.pending,
-      contentType: "markdown",
-      editorProps: { attributes: { class: "markdown re-content", "aria-label": this.getAttribute("placeholder") || "Editor", "aria-multiline": "true", role: "textbox" } },
+      editorProps: { attributes: { class: "rich-text re-content", "aria-label": this.getAttribute("placeholder") || "Editor", "aria-multiline": "true", role: "textbox" } },
       onUpdate: () => {
         this.internals?.setFormValue(this.value);
         // One bubbling input event from the editor itself, so jsonx knows it's been typed in.
@@ -120,6 +123,13 @@ class RichEditor extends HTMLElement {
     (href.trim() ? chain.setLink({ href: href.trim() }) : chain.unsetLink()).run();
   }
 
+  image() {
+    const src = prompt("Image address:", this.editor.getAttributes("image").src || "https://");
+    if (!src || !src.trim() || src.trim() === "https://") return;
+    const alt = prompt("Describe the image, for people who can't see it:", "") || "";
+    this.editor.chain().focus().setImage({ src: src.trim(), alt }).run();
+  }
+
   refresh() {
     if (!this.editor) return;
     for (const { button, active } of this.buttons) {
@@ -137,16 +147,14 @@ class RichEditor extends HTMLElement {
   }
 }
 
-// Tiptap keeps only what its extensions know, so anything else in an article's
-// HTML is dropped when it's edited. <kbd> is taught here, and Image comes with
-// Tiptap. Both are written back out the way the article had them.
-function kbd(Mark) {
+// Tiptap keeps only the tags its extensions know, and drops the rest when an
+// article is opened. Image comes with Tiptap; <kbd> and <mark> are taught here.
+function simpleMark(Mark, tag) {
   return Mark.create({
-    name: "kbd",
-    excludes: "_",
-    parseHTML: () => [{ tag: "kbd" }],
-    renderHTML: () => ["kbd", 0],
-    renderMarkdown: (node, h) => "<kbd>" + h.renderChildren(node) + "</kbd>"
+    name: tag,
+    excludes: tag === "kbd" ? "_" : undefined, // nothing else inside a key
+    parseHTML: () => [{ tag }],
+    renderHTML: () => [tag, 0]
   });
 }
 
@@ -166,6 +174,8 @@ function addStyles() {
     rich-editor .re-toolbar button.on { background: var(--wa-color-brand-fill-quiet, #e0e7ff); color: var(--wa-color-brand-on-quiet, #3730a3); }
     rich-editor .re-content { min-height: 240px; padding: 12px 14px; outline: none; }
     rich-editor .re-content > :first-child { margin-top: 0; }
+    rich-editor .re-content img { max-width: 100%; }
+    rich-editor .re-content img.ProseMirror-selectednode { outline: 2px solid var(--wa-color-brand-border-loud, #4f46e5); }
     rich-editor.empty .re-content > p:first-child::before { content: attr(data-placeholder); color: var(--wa-color-text-quiet, #999); float: left; height: 0; pointer-events: none; }
   `;
   document.head.append(style);
