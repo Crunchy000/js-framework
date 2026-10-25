@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>jsonx data table</title>
+
+  <!--
+    The "server": a plain function that returns one slice of the table, sorted
+    and searched. Swap fn:people for a real URL and nothing else changes.
+    A plain script (not a module), so jsonx can find it by name.
+  -->
+  <script>
+    const FIRST = ["Ada", "Alan", "Grace", "Linus", "Margaret", "Dennis", "Barbara", "Ken", "Frances", "Tim", "Radia", "Edsger", "Hedy", "John", "Katherine", "Donald"];
+    const LAST = ["Lovelace", "Turing", "Hopper", "Torvalds", "Hamilton", "Ritchie", "Liskov", "Thompson", "Allen", "Berners-Lee", "Perlman", "Dijkstra", "Lamarr", "McCarthy", "Johnson", "Knuth"];
+    const CITIES = ["London", "Paris", "Berlin", "Madrid", "Rome", "Oslo", "Dublin", "Lisbon", "Vienna", "Prague"];
+    const TEAMS = ["Design", "Engineering", "Sales", "Support", "Research"];
+
+    // 10,000 made-up people, the same on every visit (a seeded random mix).
+    let seed = 42;
+    const random = (list) => {
+      seed = (seed * 1103515245 + 12345) % 2147483648;
+      return list[Math.floor((seed / 2147483648) * list.length)];
+    };
+    const YEARS = Array.from({ length: 16 }, (_, i) => 2010 + i);
+    const everyone = Array.from({ length: 10000 }, (_, i) => ({
+      id: i + 1,
+      name: random(FIRST) + " " + random(LAST),
+      team: random(TEAMS),
+      city: random(CITIES),
+      joined: random(YEARS)
+    }));
+
+    const PAGE = 50;
+    const COLUMNS = [["name", "Name"], ["team", "Team"], ["city", "City"], ["joined", "Joined"]];
+
+    // `values` are the region's hidden fields (sort, dir, limit) and the search box.
+    function people(values) {
+      const sort = COLUMNS.some(([key]) => key === values.sort) ? values.sort : "name";
+      const dir = values.dir === "desc" ? "desc" : "asc";
+      const q = (values.q || "").trim().toLowerCase();
+      const limit = Math.max(PAGE, Number(values.limit) || PAGE);
+
+      // Every word has to match somewhere: "ada design" finds Ada in Design.
+      const words = q.split(/\s+/).filter(Boolean);
+      const found = everyone.filter((p) => {
+        const text = (p.name + " " + p.team + " " + p.city).toLowerCase();
+        return words.every((word) => text.includes(word));
+      });
+      found.sort((a, b) => (a[sort] < b[sort] ? -1 : a[sort] > b[sort] ? 1 : a.id - b.id) * (dir === "asc" ? 1 : -1));
+
+      return {
+        sort, dir, q, limit,
+        rows: found.slice(0, limit),
+        shown: Math.min(limit, found.length),
+        total: found.length,
+        more: found.length > limit,
+        nextLimit: limit + PAGE,
+        // Each header knows its own arrow and what clicking it does.
+        columns: COLUMNS.map(([key, label]) => ({
+          key, label,
+          arrow: key === sort ? (dir === "asc" ? "↑" : "↓") : "",
+          next: key === sort && dir === "asc" ? "desc" : "asc"
+        }))
+      };
+    }
+  </script>
+  <script type="module" src="../../jsonx.js?v=20"></script>
+
+  <style>
+    :root { --bg: #fafafa; --panel: #fff; --text: #18181b; --muted: #71717a; --line: #e4e4e7; --head: #f4f4f5; --accent: #4f46e5; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #09090b; --panel: #18181b; --text: #fafafa; --muted: #a1a1aa; --line: #27272a; --head: #202024; --accent: #a5b4fc; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 16px 64px; }
+    h1 { font-size: 24px; margin: 0 0 4px; }
+    .intro { color: var(--muted); margin: 0 0 20px; }
+    .intro a { color: inherit; }
+
+    .bar { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-bottom: 12px; }
+    .bar input { flex: 1 1 240px; font: inherit; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: inherit; }
+    .count { color: var(--muted); font-size: 14px; }
+
+    .table { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: clip; }
+    table { width: 100%; border-collapse: collapse; }
+    th { position: sticky; top: 0; background: var(--head); text-align: left; padding: 0; border-bottom: 1px solid var(--line); }
+    th button { all: unset; display: block; width: 100%; box-sizing: border-box; padding: 10px 12px; font-weight: 600; cursor: pointer; }
+    th button:hover { color: var(--accent); }
+    th button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+    td { padding: 8px 12px; border-bottom: 1px solid var(--line); }
+    tr:last-child td { border-bottom: 0; }
+    td.num { font-variant-numeric: tabular-nums; }
+    .muted { color: var(--muted); }
+    .more, .empty { text-align: center; color: var(--muted); padding: 16px; margin: 0; }
+    .jx-loading { opacity: .6; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>People</h1>
+    <p class="intro">10,000 rows with search, sort and infinite scroll, built with <a href="../../">jsonx</a>. One plain function, <code>people()</code>, returns each slice, and only new rows are drawn as you scroll. <a href="https://github.com/crunchy000/js-framework/blob/main/examples/data-table/index.html">Source</a></p>
+
+    <!-- The region. jx-push-url keeps the search and sort in the address bar. -->
+    <div jx-get="fn:people?q=:q&sort=:sort&dir=:dir" jx-push-url="q sort dir">
+      <p class="more">Loading…</p>
+      <template>
+        <input type="hidden" name="sort" value="{{sort}}">
+        <input type="hidden" name="dir" value="{{dir}}">
+        <input type="hidden" name="limit" value="{{limit}}">
+
+        <div class="bar">
+          <!-- A new search starts again from the top. -->
+          <input type="search" name="q" value="{{q}}" placeholder="Search names, teams and cities" aria-label="Search"
+                 jx-get="fn:people" jx-trigger="input delay:250ms" jx-vals='{"limit": 50}'>
+          <span class="count">Showing {{shown}} of {{total}}</span>
+        </div>
+
+        <div class="table">
+          <table>
+            <thead>
+              <tr>
+                <th jx-each="columns">
+                  <button jx-get="fn:people" jx-vals='{"sort": "{{key}}", "dir": "{{next}}", "limit": 50}'>{{label}} {{arrow}}</button>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr jx-each="rows">
+                <td>{{name}}</td>
+                <td>{{team}}</td>
+                <td>{{city}}</td>
+                <td class="num">{{joined}}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- Infinite scroll: when this comes into view, ask for 50 more. -->
+          <jx-if test="more">
+            <p class="more" jx-get="fn:people" jx-trigger="revealed" jx-vals='{"limit": {{nextLimit}}}'>Loading more…</p>
+          </jx-if>
+          <jx-else-if test="!total">
+            <p class="empty">No one matches "{{q}}".</p>
+          </jx-else-if>
+          <jx-else>
+            <p class="more">That's everyone.</p>
+          </jx-else>
+        </div>
+      </template>
+    </div>
+  </main>
+</body>
+</html>

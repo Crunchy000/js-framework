@@ -28,6 +28,7 @@ The card loads `api/todos` when the page opens and draws it with the template in
 - [Todo app](https://crunchy000.github.io/js-framework/examples/todo/), built with [Web Awesome](https://webawesome.com) components
 - [Todo app, with functions](https://crunchy000.github.io/js-framework/examples/todo-functions/), the same app with no server: plain functions return the view
 - [Calculator](https://crunchy000.github.io/js-framework/examples/calculator/), another app built on plain functions
+- [Data table](https://crunchy000.github.io/js-framework/examples/data-table/), 10,000 rows with search, sort and infinite scroll
 - [Feature tour](https://crunchy000.github.io/js-framework/examples/basic/), one live example per feature, with its code and data
 - [Conduit](https://crunchy000.github.io/js-framework/examples/conduit/), the [RealWorld](https://github.com/realworld-apps/realworld) Medium clone: feeds, articles, comments, profiles and sign-in, against an API that isn't shaped for the page
 - [Conduit on GraphQL](https://crunchy000.github.io/js-framework/examples/conduit-graphql/), the same app with no view API: each page sends its own GraphQL query
@@ -328,7 +329,7 @@ If you call `jsonx.render(el, data)` yourself, jsonx copies `data` first, so cha
 
 ### Big lists
 
-At 1,000 rows every action takes about 100 ms. At 10,000 rows the browser itself is the limit: drawing that many table rows takes about a second even in hand-written code, and jsonx takes one and a half to two times that. So don't draw them all: page them, or load more as the person scrolls. Each step only adds the new rows, so it stays around 25 ms however long the list gets:
+At 1,000 rows every action takes about 100 ms. At 10,000 rows the browser itself is the limit: drawing that many table rows takes about a second even in hand-written code, and jsonx takes one and a half to two times that. So don't draw them all: page them, or load more as the person scrolls, like the [data table](examples/data-table/). Each step only adds the new rows, so it stays around 25 ms however long the list gets:
 
 ```html
 <tbody><tr jx-each="rows">…</tr></tbody>
@@ -364,6 +365,7 @@ At 1,000 rows every action takes about 100 ms. At 10,000 rows the browser itself
 | `examples/todo/` | The Web Awesome todo app, with its mock API. |
 | `examples/todo-functions/` | The same app, with plain `fn:` functions in the page instead of a server. |
 | `examples/calculator/` | A calculator built the same way. |
+| `examples/data-table/` | A 10,000-row table with search, sort and infinite scroll (`jx-trigger="revealed"`), from one plain function. |
 | `examples/basic/` | The feature tour: one live example per feature. |
 | `examples/components/` | `article-preview.jx`, a component shared by both Conduit apps. |
 | `examples/tutorial/` | The tutorial. |
