@@ -134,7 +134,7 @@
           <!-- Add: click the button, or press Enter in the input -->
           <div class="add wa-cluster wa-gap-s">
             <wa-input name="title" value="{{draft}}" placeholder="What needs doing?" aria-label="New todo"
-                      autocomplete="off" autofocus on:fire="add" jx-trigger="keydown[key=Enter]"></wa-input>
+                      autocomplete="off" autofocus on:keydown.enter="add"></wa-input>
             <wa-button variant="brand" on:fire="add">
               <wa-icon slot="start" name="plus"></wa-icon>
               Add
