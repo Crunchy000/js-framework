@@ -18,6 +18,8 @@
     .title { display: block; margin: var(--wa-space-s) 0; }
     h2 { margin: 0; font-size: var(--wa-font-size-xl); }
     p { margin: var(--wa-space-3xs) 0 0; color: var(--wa-color-text-quiet); }
+    .more { font-size: var(--wa-font-size-s); color: var(--wa-color-text-quiet); }
+    .more:hover { color: var(--conduit-green, #5cb85c); }
     .tags { display: flex; flex-wrap: wrap; gap: var(--wa-space-2xs); }
   </style>
   <jx-each items="article">
@@ -42,7 +44,7 @@
       <p>{{description}}</p>
     </a>
     <div class="row">
-      <small>Read more...</small>
+      <a class="more" href="article.html?slug={{slug}}">Read more...</a>
       <div class="tags"><jx-each items="tagList"><wa-tag size="s" appearance="outlined">{{.}}</wa-tag></jx-each></div>
     </div>
   </jx-each>
