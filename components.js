@@ -74,6 +74,13 @@ export function defineComponent(template, tools) {
   class JsonxComponent extends LitElement {
     static get properties() { return properties; }
 
+    // A component from a .jx file with a module carries that file's scope,
+    // so fn: and jx-data inside it find the module's exports.
+    constructor() {
+      super();
+      if (template.__jxScope) this.__jxScope = template.__jxScope;
+    }
+
     render() {
       var data = {};
       for (var i = 0; i < props.length; i++) data[props[i]] = this[props[i]];

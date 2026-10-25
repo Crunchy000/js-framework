@@ -18,8 +18,8 @@
  *
  *   <script type="module" src="jsonx.js"></script>
  */
-import { compileTemplate, compileView } from "./templates.js?v=27";
-import { defineComponent } from "./components.js?v=27";
+import { compileTemplate, compileView } from "./templates.js?v=28";
+import { defineComponent } from "./components.js?v=28";
 
 var METHODS = ["get", "post", "put", "patch", "delete"];
 var SELECTOR = METHODS.map(function (m) { return "[jx-" + m + "]"; }).join(",") + ",[jx-region],[jx-query],[jx-data],[jx-emit],[jx-ws],[jx-ws-send]";
@@ -65,6 +65,7 @@ function wire(el) {
   if (el.localName === "template") {
     var view = document.createElement("jx-view");
     Array.from(el.attributes).forEach(function (a) { view.setAttribute(a.name, a.value); });
+    if (el.__jxScope) view.__jxScope = el.__jxScope;
     el.replaceWith(view);
     view.append(el);
     wire(view);
@@ -112,17 +113,107 @@ function include(template) {
     });
   }
   return files[url].then(function (html) {
-    if (getMethodAndUrl(template) || template.hasAttribute("jx-region")) {
-      template.innerHTML = html;
-    } else {
-      var holder = document.createElement("template");
-      holder.innerHTML = html;
-      template.replaceWith(holder.content);
-    }
-  }, function (error) {
+    var holder = document.createElement("template");
+    holder.innerHTML = html;
+    // <script type="module"> in the file becomes the file's scope (see below).
+    return fileScope(holder.content, url).then(function (scope) {
+      if (getMethodAndUrl(template) || template.hasAttribute("jx-region")) {
+        template.innerHTML = "";
+        template.content.append(holder.content);
+        if (scope) template.__jxScope = scope;
+      } else {
+        if (scope) Array.from(holder.content.children).forEach(function (child) { child.__jxScope = scope; });
+        template.replaceWith(holder.content);
+      }
+    });
+  }).catch(function (error) {
     console.error(error);
     template.remove();
   });
+}
+
+// ---------------------------------------------------------------------------
+// Module scope for .jx files
+// ---------------------------------------------------------------------------
+//
+// A .jx file can hold a <script type="module">. Its exports are the file's
+// scope: fn:add and jx-data="count" in the file's markup (and inside the
+// components it defines) look there first, then at the page's globals. What
+// isn't exported stays private, and two files can each have their own count.
+//
+// After any fn: call, jsonx checks each module's bound exports, and redraws
+// only the regions bound to the ones that changed. So nobody has to say what
+// a button changes. Exports are live bindings: when add() sets count, jsonx
+// sees the new value. For changes made outside an fn: call (a timer, a
+// socket), call jsonx.changed().
+
+var scopes = [];
+var modules = {}; // file address -> its loaded scope, so each runs once
+
+function fileScope(content, url) {
+  var scripts = Array.from(content.querySelectorAll('script[type="module"]'));
+  if (!scripts.length) return Promise.resolve(null);
+  scripts.forEach(function (script) { script.remove(); });
+  if (!modules[url]) {
+    modules[url] = Promise.all(scripts.map(function (script) { return loadModule(script.textContent, url); }))
+      .then(function (namespaces) {
+        var scope = { url: url, namespaces: namespaces, bound: {}, last: {} };
+        scopes.push(scope);
+        return scope;
+      });
+  }
+  return modules[url];
+}
+
+// The module runs from a blob: address, so relative imports are made full
+// first: "./format.js" is found next to the .jx file.
+function loadModule(code, base) {
+  code = code.replace(/(\bfrom\s*|\bimport\s*\(\s*|\bimport\s+)(["'])(\.{1,2}\/[^"']*)\2/g, function (all, before, quote, path) {
+    return before + quote + new URL(path, base).href + quote;
+  });
+  var address = URL.createObjectURL(new Blob([code + "\n//# sourceURL=" + base + "#module"], { type: "text/javascript" }));
+  return import(address).finally(function () { URL.revokeObjectURL(address); });
+}
+
+function scopeHas(scope, name) {
+  return !!scope && scope.namespaces.some(function (ns) { return name in ns; });
+}
+
+function scopeGet(scope, name) {
+  for (var i = 0; i < scope.namespaces.length; i++) if (name in scope.namespaces[i]) return scope.namespaces[i][name];
+}
+
+// The scope an element belongs to: its own, or the nearest one above it,
+// crossing out of shadow roots (a component carries its file's scope).
+function scopeFor(el, name) {
+  for (var node = el; node; node = node.parentNode || node.host) {
+    if (node.__jxScope && scopeHas(node.__jxScope, name)) return node.__jxScope;
+  }
+  return null;
+}
+
+// What a value looks like now, to tell whether it changed. Objects and lists
+// are compared by their contents, so items.push() counts as a change.
+function fingerprint(value) {
+  if (value === null || typeof value !== "object") return value;
+  try { return "json:" + JSON.stringify(value); } catch (e) { return {}; } // can't tell: always "changed"
+}
+
+// Redraw the regions bound to module exports that changed since last time.
+function checkScopes() {
+  var dirty = new Set();
+  scopes.forEach(function (scope) {
+    Object.keys(scope.bound).forEach(function (name) {
+      var now = fingerprint(scopeGet(scope, name));
+      if (Object.is(now, scope.last[name])) return;
+      scope.last[name] = now;
+      scope.bound[name].forEach(function (el) {
+        if (el.isConnected) dirty.add(el);
+        else scope.bound[name].delete(el);
+      });
+    });
+  });
+  dirty.forEach(function (el) { render(el, copy(viewFor(el))); });
 }
 
 // On article.html?slug=hello, jx-get="/view/article/:slug" becomes
@@ -214,9 +305,13 @@ function attachTriggers(el) {
   // <div jx-data="cart"> draws the variable cart, and again after
   // every fn: call or jsonx.update() (see "Shared data" below).
   if (el.hasAttribute("jx-data") && !getMethodAndUrl(el)) {
-    var name = el.getAttribute("jx-data");
-    (bound[name] = bound[name] || new Set()).add(el);
-    render(el, copy(dataFor(name)));
+    dataNames(el).forEach(function (name) {
+      var scope = scopeFor(el, name);
+      var list = scope ? scope.bound : bound;
+      (list[name] = list[name] || new Set()).add(el);
+      if (scope) scope.last[name] = fingerprint(scopeGet(scope, name));
+    });
+    render(el, copy(viewFor(el)));
     return;
   }
   // <button jx-emit="pick"> fires a "pick" event, carrying the item it was drawn
@@ -620,7 +715,8 @@ function send(url, options, el) {
   if (url.indexOf("fn:") !== 0) return fetch(url, options);
   var address = new URL(url.slice(3), "http://x/");
   var name = decodeURIComponent(address.pathname.slice(1));
-  var fn = name in api.functions ? api.functions[name] : globalValue(name);
+  var fnScope = el && scopeFor(el, name);
+  var fn = fnScope ? scopeGet(fnScope, name) : name in api.functions ? api.functions[name] : globalValue(name);
   var json = function (status, body, headers) {
     return new Response(body === undefined ? null : JSON.stringify(body), {
       status: status, headers: Object.assign({ "Content-Type": "application/json" }, headers)
@@ -636,9 +732,11 @@ function send(url, options, el) {
       // <button jx-post="fn:add" jx-data="count"> says which data it changes,
       // so only those regions redraw. Otherwise all of them do: unchanged rows
       // are skipped, but each item still costs about a microsecond to check.
+      // A module's function: its changes are found by comparing (checkScopes).
       var changes = el && el.getAttribute("jx-data");
-      if (changes) changes.split(/[\s,]+/).filter(Boolean).forEach(redraw);
-      else update();
+      if (changes) changes.split(/[\s,]+/).filter(Boolean).forEach(function (n) { if (!scopeFor(el, n)) redraw(n); });
+      else if (!fnScope) update();
+      checkScopes();
     })
     .then(function (view) {
       return view === undefined ? json(204, undefined, { "X-Jsonx-Nothing": "1" }) : json(200, view);
@@ -708,9 +806,32 @@ function update(name, change) {
   return data;
 }
 
+function dataNames(el) {
+  return (el.getAttribute("jx-data") || "").split(/[\s,]+/).filter(Boolean);
+}
+
+// The view a jx-data region draws. One name holding an object draws that
+// object (jx-data="cart" then {{count}}). Otherwise each name is a field:
+// jx-data="items total" draws { items: [...], total: "£7.50" }.
+function valueFor(el, name) {
+  var scope = scopeFor(el, name);
+  return scope ? scopeGet(scope, name) : dataFor(name);
+}
+
+function viewFor(el) {
+  var names = dataNames(el);
+  if (names.length === 1) {
+    var only = valueFor(el, names[0]);
+    if (only && typeof only === "object" && !Array.isArray(only)) return only;
+  }
+  var view = {};
+  names.forEach(function (name) { view[name] = valueFor(el, name); });
+  return view;
+}
+
 function redraw(name) {
   (bound[name] || new Set()).forEach(function (el) {
-    if (el.isConnected) render(el, copy(dataFor(name)));
+    if (el.isConnected) render(el, copy(viewFor(el)));
     else bound[name].delete(el);
   });
 }
@@ -921,6 +1042,8 @@ function copy(data) {
 var api = Object.assign({ headers: null, graphql: "/graphql", functions: {}, data: {} }, window.jsonx, {
   process: process,
   update: update,
+  // After changing module variables outside an fn: call: redraw what changed.
+  changed: checkScopes,
   request: function (el) { return issueRequest(el); },
   reload: reload,
   // A copy, because jsonx compares each view with the last one drawn: if your

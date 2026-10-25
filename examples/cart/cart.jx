@@ -1,0 +1,109 @@
+<!-- cart.jx: a café's cart as three components that share one module.
+
+     The <script type="module"> is this file's scope. Its exports (items, count,
+     total, busy, ordered, add, remove, checkout) are what fn: and jx-data in
+     this file can see. What isn't exported (PRICES, find, changed) is private.
+
+     Nothing says what a button changes. After each fn: call, jsonx compares
+     the module's bound exports and redraws only the regions bound to the ones
+     that changed: adding a cake redraws the badge and the list, not the buttons. -->
+
+<script type="module">
+  import { money } from "./format.js"; // relative to this file
+
+  const PRICES = { tea: 3.5, coffee: 4, cake: 5.25 };
+
+  // The state. These are live bindings: when add() sets count, jsonx sees it.
+  export let items = [];
+  export let count = 0;
+  export let total = money(0);
+  export let busy = false;      // checking out
+  export let ordered = "";      // the last order's confirmation
+
+  function find(product) { return items.find((item) => item.id === product); }
+
+  function changed() {
+    count = items.reduce((n, item) => n + item.qty, 0);
+    total = money(items.reduce((sum, item) => sum + item.qty * PRICES[item.id], 0));
+  }
+
+  // Each action gets the values its button sends, like any fn: function.
+  export function add({ product }) {
+    const item = find(product);
+    if (item) item.qty++;
+    else items.push({ id: product, name: product, qty: 1, price: money(PRICES[product]) });
+    ordered = "";
+    changed();
+  }
+
+  export function remove({ id }) {
+    items = items.filter((item) => item.id !== id);
+    changed();
+  }
+
+  // Async is fine. Change the data after the await, not before, and a quick
+  // double click can't lose anything: the second call finds the cart empty.
+  export async function checkout() {
+    if (!items.length || busy) return;
+    busy = true;
+    jsonx.changed();          // show "Placing order…" now, mid-call
+    const order = items;
+    await new Promise((done) => setTimeout(done, 800)); // a pretend server
+    ordered = "Ordered " + order.reduce((n, item) => n + item.qty, 0) + " items. Thank you!";
+    items = [];
+    busy = false;
+    changed();
+  }
+</script>
+
+<!-- <cart-badge>: the count, in the header. -->
+<template jx-component="cart-badge">
+  <style>
+    :host { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+    .n { background: var(--accent, #4f46e5); color: #fff; border-radius: 999px; padding: 0 8px; font-size: 13px; line-height: 22px; }
+  </style>
+  <span jx-data="count">
+    <template>Cart <span class="n">{{count}}</span></template>
+  </span>
+</template>
+
+<!-- <add-to-cart product="tea">: a button for one product. -->
+<template jx-component="add-to-cart" props="product">
+  <style>
+    button { font: inherit; padding: 10px 16px; border-radius: 10px; border: 1px solid var(--line, #ddd); background: var(--panel, #fff); color: inherit; cursor: pointer; text-transform: capitalize; }
+    button:hover { border-color: var(--accent, #4f46e5); }
+  </style>
+  <button jx-post="fn:add" jx-vals='{"product": "{{product}}"}'>Add {{product}}</button>
+</template>
+
+<!-- <cart-list>: the whole cart. Rows are keyed by id, so adding one row only adds one row. -->
+<template jx-component="cart-list">
+  <style>
+    ul { list-style: none; margin: 0; padding: 0; }
+    li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--line, #eee); text-transform: capitalize; }
+    small { color: var(--muted, #777); text-transform: none; }
+    li button { border: 0; background: none; color: var(--muted, #777); cursor: pointer; font-size: 16px; }
+    .total { display: flex; justify-content: space-between; margin: 12px 0; }
+    .checkout { width: 100%; font: inherit; padding: 10px; border: 0; border-radius: 10px; background: var(--accent, #4f46e5); color: #fff; cursor: pointer; }
+    .checkout[disabled] { opacity: .6; cursor: wait; }
+    .note { color: var(--muted, #777); margin: 0; }
+    .done { color: #16a34a; margin: 0 0 8px; }
+  </style>
+  <section jx-data="items total busy ordered">
+    <template>
+      <jx-if test="ordered"><p class="done">{{ordered}}</p></jx-if>
+      <jx-if test="items">
+        <ul>
+          <li jx-each="items">
+            <span>{{name}} × {{qty}} <small>{{price}} each</small></span>
+            <button jx-post="fn:remove" jx-vals='{"id": "{{id}}"}' aria-label="Remove {{name}}">✕</button>
+          </li>
+        </ul>
+        <p class="total"><span>Total</span> <strong>{{total}}</strong></p>
+        <jx-if test="busy"><button class="checkout" disabled>Placing order…</button></jx-if>
+        <jx-else><button class="checkout" jx-post="fn:checkout">Check out</button></jx-else>
+      </jx-if>
+      <jx-else><p class="note">Your cart is empty.</p></jx-else>
+    </template>
+  </section>
+</template>

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>jsonx café</title>
+  <!-- No script of its own: the cart's code lives in cart.jx, as a module. -->
+  <script type="module" src="../../jsonx.js?v=28"></script>
+  <style>
+    :root { --bg: #fafafa; --panel: #fff; --text: #18181b; --muted: #71717a; --line: #e4e4e7; --accent: #4f46e5; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #09090b; --panel: #18181b; --text: #fafafa; --muted: #a1a1aa; --line: #27272a; --accent: #818cf8; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, sans-serif; }
+    header { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--line); background: var(--panel); }
+    header h1 { font-size: 18px; margin: 0; }
+    .page { max-width: 820px; margin: 0 auto; padding: 24px 16px; display: grid; grid-template-columns: 1fr 280px; gap: 24px; }
+    @media (max-width: 640px) { .page { grid-template-columns: 1fr; } }
+    .intro { color: var(--muted); margin: 0 0 16px; }
+    .intro a { color: inherit; }
+    .menu { display: flex; gap: 10px; flex-wrap: wrap; }
+    aside { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; align-self: start; }
+    aside h2 { font-size: 16px; margin: 0 0 8px; }
+  </style>
+</head>
+<body>
+  <!-- Brings in the module and its three components. -->
+  <template src="cart.jx?v=28"></template>
+
+  <header>
+    <h1>Corner Café</h1>
+    <cart-badge></cart-badge>
+  </header>
+
+  <div class="page">
+    <main>
+      <p class="intro">Three components in different parts of the page share one module in <code>cart.jx</code>. Adding from any button redraws the badge and the cart, and nothing says what a button changes: jsonx compares the module's variables after each call. <a href="https://github.com/crunchy000/js-framework/blob/main/examples/cart/cart.jx">Source</a></p>
+      <div class="menu">
+        <add-to-cart product="tea"></add-to-cart>
+        <add-to-cart product="coffee"></add-to-cart>
+        <add-to-cart product="cake"></add-to-cart>
+      </div>
+    </main>
+
+    <aside>
+      <h2>Your order</h2>
+      <cart-list></cart-list>
+    </aside>
+  </div>
+</body>
+</html>
