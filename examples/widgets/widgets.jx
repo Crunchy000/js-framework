@@ -1,75 +1,19 @@
 <!-- widgets.jx: components with their own state, like hand-written Lit ones.
 
-     setup="counter" names a function the module exports. It runs once for
-     each element and returns that element's own object: its state, its
-     actions (fn:up inside it calls this object's up, with `this` as the
-     object), and optional hooks: connected(el), disconnected(el), rendered(el).
-     jsonx redraws an element when its object's data changes. -->
+     A plain <script> inside a component is that component's code. It runs once
+     for each element, so two counters count separately. Its variables and
+     functions are what the template and fn: see, with nothing to export, and
+     the component's props are variables in it too. Functions called
+     connected, disconnected and rendered run at those moments, and `el` is
+     the element. jsonx redraws an element when its variables change. -->
 
-<script type="module">
-  // <my-counter start="5" step="2">: two counters on a page count separately.
-  export function counter(el, props) {
-    return {
-      count: props.start ?? 0,
-      up() { this.count += props.step ?? 1; },
-      down() { this.count -= props.step ?? 1; },
-      reset() { this.count = props.start ?? 0; } // also el.reset() from outside
-    };
-  }
-
-  // <count-down seconds="10">: a timer that starts when it's on the page and
-  // stops when it's removed. Its changes come from a timer, not an fn: call,
-  // so it asks jsonx to look with jsonx.changed().
-  export function countdown(el, props) {
-    let timer = null;
-    return {
-      left: props.seconds ?? 10,
-      running: false,
-      get done() { return this.left === 0; },    // computed, drawn like data
-      start() {
-        if (this.running || this.left === 0) return;
-        this.running = true;
-        timer = setInterval(() => {
-          this.left -= 1;
-          if (this.left === 0) { clearInterval(timer); this.running = false; }
-          jsonx.changed();
-        }, 1000);
-      },
-      stop() { clearInterval(timer); this.running = false; },
-      again() { this.stop(); this.left = props.seconds ?? 10; this.start(); },
-      connected() { if (el.hasAttribute("autostart")) this.start(); },
-      disconnected() { this.stop(); }
-    };
-  }
-
-  // <star-rating name="rating" form>: a form field. `value` is what forms and
-  // jsonx send under its name. jx-ref="stars" puts that element in this.refs.
-  export function stars(el, props) {
-    return {
-      value: props.value ?? 0,
-      stars: [1, 2, 3, 4, 5].map((n) => ({ id: n, n, on: n <= (props.value ?? 0) })),
-      pick({ n }) {
-        this.value = Number(n);
-        this.stars = this.stars.map((s) => ({ ...s, on: s.n <= this.value }));
-        el.dispatchEvent(new Event("change", { bubbles: true })); // like an <input>
-      },
-      rendered() { this.refs.stars.setAttribute("aria-valuenow", this.value); }
-    };
-  }
-
-  // <feedback-form>: a form that sends its fields, star rating included.
-  export function feedback() {
-    return {
-      sent: "",
-      async send(values) {
-        await new Promise((done) => setTimeout(done, 300)); // a pretend server
-        this.sent = "Thanks! You gave " + values.rating + " stars and said: " + (values.comment || "nothing");
-      }
-    };
-  }
-</script>
-
-<template jx-component="my-counter" props="start:number step:number" setup="counter">
+<template jx-component="my-counter" props="start:number step:number">
+  <script>
+    let count = start ?? 0;
+    function up() { count += step ?? 1; }
+    function down() { count -= step ?? 1; }
+    function reset() { count = start ?? 0; }   // also el.reset() from outside
+  </script>
   <style>
     :host { display: inline-flex; align-items: center; gap: 8px; }
     button { font: inherit; width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--line, #ddd); background: var(--panel, #fff); color: inherit; cursor: pointer; }
@@ -80,7 +24,30 @@
   <button jx-post="fn:up" aria-label="Up">+</button>
 </template>
 
-<template jx-component="count-down" props="seconds:number" setup="countdown">
+<template jx-component="count-down" props="seconds:number">
+  <script>
+    let left = seconds ?? 10;
+    let running = false;
+    let done = false;
+    let timer;
+
+    function start() {
+      if (running || left === 0) return;
+      running = true;
+      timer = setInterval(tick, 1000);
+    }
+    // A timer isn't an fn: call, so it tells jsonx to look for changes.
+    function tick() {
+      left -= 1;
+      if (left === 0) { stop(); done = true; }
+      jsonx.changed();
+    }
+    function stop() { clearInterval(timer); running = false; }
+    function again() { stop(); left = seconds ?? 10; done = false; start(); }
+
+    function connected() { if (el.hasAttribute("autostart")) start(); }
+    function disconnected() { stop(); }
+  </script>
   <style>
     :host { display: inline-flex; align-items: center; gap: 10px; }
     .time { font-size: 28px; font-variant-numeric: tabular-nums; min-width: 2ch; }
@@ -93,7 +60,21 @@
   <jx-else><button jx-post="fn:start">Start</button></jx-else>
 </template>
 
-<template jx-component="star-rating" props="value:number" setup="stars" form>
+<template jx-component="star-rating" form>
+  <script>
+    let value = 0;
+    let stars = [];
+    show(0);
+
+    function show(n) { stars = [1, 2, 3, 4, 5].map((i) => ({ id: i, n: i, on: i <= n })); }
+    function pick({ n }) {
+      value = Number(n);
+      show(value);
+      el.dispatchEvent(new Event("change", { bubbles: true })); // like an <input>
+    }
+    // jx-ref="stars" in the template: refs.stars is that element.
+    function rendered() { refs.stars.setAttribute("aria-valuenow", value); }
+  </script>
   <style>
     :host { display: inline-block; }
     button { font-size: 26px; line-height: 1; padding: 2px; border: 0; background: none; cursor: pointer; color: #d4d4d8; }
@@ -104,7 +85,14 @@
   </span>
 </template>
 
-<template jx-component="feedback-form" setup="feedback">
+<template jx-component="feedback-form">
+  <script>
+    let sent = "";
+    async function send(values) {
+      await new Promise((done) => setTimeout(done, 300)); // a pretend server
+      sent = "Thanks! You gave " + values.rating + " stars and said: " + (values.comment || "nothing");
+    }
+  </script>
   <style>
     form { display: grid; gap: 10px; max-width: 360px; }
     textarea { font: inherit; padding: 8px; border-radius: 8px; border: 1px solid var(--line, #ddd); background: var(--panel, #fff); color: inherit; }

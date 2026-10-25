@@ -4,10 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>jsonx tutorial</title>
-  <link rel="stylesheet" href="style.css?v=30">
+  <link rel="stylesheet" href="style.css?v=31">
   <!-- A pretend server, so every example works without one. -->
-  <script src="mock-api.js?v=30"></script>
-  <script type="module" src="../../jsonx.js?v=30"></script>
+  <script src="mock-api.js?v=31"></script>
+  <script type="module" src="../../jsonx.js?v=31"></script>
 </head>
 <body>
 <header class="top">
@@ -665,7 +665,7 @@
       <tr><td><code>jx-swap="none"</code></td><td>Call the server, draw nothing</td></tr>
       <tr><td><code>jx-then="page.html?id=:id"</code></td><td>Go to another page afterwards</td></tr>
       <tr><td><code>jx-markdown="{{body}}"</code></td><td>Draw Markdown (or <code>jx-html</code>: HTML) inside the element, cleaned of anything unsafe</td></tr>
-      <tr><td><code>&lt;script type="module"&gt;</code> in a .jx file</td><td>The file's scope: its exports are what <code>fn:</code> and <code>jx-data</code> in the file see, and only what changed is redrawn</td></tr>
+      <tr><td><code>&lt;script&gt;</code> in a .jx file</td><td>Ordinary code: its variables and functions are what the file's templates and <code>fn:</code> see. Inside a component, it runs once per element</td></tr>
       <tr><td><code>jx-ws="/ws/chat"</code></td><td>A region drawn from a WebSocket: each message is its whole view. <code>jx-ws-send</code> on a form inside sends its values</td></tr>
       <tr><td><code>jx-push-url</code></td><td>On a region: keep its values in the address bar, so refresh and back work</td></tr>
     </table>
@@ -673,6 +673,6 @@
   </section>
 </main>
 
-<script src="tutorial.js?v=30"></script>
+<script src="tutorial.js?v=31"></script>
 </body>
 </html>

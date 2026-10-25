@@ -18,8 +18,8 @@
  *
  *   <script type="module" src="jsonx.js"></script>
  */
-import { compileTemplate, compileView } from "./templates.js?v=30";
-import { defineComponent, instances } from "./components.js?v=30";
+import { compileTemplate, compileView } from "./templates.js?v=31";
+import { defineComponent, instances, compileScript } from "./components.js?v=31";
 
 var METHODS = ["get", "post", "put", "patch", "delete"];
 var SELECTOR = METHODS.map(function (m) { return "[jx-" + m + "]"; }).join(",") + ",[jx-region],[jx-query],[jx-data],[jx-emit],[jx-ws],[jx-ws-send]";
@@ -151,11 +151,20 @@ var scopes = [];
 var modules = {}; // file address -> its loaded scope, so each runs once
 
 function fileScope(content, url) {
-  var scripts = Array.from(content.querySelectorAll('script[type="module"]'));
+  // Templates keep their own scripts (a component's per-element code), so
+  // only scripts at the top of the file count here.
+  content.querySelectorAll("template").forEach(function (t) { t.__jxSource = url; });
+  var scripts = Array.from(content.children).filter(function (el) {
+    return el.localName === "script" && (!el.type || el.type === "module");
+  });
   if (!scripts.length) return Promise.resolve(null);
   scripts.forEach(function (script) { script.remove(); });
   if (!modules[url]) {
-    modules[url] = Promise.all(scripts.map(function (script) { return loadModule(script.textContent, url); }))
+    modules[url] = Promise.all(scripts.map(function (script) {
+      // A plain script: ordinary code, its top-level names shared by the file.
+      if (!script.type) return compileScript(script.textContent, [], url + "#script")(null, function () {});
+      return loadModule(script.textContent, url);
+    }))
       .then(function (namespaces) {
         var scope = { url: url, namespaces: namespaces, bound: {}, last: {} };
         scopes.push(scope);

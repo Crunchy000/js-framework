@@ -1,28 +1,24 @@
 <!-- cart.jx: a café's cart as three components that share one module.
 
-     The <script type="module"> is this file's scope. Its exports (items, count,
-     total, busy, ordered, add, remove, checkout) are what fn: and jx-data in
-     this file can see. What isn't exported (PRICES, find, changed) is private.
-
-     Each component's props come from the module: <cart-badge> declares
-     props="count" and shows the module's count, with nothing passed in.
+     The <script> at the top is ordinary code, run once and shared by the
+     whole file. Its variables and functions are what fn: and the components
+     see, with nothing to export: <cart-badge> declares props="count" and shows
+     this count, with nothing passed in.
 
      Nothing says what a button changes. After each fn: call, jsonx compares
-     the module's exports and redraws only the components that use the ones
+     the script's variables and redraws only the components that use the ones
      that changed: adding a cake redraws the badge and the list, not the buttons. -->
 
-<script type="module">
-  import { money } from "./format.js"; // relative to this file
-
+<script>
   const PRICES = { tea: 3.5, coffee: 4, cake: 5.25 };
 
-  // The state. These are live bindings: when add() sets count, jsonx sees it.
-  export let items = [];
-  export let count = 0;
-  export let total = money(0);
-  export let busy = false;      // checking out
-  export let ordered = "";      // the last order's confirmation
+  let items = [];
+  let count = 0;
+  let total = money(0);
+  let busy = false;      // checking out
+  let ordered = "";      // the last order's confirmation
 
+  function money(n) { return "£" + n.toFixed(2); }
   function find(product) { return items.find((item) => item.id === product); }
 
   function changed() {
@@ -31,7 +27,7 @@
   }
 
   // Each action gets the values its button sends, like any fn: function.
-  export function add({ product }) {
+  function add({ product }) {
     const item = find(product);
     if (item) item.qty++;
     else items.push({ id: product, name: product, qty: 1, price: money(PRICES[product]) });
@@ -39,14 +35,14 @@
     changed();
   }
 
-  export function remove({ id }) {
+  function remove({ id }) {
     items = items.filter((item) => item.id !== id);
     changed();
   }
 
   // Async is fine. Change the data after the await, not before, and a quick
   // double click can't lose anything: the second call finds the cart empty.
-  export async function checkout() {
+  async function checkout() {
     if (!items.length || busy) return;
     busy = true;
     jsonx.changed();          // show "Placing order…" now, mid-call

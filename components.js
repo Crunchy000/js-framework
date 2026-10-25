@@ -61,7 +61,7 @@ var TYPES = {
   json: { fromAttribute: function (v) { try { return JSON.parse(v); } catch (e) { return undefined; } }, toAttribute: function (v) { return JSON.stringify(v); } }
 };
 
-// Every live instance with setup() state, so jsonx.changed() can check them.
+// Every live element with its own script, so jsonx.changed() can check them.
 export var instances = new Set();
 
 // `tools` is { compileView, process, bindProps, scopeValue, scopeGet, fingerprint } from jsonx.
@@ -77,18 +77,33 @@ export function defineComponent(template, tools) {
     types[parts[0]] = parts[1] || "text";
     return parts[0];
   });
+  // A plain <script> in the template is this component's own code: it runs
+  // once for each element (see "Plain scripts" below).
+  var script = Array.from(template.content.children).find(function (el) {
+    return el.localName === "script" && !el.type;
+  });
+  var instanceCode = null;
+  if (script) {
+    script.remove();
+    instanceCode = compileScript(script.textContent, props, (template.__jxSource || location.href) + "#" + tag);
+  }
   var root = template.getRootNode();
   var view = tools.compileView(template, function (selector) {
     return root.querySelector(selector) || document.querySelector(selector);
   });
 
-  // setup="counter": the module's counter(el, props) runs once per instance
-  // and returns that instance's state, actions and lifecycle hooks.
-  var setupName = template.getAttribute("setup");
+  // The component's own code, run once for each element.
   var setup = null;
-  if (setupName) {
-    setup = template.__jxScope && tools.scopeGet(template.__jxScope, setupName);
-    if (typeof setup !== "function") throw new Error('[jsonx] setup="' + setupName + '" needs the .jx file\'s module to export a function by that name');
+  if (instanceCode) {
+    setup = function (el) {
+      var refs = {};
+      var instance = instanceCode(el, function (name) {
+        var own = el.__jxProp(name);
+        return own !== undefined ? own : tools.scopeValue(el, name);
+      }, refs);
+      Object.defineProperty(instance, "refs", { value: refs }); // filled after each draw
+      return instance;
+    };
   }
   // <template jx-component="star-rating" form>: a form field. Its value is
   // the view's `value`, and forms and jsonx send it under the element's name.
@@ -129,15 +144,14 @@ export function defineComponent(template, tools) {
       this.__jxHook("disconnected");
     }
 
-    // The instance: setup's object. Its functions are this instance's fn:
-    // actions, called with `this` as the object, and become element methods
-    // too (el.open()), unless the element already has something by that name.
+    // The instance: the script's names, live. Its functions are this
+    // element's fn: actions, and become element methods too (el.reset()),
+    // unless the element already has something by that name.
     __jxStart() {
       var self = this;
       var given = {};
       props.forEach(function (prop) { if (self.__jxProp(prop) !== undefined) given[prop] = self.__jxProp(prop); });
       var instance = this.__jxInstance = setup(this, given) || {};
-      instance.refs = instance.refs || {};
       Object.keys(instance).forEach(function (key) {
         if (typeof instance[key] === "function" && HOOKS.indexOf(key) === -1 && !(key in self)) {
           self[key] = function () {
@@ -199,10 +213,11 @@ export function defineComponent(template, tools) {
     updated() {
       introduce(this.renderRoot);
       var instance = this.__jxInstance;
-      // jx-ref="input": this.refs.input is that element, in setup's object.
+      // jx-ref="input": refs.input in the script is that element.
       if (instance) {
-        instance.refs = {};
-        this.renderRoot.querySelectorAll("[jx-ref]").forEach(function (el) { instance.refs[el.getAttribute("jx-ref")] = el; });
+        var refs = instance.refs;
+        Object.keys(refs).forEach(function (key) { delete refs[key]; });
+        this.renderRoot.querySelectorAll("[jx-ref]").forEach(function (el) { refs[el.getAttribute("jx-ref")] = el; });
       }
       if (this.internals && this.__jxView) this.internals.setFormValue(this.__jxView.value == null ? "" : String(this.__jxView.value));
       this.__jxHook("rendered");
@@ -231,4 +246,127 @@ export function defineComponent(template, tools) {
   }
 
   customElements.define(tag, JsonxComponent);
+}
+
+// ---------------------------------------------------------------------------
+// Plain scripts
+// ---------------------------------------------------------------------------
+//
+// A plain <script> (not a module) in a .jx file is ordinary code:
+//
+//   <script>
+//     let count = 0;
+//     function up() { count++; }
+//   </script>
+//
+// Its top-level names (let, const, var, function, class) are what the
+// template and fn: see, with no exports to write. Inside a jx-component
+// template, it runs once for each element, and the component's props are
+// variables in it too. At the top of a file, it runs once and is shared.
+
+// Inside a component's script, `el` is the element, `props` its props, and
+// `refs` the elements marked jx-ref="name" (filled after each draw). Functions
+// named connected, disconnected and rendered run at those moments.
+
+// The names a script declares at its top level, and how: "let", "const"...
+export function topLevelNames(code) {
+  var names = [], depth = 0, i = 0, n = code.length;
+  var word = /[A-Za-z_$][\w$]*/y;
+  function skipString(quote) {
+    i++;
+    while (i < n && code[i] !== quote) {
+      if (code[i] === "\\") i++;
+      else if (quote === "`" && code[i] === "$" && code[i + 1] === "{") { i += 2; skipTo("}"); continue; }
+      i++;
+    }
+    i++;
+  }
+  function skipTo(close) { // from inside ${ or a bracket, to its end
+    var d = 1;
+    while (i < n && d > 0) {
+      var c = code[i];
+      if (c === '"' || c === "'" || c === "`") { skipString(c); continue; }
+      if (c === "/" && code[i + 1] === "/") { while (i < n && code[i] !== "\n") i++; continue; }
+      if (c === "/" && code[i + 1] === "*") { i = code.indexOf("*/", i + 2); i = i < 0 ? n : i + 2; continue; }
+      if (c === "{" || c === "(" || c === "[") d++;
+      if (c === "}" || c === ")" || c === "]") d--;
+      i++;
+    }
+  }
+  function readWord() { word.lastIndex = i; var m = word.exec(code); if (m) i = word.lastIndex; return m ? m[0] : null; }
+  function spaces() { while (i < n && /\s/.test(code[i])) i++; }
+  // After a let/const/var: its names, skipping each initializer.
+  function declarators(kind) {
+    for (;;) {
+      spaces();
+      var name = readWord();
+      if (!name) return;
+      names.push({ name: name, kind: kind });
+      spaces();
+      if (code[i] === "=") {
+        i++;
+        while (i < n) {
+          var c = code[i];
+          if (c === '"' || c === "'" || c === "`") { skipString(c); continue; }
+          if (c === "{" || c === "(" || c === "[") { i++; skipTo(); continue; }
+          if (c === "," || c === ";") break;
+          if (c === "\n") {
+            var before = code.slice(0, i).replace(/\s+$/, "");
+            if (!/[=+\-*/%&|^!<>?:,.(]$/.test(before) && !/^\s*[.?:+\-*/%&|^)]/.test(code.slice(i + 1))) break;
+          }
+          i++;
+        }
+      }
+      spaces();
+      if (code[i] === ",") { i++; continue; }
+      return;
+    }
+  }
+  var atStart = true;
+  while (i < n) {
+    var c = code[i];
+    if (c === '"' || c === "'" || c === "`") { skipString(c); atStart = false; continue; }
+    if (c === "/" && code[i + 1] === "/") { while (i < n && code[i] !== "\n") i++; continue; }
+    if (c === "/" && code[i + 1] === "*") { i = code.indexOf("*/", i + 2); i = i < 0 ? n : i + 2; continue; }
+    if (c === "{" || c === "(" || c === "[") { i++; skipTo(); atStart = false; continue; }
+    if (/[A-Za-z_$]/.test(c) && atStart) {
+      var w = readWord();
+      if (w === "let" || w === "const" || w === "var") { declarators(w); continue; }
+      if (w === "async") { spaces(); w = readWord(); }
+      if (w === "function" || w === "class") {
+        spaces();
+        if (code[i] === "*") { i++; spaces(); }
+        var name = readWord();
+        if (name) names.push({ name: name, kind: w });
+        continue;
+      }
+      atStart = false;
+      continue;
+    }
+    if (/[A-Za-z0-9_$.]/.test(c)) { atStart = false; i++; continue; }
+    if (c === ";" || c === "}" || c === "\n") atStart = true;
+    i++;
+  }
+  return names;
+}
+
+// Turns a plain script into a function that runs it and returns its
+// top-level names, live: reading `count` reads the variable, and functions
+// that change it change what's read. `props` (an object with a getter for
+// each prop name) makes props usable as variables.
+export function compileScript(code, propNames, source) {
+  var names = topLevelNames(code).filter(function (n) { return propNames.indexOf(n.name) === -1; });
+  var accessors = names.map(function (n) {
+    var get = "get " + n.name + "() { return " + n.name + "; }";
+    return n.kind === "let" || n.kind === "var" ? get + ", set " + n.name + "(v) { " + n.name + " = v; }" : get;
+  }).join(",\n");
+  var body = "with (__props) {\n" + code + "\n;return {\n" + accessors + "\n};\n}" + (source ? "\n//# sourceURL=" + source : "");
+  var run = new Function("__props", "el", "props", "refs", body);
+  return function (el, propValue, refs) {
+    var props = Object.create(null);
+    propNames.forEach(function (name) {
+      Object.defineProperty(props, name, { get: function () { return propValue(name); }, enumerable: true });
+    });
+    return run(props, el, props, refs || {});
+  };
 }

@@ -29,7 +29,7 @@ The card loads `api/todos` when the page opens and draws it with the template in
 - [Todo app, with functions](https://crunchy000.github.io/js-framework/examples/todo-functions/), the same app with no server: plain functions return the view
 - [Calculator](https://crunchy000.github.io/js-framework/examples/calculator/), another app built on plain functions
 - [Widgets](https://crunchy000.github.io/js-framework/examples/widgets/), components with their own state, lifecycle hooks and form fields, and no page script
-- [Café cart](https://crunchy000.github.io/js-framework/examples/cart/), three components sharing one scoped module, with no page script
+- [Café cart](https://crunchy000.github.io/js-framework/examples/cart/), three components sharing one script, with no page script
 - [Chat with Echo](https://crunchy000.github.io/js-framework/examples/chat/), a WebSocket chatbot with no page script
 - [Data table](https://crunchy000.github.io/js-framework/examples/data-table/), 10,000 rows with search, sort and infinite scroll
 - [People, on GraphQL](https://crunchy000.github.io/js-framework/examples/table-graphql/), search, sorting and paging with no script at all
@@ -234,31 +234,37 @@ Views usually come from a server. Two opt-in features let the browser supply the
 
 **`jx-data="cart"`** makes a region that draws the variable `cart`. After any `fn:` call, every `jx-data` region is drawn again from its variable, so a function just changes (or replaces) the data. Regions and rows that didn't change are skipped, but each item still takes about a microsecond to check, so with big lists, name what the button changes: `<button jx-post="fn:add" jx-data="cart">` redraws only the `cart` regions. When other code changes the data, like a timer or a `fetch`, call `jsonx.update()` to redraw.
 
-jsonx finds them by name, so on a page put them in a plain `<script>`, not a module (a module's variables are private). In a `.jx` file, a module is the better way: see [Scoped modules](#scoped-modules-in-jx-files). In a module, use `jsonx.functions.add = …` and `jsonx.data.cart = …`, which are looked up first. `jsonx.update("cart", function (cart) { … })` changes one piece of data and redraws its regions.
+jsonx finds them by name, so on a page put them in a plain `<script>`, not a module (a module's variables are private). In a `.jx` file, a module is the better way: see [Code in .jx files](#code-in-jx-files). In a module, use `jsonx.functions.add = …` and `jsonx.data.cart = …`, which are looked up first. `jsonx.update("cart", function (cart) { … })` changes one piece of data and redraws its regions.
 
-### Scoped modules in .jx files
+### Code in .jx files
 
-A `.jx` file can hold a `<script type="module">`. Its exports are that file's scope: `fn:` and `jx-data` in the file's markup, and inside the components it defines, look there first, then at the page's globals. What isn't exported stays private, and two files can each have their own `count`. The [café cart](examples/cart/) is three components in different parts of the page sharing one module, in `examples/cart/cart.jx`:
+A `.jx` file can hold ordinary code in a `<script>`. Its top-level variables and functions are what `fn:`, `jx-data` and the file's components see, with nothing to export, and they don't leak into the page: two files can each have their own `count`.
+
+**Inside a component, the script is that component's own code.** It runs once for each element, so two `<my-counter>`s count separately, and the component's props are variables in it:
 
 ```html
-<script type="module">
-  import { money } from "./format.js";   // relative to the .jx file
-  export let items = [];
-  export let count = 0;
-  export function add({ product }) { items.push({ id: product, qty: 1 }); count++; }
-</script>
-
-<!-- props="count": with nothing passed in, it's the module's count -->
-<template jx-component="cart-badge" props="count">
-  Cart {{count}}
+<template jx-component="my-counter" props="start:number step:number">
+  <script>
+    let count = start ?? 0;
+    function up() { count += step ?? 1; }
+  </script>
+  <button jx-post="fn:up">{{count}}</button>
 </template>
 ```
 
-**Props come from the module.** A component's prop that isn't set by an attribute, a property or a parent template is read from the module's export with the same name, and the component redraws when that export changes. So `<cart-badge>` needs nothing passed in, and `<cart-badge count="99">` still overrides it, like any web component. Props the module doesn't export, like `<add-to-cart product="tea">`, work as usual.
+**At the top of the file, it's shared** by everything in the file. The [café cart](examples/cart/) is three components in different parts of the page sharing one script in `cart.jx`. A component's prop that isn't set from outside comes from the shared script, so `<cart-badge>` with `props="count"` shows the cart's count with nothing passed in, and `<cart-badge count="99">` still overrides it.
 
-Nothing says what a button changes. After each `fn:` call, jsonx compares the module's bound exports with how they looked before (lists and objects by their contents, so `items.push()` counts) and redraws only the components and `jx-data` regions that use the ones that changed. Exports are live bindings, so jsonx always reads the current value. For changes made outside an `fn:` call, like a timer or a socket, call `jsonx.changed()`. Async functions are fine: change the data after the `await`, not before, and a double click can't lose anything.
+**Nothing says what a button changes.** After each `fn:` call, jsonx compares the variables things on the page use with how they were before (lists and objects by their contents, so `items.push()` counts), and redraws only what uses the ones that changed. For changes made outside an `fn:` call, like a timer or a socket, call `jsonx.changed()`. Async functions are fine: change the data after the `await`, not before, and a double click can't lose anything.
 
-`jx-data` can name several things: `jx-data="items total"` draws `{ items, total }`. One name holding an object draws the object itself, as before.
+**In a component's script:**
+- `el` is the element, and `props` its props.
+- Functions named `connected`, `disconnected` and `rendered` run at those moments.
+- `jx-ref="input"` in the template makes `refs.input` that element.
+- Its other functions become element methods too, so `el.reset()` works.
+
+Adding `form` to the template (`<template jx-component="star-rating" form>`) makes the component a form field: its `value` variable is what a form or jsonx sends under its `name`. The [widgets demo](examples/widgets/) has a counter, a countdown that starts and stops with the page, and a star rating inside a form, all in `widgets.jx`.
+
+For `import`, use `<script type="module">` instead, and `export` what the file should see. `jx-data` can name several values: `jx-data="items total"` draws `{ items, total }`.
 
 ## Web components
 
@@ -290,28 +296,6 @@ A template can define a web component:
 - **`jx-emit="vote"`** fires a `vote` event (bubbling, and out of the shadow root) when the element is clicked, or on its `jx-trigger`, with the current item as `event.detail`. Components don't make requests for the page: they fire events, and the page puts the request on the component, with `jx-trigger="vote"`.
 - Web components used inside one that load on demand (like Web Awesome's) are introduced to their autoloader, which otherwise can't see into shadow roots.
 - Other code can use them like any custom element, and Lit code can subclass them or await `updateComplete`. jsonx needs to be on the page.
-
-### Components with their own state
-
-`setup="counter"` names a function the `.jx` file's module exports. It runs once for each element, with the element and its props, and returns that element's own object. The object holds its state, its actions, and optional hooks: `connected(el)`, `disconnected(el)` and `rendered(el)`. Inside the component, `fn:up` calls that object's `up`, with `this` as the object, and jsonx redraws the element when its data changes. Its functions become element methods too, so `el.reset()` works. Getters are drawn like data, and `jx-ref="input"` puts that element in `this.refs.input`.
-
-```html
-<script type="module">
-  export function counter(el, props) {
-    return {
-      count: props.start ?? 0,
-      up() { this.count += props.step ?? 1; },
-      reset() { this.count = props.start ?? 0; }
-    };
-  }
-</script>
-
-<template jx-component="my-counter" props="start:number step:number" setup="counter">
-  <button jx-post="fn:up">{{count}}</button>
-</template>
-```
-
-Two `<my-counter>` elements count separately. When a timer or a socket changes the data, call `jsonx.changed()`. Adding `form` (`<template jx-component="star-rating" setup="stars" form>`) makes the component a form field: its view's `value` is what a form or jsonx sends under its `name`. The [widgets demo](examples/widgets/) has a counter, a countdown that starts and stops with the page, and a star rating inside a form.
 
 Both Conduit apps share `examples/components/article-preview.jx`: the REST version feeds it from its view API, and the GraphQL version from a fragment whose aliases (`favorited: viewerHasFavorited`) match its props.
 
@@ -432,8 +416,8 @@ At 1,000 rows every action takes about 100 ms. At 10,000 rows the browser itself
 | `examples/todo/` | The Web Awesome todo app, with its mock API. |
 | `examples/todo-functions/` | The same app, with plain `fn:` functions in the page instead of a server. |
 | `examples/calculator/` | A calculator built the same way. |
-| `examples/widgets/` | Components with `setup()` state, lifecycle hooks, typed props and a form field, in `widgets.jx`. |
-| `examples/cart/` | Three components sharing one module in `cart.jx`, redrawn by change detection. |
+| `examples/widgets/` | Components with their own code: state per element, lifecycle hooks, typed props and a form field, in `widgets.jx`. |
+| `examples/cart/` | Three components sharing one script in `cart.jx`, redrawn by change detection. |
 | `examples/chat/` | A WebSocket chatbot with no page script. `echo-server.js` is a pretend WebSocket server in the page. |
 | `examples/table-graphql/` | A paged, sortable table with no script: one GraphQL query, over a pretend GraphQL server (`people-server.js`). |
 | `examples/data-table/` | A 10,000-row table with search, sort and infinite scroll (`jx-trigger="revealed"`), from one plain function. |
