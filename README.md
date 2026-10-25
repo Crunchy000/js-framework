@@ -137,6 +137,7 @@ Each file is fetched once. Nothing on the page is wired until every file is in, 
 | `jx-operation` | Which operation to run, when the script holds several. | |
 | `jx-select` | Draw only part of the answer, e.g. `jx-select="favoriteArticle.query"`. | the whole answer |
 | `jx-then` | After the request works, go to this page. `:name` is filled from the server's answer, e.g. `jx-then="article.html?slug=:article.slug"`. | stay |
+| `jx-push-url` | On a region: when a GET (or GraphQL query) from it works, the values it sent go into the address bar, so refresh, back and forward, and shared links show the same view. Write the names into its own request so it can load from the address, e.g. `jx-get="/view/home?tab=:tab&page=:page" jx-push-url`. `jx-push-url="tab page"` keeps just those names. | off |
 | `jx-refresh` | After the request works, reload these regions the way they were last loaded, e.g. `jx-refresh="#comments"` or `jx-refresh="closest [jx-template]"`. For APIs that answer with one thing instead of the whole view. | none |
 | `jx-region` | Makes an element a region with no URL: it draws its template once, with an empty view. Good for a sign-in form. | |
 | `jx-data` | Makes an element a region that draws the variable with this name, and draws it again after every `fn:` call. On an element with an `fn:` request, it names the data that call changes, so only those regions redraw. See [Functions and shared data](#functions-and-shared-data-optional). | |
@@ -161,7 +162,13 @@ Writing a trigger for the element itself replaces the default. Triggers with `fr
 
 The named controls in the element's region (or the fields of its `<form>`), then the element's own `name` and `value`, then the values of any `jx-include` elements, then `jx-vals`. Later ones win, so `jx-vals='{"filter": "done"}'` on a button overrides the hidden filter for that one request. GET and DELETE send them as a query string; POST, PUT and PATCH send a JSON body.
 
-**Values from the page address.** On `article.html?slug=hello`, `jx-get="/view/article/:slug"` calls `/view/article/hello`. A `:name` the address doesn't have becomes empty.
+**Values from the page address.** On `article.html?slug=hello`, `jx-get="/view/article/:slug"` calls `/view/article/hello`. A `:name` the address doesn't have becomes empty (or, in `jx-vals`, is left out).
+
+**Keeping the address in step.** Add `jx-push-url` to a region, and tab and page buttons inside it update the address bar as they load. Back and forward load the region again from the address. Conduit's home and profile pages work this way:
+
+```html
+<div jx-get="/view/home?tab=:tab&tag=:tag&page=:page" jx-push-url>
+```
 
 **Dotted names build nested JSON.** `name="user.email"` and `name="user.password"` send `{"user": {"email": …, "password": …}`, which is what APIs like RealWorld expect.
 
@@ -359,7 +366,6 @@ If you call `jsonx.render(el, data)` yourself, jsonx copies `data` first, so cha
 
 - `jx-indicator="#spinner"` to show a separate loading element.
 - `jx-confirm="Are you sure?"` before a delete.
-- `jx-push-url` to update the address bar, so the back button works.
 - Polling: `jx-trigger="every 5s"`.
 - Publishing to npm.
 

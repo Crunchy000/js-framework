@@ -18,8 +18,8 @@
  *
  *   <script type="module" src="jsonx.js"></script>
  */
-import { compileTemplate, compileView } from "./templates.js?v=18";
-import { defineComponent } from "./components.js?v=18";
+import { compileTemplate, compileView } from "./templates.js?v=19";
+import { defineComponent } from "./components.js?v=19";
 
 var METHODS = ["get", "post", "put", "patch", "delete"];
 var SELECTOR = METHODS.map(function (m) { return "[jx-" + m + "]"; }).join(",") + ",[jx-region],[jx-query],[jx-data],[jx-emit]";
@@ -131,21 +131,66 @@ function include(template) {
 var addressValues = new URLSearchParams(location.search);
 
 function fillFromAddress(el) {
+  // Keep the originals, so back and forward can fill them again (jx-push-url).
+  var originals = el.__jxAddress || {};
   METHODS.forEach(function (m) {
-    var url = el.getAttribute("jx-" + m);
+    var attr = "jx-" + m;
+    var url = originals[attr] || el.getAttribute(attr);
     if (url === null || url.indexOf(":") === -1) return;
-    el.setAttribute("jx-" + m, url.replace(/([/=]):(\w+)/g, function (all, before, name) {
+    originals[attr] = url;
+    el.setAttribute(attr, url.replace(/([/=]):(\w+)/g, function (all, before, name) {
       return before + encodeURIComponent(addressValues.get(name) || "");
     }));
   });
   // jx-vals='{"slug": ":slug"}' works the same way.
-  var vals = el.getAttribute("jx-vals");
+  var vals = originals["jx-vals"] || el.getAttribute("jx-vals");
+  // A name the address doesn't have is left out, so defaults apply.
   if (vals && vals.indexOf('":') !== -1) {
-    el.setAttribute("jx-vals", vals.replace(/":(\w+)"/g, function (all, name) {
-      return JSON.stringify(addressValues.get(name));
-    }));
+    originals["jx-vals"] = vals;
+    var filled = JSON.parse(vals);
+    Object.keys(filled).forEach(function (key) {
+      var match = typeof filled[key] === "string" && /^:(\w+)$/.exec(filled[key]);
+      if (!match) return;
+      if (addressValues.has(match[1])) filled[key] = addressValues.get(match[1]);
+      else delete filled[key];
+    });
+    el.setAttribute("jx-vals", JSON.stringify(filled));
   }
+  el.__jxAddress = originals;
 }
+
+// <div jx-get="/view/home?tab=:tab&page=:page" jx-push-url>: when a GET from
+// this region works, the values it sent go into the address bar, so refresh,
+// back and forward, and shared links all show the same view.
+// jx-push-url="tab page" keeps just those names. Empty values are left out.
+function pushAddress(el, sent) {
+  var region = el.closest("[jx-push-url]");
+  if (!region) return;
+  var names = (region.getAttribute("jx-push-url") || "").split(/[\s,]+/).filter(Boolean);
+  var params = new URLSearchParams(location.search);
+  (names.length ? names : Object.keys(sent)).forEach(function (name) {
+    var value = sent[name];
+    if (value === undefined || value === null || value === "") params.delete(name);
+    else if (typeof value !== "object") params.set(name, value);
+  });
+  // The region's first load only tidies the address; later ones are new steps.
+  var first = !region.__jxPushed;
+  region.__jxPushed = true;
+  var search = params.toString();
+  if (search === location.search.slice(1)) return;
+  var address = location.pathname + (search ? "?" + search : "") + location.hash;
+  history[first ? "replaceState" : "pushState"]({ jsonx: true }, "", address);
+  addressValues = params;
+}
+
+// Back and forward: load each jx-push-url region again from the address.
+window.addEventListener("popstate", function () {
+  addressValues = new URLSearchParams(location.search);
+  document.querySelectorAll("[jx-push-url]").forEach(function (region) {
+    fillFromAddress(region);
+    issueRequest(region, null, true);
+  });
+});
 
 function attachTriggers(el) {
   // <div jx-data="cart"> draws the variable cart, and again after
@@ -319,6 +364,11 @@ function collectValues(el) {
   return values;
 }
 
+function ownValues(el) {
+  var vals = el.getAttribute("jx-vals");
+  return vals ? JSON.parse(vals) : {};
+}
+
 // Adds values from one element: every field if it's a form, every named control
 // inside it if it's a region, otherwise just its own name and value.
 function addValues(values, el) {
@@ -359,9 +409,11 @@ function nest(values) {
 
 // `override` ({ method, url }) repeats a request exactly, without collecting values.
 // jx-refresh uses it.
-function issueRequest(el, override) {
+// `fromAddress` (back and forward) sends only the element's own values, not
+// the controls drawn for the view it's leaving.
+function issueRequest(el, override, fromAddress) {
   var info = override || getMethodAndUrl(el);
-  var values = override ? {} : collectValues(el);
+  var values = override ? {} : fromAddress ? ownValues(el) : collectValues(el);
   var url = info.url;
   var options = { method: info.method, headers: { Accept: "application/json" } };
 
@@ -423,6 +475,11 @@ function issueRequest(el, override) {
       var select = el.getAttribute("jx-select");
       if (select) data = select.split(".").reduce(function (v, key) { return v == null ? v : v[key]; }, data);
       render(el, data, info.method === "GET" ? url : null);
+      // jx-push-url: put what a GET (or a GraphQL query) sent in the address bar.
+      if (!fromAddress && !override && (info.method === "GET" || (graphql && !/^\s*mutation\b/m.test(text)))) {
+        var sent = Object.fromEntries(new URL(url.replace(/^fn:/, ""), location.href).searchParams);
+        pushAddress(el, Object.assign(sent, values));
+      }
       // jx-refresh="#comments": once this worked, reload those regions the way
       // they were last loaded. For APIs that answer with one thing, not the view.
       var refresh = el.getAttribute("jx-refresh");

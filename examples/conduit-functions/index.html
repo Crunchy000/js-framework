@@ -6,13 +6,13 @@
   <title>Home — Conduit</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/styles/webawesome.css">
   <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
-  <link rel="stylesheet" href="../conduit/style.css?v=18">
+  <link rel="stylesheet" href="../conduit/style.css?v=19">
 
   <!-- A pretend RealWorld API (the same one the other Conduits use) -->
-  <script src="../conduit/mock-api.js?v=18"></script>
+  <script src="../conduit/mock-api.js?v=19"></script>
   <!-- The views: plain functions that pages call with fn:name -->
-  <script src="views.js?v=18"></script>
-  <script type="module" src="../../jsonx.js?v=18"></script>
+  <script src="views.js?v=19"></script>
+  <script type="module" src="../../jsonx.js?v=19"></script>
   <script>if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("wa-dark");</script>
 </head>
 <body>
@@ -25,7 +25,7 @@
 
   <!-- The whole home page is one region. fn:home returns the tabs,
        one page of articles, the page buttons and the popular tags. -->
-  <div class="layout" jx-get="fn:home">
+  <div class="layout" jx-get="fn:home?tab=:tab&tag=:tag&page=:page" jx-push-url>
     <p class="empty">Loading articles...</p>
     <template>
       <!-- Sent with every request, so the server knows which tab and page you're on. -->

@@ -6,13 +6,13 @@
   <title>Home — Conduit</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/styles/webawesome.css">
   <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
-  <link rel="stylesheet" href="style.css?v=18">
+  <link rel="stylesheet" href="style.css?v=19">
 
   <!-- Pretend servers: the RealWorld API, and the view API in front of it.
        In real life both run on a server, and these two lines go away. -->
-  <script src="mock-api.js?v=18"></script>
-  <script src="view-api.js?v=18"></script>
-  <script type="module" src="../../jsonx.js?v=18"></script>
+  <script src="mock-api.js?v=19"></script>
+  <script src="view-api.js?v=19"></script>
+  <script type="module" src="../../jsonx.js?v=19"></script>
   <script>if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("wa-dark");</script>
 </head>
 <body>
@@ -24,7 +24,7 @@
 
   <!-- The whole home page is one region. GET /view/home answers with the tabs,
        one page of articles, the page buttons and the popular tags. -->
-  <div class="layout" jx-get="/view/home">
+  <div class="layout" jx-get="/view/home?tab=:tab&tag=:tag&page=:page" jx-push-url>
     <p class="empty">Loading articles...</p>
     <template>
       <!-- Sent with every request, so the server knows which tab and page you're on. -->
