@@ -6,13 +6,13 @@
   <title>Article — Conduit GraphQL</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/styles/webawesome.css">
   <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
-  <link rel="stylesheet" href="style.css?v=20">
+  <link rel="stylesheet" href="style.css?v=21">
 
   <!-- Pretend servers: the RealWorld REST API, and a GraphQL server in front of it.
        In real life they run on a server, and these two lines go away. -->
-  <script src="../conduit/mock-api.js?v=20"></script>
-  <script type="module" src="graphql-server.js?v=20"></script>
-  <script type="module" src="../../jsonx.js?v=20"></script>
+  <script src="../conduit/mock-api.js?v=21"></script>
+  <script type="module" src="graphql-server.js?v=21"></script>
+  <script type="module" src="../../jsonx.js?v=21"></script>
   <script>if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("wa-dark");</script>
 </head>
 <body>
@@ -27,7 +27,7 @@
       article(slug: $slug) {
         slug title tagList favoritesCount viewerHasFavorited viewerIsAuthor
         createdAt(format: LONG)
-        paragraphs { text }
+        body
         author { username image viewerIsFollowing }
         comments { id body viewerIsAuthor createdAt(format: LONG) author { username image } }
       }
@@ -52,9 +52,8 @@
         <template jx-use="#meta"></template>
       </header>
       <div class="article-body">
-        <jx-each items="article.paragraphs">
-          <p>{{text}}</p>
-        </jx-each>
+        <!-- The body is Markdown (HTML allowed), cleaned before it's drawn. -->
+        <div class="markdown" jx-markdown="{{article.body}}"></div>
         <div class="wa-cluster wa-gap-2xs"><jx-each items="article.tagList"><wa-tag size="s" appearance="outlined">{{.}}</wa-tag></jx-each></div>
         <hr>
         <template jx-use="#meta"></template>

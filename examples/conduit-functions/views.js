@@ -146,8 +146,7 @@ async function article(values) {
   view.favoriteLabel = (a.favorited ? "Unfavorite" : "Favorite") + " (" + a.favoritesCount + ")";
   view.favoriteAppearance = a.favorited ? "filled" : "outlined";
   view.editUrl = "editor.html?slug=" + slug;
-  // Markdown, shown as plain paragraphs: the view never contains HTML.
-  view.paragraphs = a.body.split(/\n\s*\n/).map((text) => ({ text }));
+  view.body = a.body; // Markdown: the page draws it with jx-markdown, cleaned
   return {
     signedIn: !!user,
     article: view,

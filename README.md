@@ -70,6 +70,7 @@ A template is plain HTML inside a `<template>` tag, plus four rules:
 | `<jx-else-if test="…">`, `<jx-else>` | Right after a `<jx-if>` (only spaces and comments between), they draw when the branches before them didn't. |
 | `checked="{{done}}"`, `value="{{draft}}"` | When an attribute's whole value is one `{{name}}`, it's smart: if the element has a property with that name, the live property is set, so form controls always show the view. Otherwise `true`/`false` adds or removes the attribute, and anything else becomes its text. |
 | `class:done="{{done}}"` | Turns the class `done` on or off. |
+| `jx-markdown="{{body}}"`, `jx-html="{{body}}"` | Draws the value as Markdown or HTML inside the element. It's cleaned with [DOMPurify](https://github.com/cure53/DOMPurify) first: no scripts, `onclick=` handlers or `javascript:` links, and nothing jsonx would act on (`jx-` attributes, templates, forms), so the text can't make requests. The libraries ([marked](https://marked.js.org) and DOMPurify, in `vendor/`) load only on pages that use them. |
 
 The `<jx-…>` tags only mark what to repeat or show. They're never put on the page, so they don't affect your layout or CSS (`ul > li` still matches).
 
@@ -89,7 +90,7 @@ The `<jx-…>` tags only mark what to repeat or show. They're never put on the p
 
 Reuse a template inside another with `<template jx-use="#todo-item"></template>`. A `{{name}}` inside a `<textarea>` becomes its value.
 
-That's the whole language. There's no other logic on purpose: if the page needs to know something, like which filter button is highlighted, the server works it out and sends it.
+Everything else is text: `{{name}}` never inserts HTML. That's the whole language. There's no other logic on purpose: if the page needs to know something, like which filter button is highlighted, the server works it out and sends it.
 
 ### A template that loads itself
 
@@ -271,7 +272,7 @@ browser (jsonx)  --GET /view/home?tab=feed-->  view API  --GET /api/articles/fee
 
 The view API also keeps the sign-in token, the way a real one keeps it in a server-side session behind a cookie, so the browser never handles it. In the demo it's `view-api.js`, running in the browser like the other mocks.
 
-Article bodies are Markdown, but Conduit shows them as plain paragraphs: templates never insert raw HTML, so an article can't inject anything into the page.
+Article bodies are Markdown, drawn with `jx-markdown` (see Templates). Everything is cleaned first, so an article can't inject anything into the page.
 
 The view API can also live in the page, as plain functions: `jx-get="fn:home"` calls `async function home(values)`, which calls the RealWorld API and returns the same view. [Conduit with functions](examples/conduit-functions/) works this way. You lose the server-side session (the token sits in the browser) and the views only serve this page, but there's nothing to deploy except the page.
 
@@ -361,6 +362,7 @@ At 1,000 rows every action takes about 100 ms. At 10,000 rows the browser itself
 | `components.js` | Web components written as templates (`jx-component`). |
 | `vendor/lit-html/` | lit-html 3.3.1 and its `repeat` directive (BSD-3-Clause, see `vendor/lit-html/LICENSE.txt`). |
 | `vendor/lit-element/` | LitElement 4.2.1, the base class for components (BSD-3-Clause). |
+| `vendor/dompurify/`, `vendor/marked/` | DOMPurify 3.4.16 (Apache-2.0 or MPL-2.0) and marked 18.1.0 (MIT), for `jx-markdown` and `jx-html`. |
 | `vendor/react/`, `vendor/htmx/` | React 18.3.1, htmx 2.0.4 and idiomorph 0.3.0, for the benchmark only. |
 | `examples/todo/` | The Web Awesome todo app, with its mock API. |
 | `examples/todo-functions/` | The same app, with plain `fn:` functions in the page instead of a server. |

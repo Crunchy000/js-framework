@@ -148,6 +148,54 @@ class EmitItem extends Directive {
 }
 var emitItem = directive(EmitItem);
 
+// jx-markdown="{{article.body}}" and jx-html="{{bodyHtml}}" draw text as
+// Markdown or HTML, inside that element. Everything is cleaned with DOMPurify
+// first: no scripts, no onclick=, no javascript: links. Anything jsonx would
+// act on is removed too (jx- attributes, templates, forms), so the text can't
+// make requests. The libraries load the first time a page needs them.
+var libraries = null;
+function loadLibraries() {
+  if (!libraries) {
+    libraries = Promise.all([
+      import(new URL("./vendor/dompurify/purify.js", import.meta.url).href),
+      import(new URL("./vendor/marked/marked.js", import.meta.url).href)
+    ]).then(function (mods) {
+      libraries.ready = { purify: mods[0].default, marked: mods[1].marked };
+    });
+  }
+  return libraries;
+}
+
+var CLEAN = {
+  FORBID_TAGS: ["style", "template", "form", "input", "button", "textarea", "select", "iframe", "object", "embed"],
+  FORBID_ATTR: ["style"],
+  ALLOW_DATA_ATTR: false,
+  // ids from the text are prefixed, so they can't clash with the page's own.
+  SANITIZE_NAMED_PROPS: true
+};
+
+export function cleanHTML(kind, value) {
+  var lib = libraries.ready;
+  var source = value == null ? "" : String(value);
+  var html = kind === "markdown" ? lib.marked.parse(source, { async: false }) : source;
+  return lib.purify.sanitize(html, CLEAN);
+}
+
+class RichText extends Directive {
+  update(part, [kind, value]) {
+    if (this.value === value) return noChange;
+    this.value = value;
+    var el = part.element;
+    var draw = function () { if (part.element.__jxRich === value) el.innerHTML = cleanHTML(kind, value); };
+    el.__jxRich = value;
+    if (libraries && libraries.ready) draw();
+    else loadLibraries().then(draw);
+    return noChange;
+  }
+  render() { return noChange; }
+}
+var richText = directive(RichText);
+
 // Rule 4: class:done="{{done}}".
 class ToggleClass extends Directive {
   update(part, [className, on]) {
@@ -445,6 +493,12 @@ function compileElement(node, b, ctx) {
   b.add(">");
   if (VOID.test(tag)) return;
 
+  // jx-markdown and jx-html own the element's content (anything inside is ignored).
+  if (node.hasAttribute("jx-markdown") || node.hasAttribute("jx-html")) {
+    b.add("</" + tag + ">");
+    return;
+  }
+
   // A <style> (say, in a component) is kept as it is: CSS isn't HTML.
   if (tag === "style") {
     b.add(node.textContent + "</style>");
@@ -475,6 +529,17 @@ function compileText(value, b) {
 
 function compileAttribute(name, value, b) {
   var whole = value.trim().match(WHOLE);
+
+  // jx-markdown="{{body}}", jx-html="{{body}}": the element's content.
+  if (name === "jx-markdown" || name === "jx-html") {
+    if (!whole) throw new Error('[jsonx] ' + name + '="…" must be exactly one {{name}}');
+    loadLibraries();
+    var kind = name === "jx-markdown" ? "markdown" : "html";
+    var richPath = path(whole[1]);
+    b.add(" " + name + "=");
+    b.hole(function (stack) { return richText(kind, lookup(stack, richPath)); });
+    return;
+  }
 
   // class:done="{{done}}"
   if (name.startsWith("class:")) {
