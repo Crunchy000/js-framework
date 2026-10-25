@@ -94,16 +94,37 @@ function text(value) {
 // (their value and checked properties are left alone).
 var keepTyping = false;
 
+// A view answers a request, so it can't know about typing that happened after
+// the request was sent. Controls changed since then keep what's in them (the
+// next answer catches up). `drawingFor` is when that request was sent.
+var drawingFor = Infinity;
+// (Only "input": a "change" also fires on Enter, after the request it sent.)
+document.addEventListener("input", edited, true);
+function edited(event) { event.composedPath()[0].__jxEditedAt = performance.now(); }
+
+// A <select>'s value is set after its <option>s are drawn, or it can't match.
+var pendingValues = [];
+function setValuesLater(el, value) {
+  if (!pendingValues.length) queueMicrotask(setPendingValues);
+  pendingValues.push([el, value]);
+}
+export function setPendingValues() {
+  var list = pendingValues;
+  pendingValues = [];
+  list.forEach(function (pair) { if (pair[0].value !== pair[1]) pair[0].value = pair[1]; });
+}
+
 class SmartAttribute extends Directive {
   update(part, [value]) {
     var el = part.element;
     var name = part.name;
     if (name in el && !name.startsWith("aria")) {
-      if (keepTyping && (name === "value" || name === "checked")) return noChange;
+      if ((name === "value" || name === "checked") && (keepTyping || el.__jxEditedAt > drawingFor)) return noChange;
       // A property: compare with the element's live value, so typing or
       // clicking never leaves it out of step with the view.
       var next = value == null ? (typeof el[name] === "boolean" ? false : "") : value;
-      if (el[name] !== next) el[name] = next;
+      if (name === "value" && el.localName !== "option") setValuesLater(el, next);
+      else if (el[name] !== next) el[name] = next;
     } else if (typeof value === "boolean") {
       el.toggleAttribute(name, value);
     } else if (value == null) {
@@ -524,7 +545,8 @@ export function compileTemplate(templateElement, find) {
   var template = compileParts(templateElement, find);
 
   // `keepInputs`: leave form controls' values alone (used when showing an error).
-  return function renderInto(data, target, keepInputs) {
+  // `since`: when the request this view answers was sent (see drawingFor).
+  return function renderInto(data, target, keepInputs, since) {
     // The first time, clear any placeholder (like a loading skeleton).
     // After that, Lit owns the target and updates it in place.
     if (!target.__jxRendered) {
@@ -543,11 +565,14 @@ export function compileTemplate(templateElement, find) {
     if (sameTemplate && data === target.__jxDrawn && !target.__jxTouched.size) return;
 
     keepTyping = !!keepInputs;
+    drawingFor = since === undefined ? Infinity : since;
     touched = target.__jxTouched;
     try {
       render(template([data]), target);
+      setPendingValues();
     } finally {
       keepTyping = false;
+      drawingFor = Infinity;
       touched.clear();
       touched = new Set();
     }

@@ -18,8 +18,8 @@
  *
  *   <script type="module" src="jsonx.js"></script>
  */
-import { compileTemplate, compileView } from "./templates.js?v=19";
-import { defineComponent } from "./components.js?v=19";
+import { compileTemplate, compileView } from "./templates.js?v=20";
+import { defineComponent } from "./components.js?v=20";
 
 var METHODS = ["get", "post", "put", "patch", "delete"];
 var SELECTOR = METHODS.map(function (m) { return "[jx-" + m + "]"; }).join(",") + ",[jx-region],[jx-query],[jx-data],[jx-emit]";
@@ -226,6 +226,14 @@ function attachTriggers(el) {
       issueRequest(el);
       return;
     }
+    // "revealed" runs when the element scrolls into view, e.g. a "Load more"
+    // row at the bottom of a long list. It runs again each time it comes back.
+    if (trigger.event === "revealed") {
+      new IntersectionObserver(function (entries) {
+        if (entries.some(function (e) { return e.isIntersecting; }) && el.isConnected) issueRequest(el);
+      }, { rootMargin: "200px" }).observe(el);
+      return;
+    }
 
     // Usually we listen on the element itself. "from:#list" listens somewhere else.
     var source = findSource(el, trigger.from);
@@ -393,18 +401,26 @@ function addValue(values, el) {
 
 // Dotted names build nested JSON, so name="user.email" and name="user.password"
 // send { "user": { "email": ..., "password": ... } }. (A query string keeps them flat.)
+// A number makes a list: items.0.qty and items.1.qty send { items: [{ qty }, { qty }] }.
 function nest(values) {
   var result = {};
   Object.keys(values).forEach(function (key) {
     var parts = key.split(".");
     var place = result;
-    parts.slice(0, -1).forEach(function (part) {
-      if (typeof place[part] !== "object" || place[part] === null) place[part] = {};
+    parts.slice(0, -1).forEach(function (part, i) {
+      if (typeof place[part] !== "object" || place[part] === null) place[part] = /^\d+$/.test(parts[i + 1]) ? [] : {};
       place = place[part];
     });
     place[parts[parts.length - 1]] = values[key];
   });
-  return result;
+  return closeGaps(result);
+}
+
+// Rows 0 and 2 (row 1 was removed) make a list of two, not one with a hole.
+function closeGaps(value) {
+  if (Array.isArray(value)) return value.filter(function () { return true; }).map(closeGaps);
+  if (value && typeof value === "object") Object.keys(value).forEach(function (k) { value[k] = closeGaps(value[k]); });
+  return value;
 }
 
 // `override` ({ method, url }) repeats a request exactly, without collecting values.
@@ -453,6 +469,14 @@ function issueRequest(el, override, fromAddress) {
 
   el.classList.add("jx-loading");
 
+  // When answers arrive out of order (typing fast, clicking twice), only the
+  // newest request for the same place is drawn.
+  var place = el;
+  try { place = el.hasAttribute("jx-target") ? findTarget(el) : (findRegion(el) || el); } catch (e) {}
+  var latest = place.__jxLatest = (place.__jxLatest || 0) + 1;
+  var stale = function () { return place.__jxLatest !== latest && el.getAttribute("jx-swap") !== "none"; };
+  var sentAt = performance.now();
+
   return send(url, options, el)
     .then(function (response) {
       if (!response.ok) return failed(response, info.method + " " + url);
@@ -462,6 +486,7 @@ function issueRequest(el, override, fromAddress) {
       return response.status === 204 ? null : response.json();
     })
     .then(function (data) {
+      if (stale()) return;
       if (data === NOTHING) {
         fire(el, "jx:afterRender", { data: undefined, target: null, source: el });
         return;
@@ -474,7 +499,7 @@ function issueRequest(el, override, fromAddress) {
       // jx-select="favoriteArticle.query" draws just that part of the answer.
       var select = el.getAttribute("jx-select");
       if (select) data = select.split(".").reduce(function (v, key) { return v == null ? v : v[key]; }, data);
-      render(el, data, info.method === "GET" ? url : null);
+      render(el, data, info.method === "GET" ? url : null, sentAt);
       // jx-push-url: put what a GET (or a GraphQL query) sent in the address bar.
       if (!fromAddress && !override && (info.method === "GET" || (graphql && !/^\s*mutation\b/m.test(text)))) {
         var sent = Object.fromEntries(new URL(url.replace(/^fn:/, ""), location.href).searchParams);
@@ -493,6 +518,7 @@ function issueRequest(el, override, fromAddress) {
       });
     })
     .catch(function (error) {
+      if (stale()) return;
       console.error("[jsonx]", error);
       // If the server explained what went wrong, show it in the region too.
       if (error.data && el.isConnected) renderError(el, error);
@@ -674,7 +700,8 @@ function errorList(body) {
 // ---------------------------------------------------------------------------
 
 // `url` is the address the data came from, for GET requests.
-function render(el, data, url) {
+// `sentAt` is when its request was sent: controls changed since keep their value.
+function render(el, data, url, sentAt) {
   var region = findRegion(el);
   var target = el.hasAttribute("jx-target") ? findTarget(el) : (region || el);
   var swap = el.getAttribute("jx-swap") || "";
@@ -699,7 +726,7 @@ function render(el, data, url) {
     var firstTime = !target.__jxRendered;
     target.__jxView = data; // remembered, so an error can be shown on top of it
     if (url && swap !== "none") target.__jxUrl = url; // and for jx-refresh
-    drawAndWire(target, function () { getTemplate(owner)(data, target); });
+    drawAndWire(target, function () { getTemplate(owner)(data, target, false, sentAt); });
     if (firstTime) focusAutofocus(target);
   }
 

@@ -127,7 +127,7 @@ Each file is fetched once. Nothing on the page is wired until every file is in, 
 | Attribute | What it does | Default |
 |---|---|---|
 | `jx-get`, `jx-post`, `jx-put`, `jx-patch`, `jx-delete` | The URL to call, and with which HTTP method. It can use `{{name}}` when it's inside a template. `fn:name` calls the function `name` instead. | (required) |
-| `jx-trigger` | The event that starts the request. Any event name works, including custom events. Add `delay:300ms` to wait until events stop (good for search boxes), or `from:#other` to listen on another element. Use `keydown[key=Enter]` to fire only for one key. Use `load` to run once on page load. List several with commas. | depends on the element, see below |
+| `jx-trigger` | The event that starts the request. Any event name works, including custom events. Add `delay:300ms` to wait until events stop (good for search boxes), or `from:#other` to listen on another element. Use `keydown[key=Enter]` to fire only for one key. Use `load` to run once on page load, and `revealed` to run when the element scrolls into view (a "load more" row). List several with commas. | depends on the element, see below |
 | `jx-template` | Selector of a `<template>` that draws the JSON, for when it isn't inside the element. An element with a template is a region. | the template inside, or the region's |
 | `jx-target` | Where the result goes: a CSS selector, `this`, or `closest <selector>`. | the region, or else the element itself |
 | `jx-swap` | `prop:<name>` sets a property on the target instead of drawing a template (good for components that take data). `none` calls the API and draws nothing. | draw the template |
@@ -170,7 +170,9 @@ The named controls in the element's region (or the fields of its `<form>`), then
 <div jx-get="/view/home?tab=:tab&tag=:tag&page=:page" jx-push-url>
 ```
 
-**Dotted names build nested JSON.** `name="user.email"` and `name="user.password"` send `{"user": {"email": …, "password": …}`, which is what APIs like RealWorld expect.
+**Dotted names build nested JSON.** `name="user.email"` and `name="user.password"` send `{"user": {"email": …, "password": …}`, which is what APIs like RealWorld expect. A number makes a list, for repeating rows: `items.0.qty` and `items.1.qty` send `{"items": [{"qty": …}, {"qty": …}]}`.
+
+**Typing is never lost.** A view answers a request, so it can't know about anything typed after that request was sent. Controls changed since then keep what's in them, and the next answer catches up. When answers arrive out of order, only the newest request for the same region is drawn. So live validation (`jx-trigger="input delay:300ms"`) is safe even on a slow connection.
 
 ### Errors
 
@@ -323,6 +325,17 @@ It also skips work that can't change anything. Each new view is compared with th
 If you call `jsonx.render(el, data)` yourself, jsonx copies `data` first, so changing your object later and passing it again still works.
 
 [The benchmark](examples/benchmark/) draws and updates 10 to 10,000 todos in jsonx, React, htmx (swap and morph) and plain `innerHTML`, with Web Awesome components or plain HTML. Run it in your own browser for your own numbers. In short: first draws cost about the same everywhere, because creating elements is most of the work, and updates are where jsonx and React pull ahead of re-sending HTML.
+
+### Big lists
+
+At 1,000 rows every action takes about 100 ms. At 10,000 rows the browser itself is the limit: drawing that many table rows takes about a second even in hand-written code, and jsonx takes one and a half to two times that. So don't draw them all: page them, or load more as the person scrolls. Each step only adds the new rows, so it stays around 25 ms however long the list gets:
+
+```html
+<tbody><tr jx-each="rows">…</tr></tbody>
+<jx-if test="more">
+  <p jx-get="/api/rows" jx-trigger="revealed" jx-vals='{"limit": {{nextLimit}}}'>Loading more…</p>
+</jx-if>
+```
 
 ## How it works
 
