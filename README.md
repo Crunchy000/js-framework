@@ -28,6 +28,7 @@ The card loads `api/todos` when the page opens and draws it with the template in
 - [Todo app](https://crunchy000.github.io/js-framework/examples/todo/), built with [Web Awesome](https://webawesome.com) components
 - [Todo app, with functions](https://crunchy000.github.io/js-framework/examples/todo-functions/), the same app with no server: plain functions return the view
 - [Calculator](https://crunchy000.github.io/js-framework/examples/calculator/), another app built on plain functions
+- [Chat with Echo](https://crunchy000.github.io/js-framework/examples/chat/), a WebSocket chatbot with no page script
 - [Data table](https://crunchy000.github.io/js-framework/examples/data-table/), 10,000 rows with search, sort and infinite scroll
 - [People, on GraphQL](https://crunchy000.github.io/js-framework/examples/table-graphql/), search, sorting and paging with no script at all
 - [Feature tour](https://crunchy000.github.io/js-framework/examples/basic/), one live example per feature, with its code and data
@@ -144,6 +145,8 @@ Each file is fetched once. Nothing on the page is wired until every file is in, 
 | `jx-refresh` | After the request works, reload these regions the way they were last loaded, e.g. `jx-refresh="#comments"` or `jx-refresh="closest [jx-template]"`. For APIs that answer with one thing instead of the whole view. | none |
 | `jx-region` | Makes an element a region with no URL: it draws its template once, with an empty view. Good for a sign-in form. | |
 | `jx-data` | Makes an element a region that draws the variable with this name, and draws it again after every `fn:` call. On an element with an `fn:` request, it names the data that call changes, so only those regions redraw. See [Functions and shared data](#functions-and-shared-data-optional). | |
+| `jx-ws` | Makes an element a region drawn from a WebSocket: every message is JSON, the region's whole view. The region has the class `jx-ws-connecting`, `jx-ws-open` or `jx-ws-closed`, and it reconnects by itself, waiting longer each time (up to 30s). | |
+| `jx-ws-send` | Sends the element's values (what a `jx-post` would send) as one JSON message over the socket of the `jx-ws` region around it, or of the one it names (`jx-ws-send="#chat"`). Messages sent while it's reconnecting go once it's back. | |
 | `jx-emit` | Fires an event with this name when the element is clicked (or on its `jx-trigger`), with the current item as `event.detail`. For components. | |
 
 ### Triggers
@@ -176,6 +179,17 @@ The named controls in the element's region (or the fields of its `<form>`), then
 **Dotted names build nested JSON.** `name="user.email"` and `name="user.password"` send `{"user": {"email": …, "password": …}`, which is what APIs like RealWorld expect. A number makes a list, for repeating rows: `items.0.qty` and `items.1.qty` send `{"items": [{"qty": …}, {"qty": …}]}`.
 
 **Typing is never lost.** A view answers a request, so it can't know about anything typed after that request was sent. Controls changed since then keep what's in them, and the next answer catches up. When answers arrive out of order, only the newest request for the same region is drawn. So live validation (`jx-trigger="input delay:300ms"`) is safe even on a slow connection.
+
+**Live views over a WebSocket.** `jx-ws` makes a region that the server draws whenever it likes: each message is the whole view, and only what changed is updated, so a new chat message adds one row. Typing is kept the same way, so a reply arriving mid-sentence doesn't wipe the box. The [chat demo](examples/chat/) has no page script:
+
+```html
+<div jx-ws="/ws/echo">
+  <template>
+    <p jx-each="messages" class="{{from}}">{{text}}</p>
+    <form jx-ws-send><input name="text" value="{{draft}}"></form>
+  </template>
+</div>
+```
 
 ### Errors
 
@@ -370,6 +384,7 @@ At 1,000 rows every action takes about 100 ms. At 10,000 rows the browser itself
 | `examples/todo/` | The Web Awesome todo app, with its mock API. |
 | `examples/todo-functions/` | The same app, with plain `fn:` functions in the page instead of a server. |
 | `examples/calculator/` | A calculator built the same way. |
+| `examples/chat/` | A WebSocket chatbot with no page script. `echo-server.js` is a pretend WebSocket server in the page. |
 | `examples/table-graphql/` | A paged, sortable table with no script: one GraphQL query, over a pretend GraphQL server (`people-server.js`). |
 | `examples/data-table/` | A 10,000-row table with search, sort and infinite scroll (`jx-trigger="revealed"`), from one plain function. |
 | `examples/basic/` | The feature tour: one live example per feature. |

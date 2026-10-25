@@ -18,11 +18,11 @@
  *
  *   <script type="module" src="jsonx.js"></script>
  */
-import { compileTemplate, compileView } from "./templates.js?v=26";
-import { defineComponent } from "./components.js?v=26";
+import { compileTemplate, compileView } from "./templates.js?v=27";
+import { defineComponent } from "./components.js?v=27";
 
 var METHODS = ["get", "post", "put", "patch", "delete"];
-var SELECTOR = METHODS.map(function (m) { return "[jx-" + m + "]"; }).join(",") + ",[jx-region],[jx-query],[jx-data],[jx-emit]";
+var SELECTOR = METHODS.map(function (m) { return "[jx-" + m + "]"; }).join(",") + ",[jx-region],[jx-query],[jx-data],[jx-emit],[jx-ws],[jx-ws-send]";
 
 // Remember which elements already have listeners, so we never attach twice.
 var processed = new WeakSet();
@@ -193,6 +193,24 @@ window.addEventListener("popstate", function () {
 });
 
 function attachTriggers(el) {
+  // <div jx-ws="/ws/chat"> is drawn from a WebSocket: each message is a view.
+  // <form jx-ws-send> inside it sends its values over that socket.
+  if (el.hasAttribute("jx-ws")) {
+    render(el, {});
+    connect(el);
+    return;
+  }
+  if (el.hasAttribute("jx-ws-send")) {
+    parseTriggers(el).forEach(function (trigger) {
+      findSource(el, trigger.from).addEventListener(trigger.event, function (event) {
+        if (!el.isConnected) return;
+        if (trigger.filter && String(event[trigger.filter.property]) !== trigger.filter.value) return;
+        if (event.type === "submit" || el.tagName === "A") event.preventDefault();
+        sendOverSocket(el);
+      });
+    });
+    return;
+  }
   // <div jx-data="cart"> draws the variable cart, and again after
   // every fn: call or jsonx.update() (see "Shared data" below).
   if (el.hasAttribute("jx-data") && !getMethodAndUrl(el)) {
@@ -527,6 +545,67 @@ function issueRequest(el, override, fromAddress) {
     .finally(function () {
       el.classList.remove("jx-loading");
     });
+}
+
+// ---------------------------------------------------------------------------
+// WebSockets
+// ---------------------------------------------------------------------------
+//
+//   <div jx-ws="/ws/chat">
+//     <template>
+//       <p jx-each="messages">{{text}}</p>
+//       <form jx-ws-send><input name="text" value="{{draft}}"></form>
+//     </template>
+//   </div>
+//
+// Every message from the server is JSON: the region's whole view, drawn like
+// an answer to jx-get (only what changed is updated). jx-ws-send sends the
+// values a jx-post would, as one JSON message. The region gets the class
+// jx-ws-connecting, jx-ws-open or jx-ws-closed, so CSS can show the state. When
+// the connection drops it tries again, waiting longer each time (up to 30s).
+
+function connect(region) {
+  var url = new URL(region.getAttribute("jx-ws"), location.href);
+  url.protocol = url.protocol === "https:" ? "wss:" : url.protocol === "http:" ? "ws:" : url.protocol;
+  var state = function (name) {
+    region.classList.remove("jx-ws-connecting", "jx-ws-open", "jx-ws-closed");
+    region.classList.add("jx-ws-" + name);
+  };
+  state("connecting");
+  var socket = region.__jxSocket = new WebSocket(url.href);
+  region.__jxQueue = region.__jxQueue || [];
+  socket.addEventListener("open", function () {
+    region.__jxRetry = 0;
+    state("open");
+    // Anything sent while it was connecting goes now.
+    region.__jxQueue.splice(0).forEach(function (message) { socket.send(message); });
+  });
+  socket.addEventListener("message", function (event) {
+    if (!region.isConnected) { socket.close(); return; }
+    var data;
+    try { data = JSON.parse(event.data); } catch (e) { console.error("[jsonx] jx-ws message isn't JSON:", event.data); return; }
+    // Fields typed in since the last send keep what's in them.
+    render(region, data, null, region.__jxSentAt);
+  });
+  socket.addEventListener("close", function () {
+    state("closed");
+    if (!region.isConnected || region.__jxSocket !== socket) return;
+    var wait = Math.min(30000, 1000 * Math.pow(2, region.__jxRetry || 0));
+    region.__jxRetry = (region.__jxRetry || 0) + 1;
+    setTimeout(function () { if (region.isConnected) connect(region); }, wait);
+  });
+}
+
+// The socket is the nearest jx-ws region's, or jx-ws-send="#chat" names one.
+function sendOverSocket(el) {
+  var name = el.getAttribute("jx-ws-send");
+  var region = name ? findElement(el, name) : el.closest("[jx-ws]");
+  if (!region || !region.hasAttribute("jx-ws")) throw new Error("[jsonx] jx-ws-send needs a jx-ws region around it, or one named");
+  var message = JSON.stringify(nest(collectValues(el)));
+  if (!fire(el, "jx:beforeSend", { message: message, socket: region.__jxSocket })) return;
+  region.__jxSentAt = performance.now();
+  if (region.__jxSocket && region.__jxSocket.readyState === 1) region.__jxSocket.send(message);
+  else region.__jxQueue.push(message);
 }
 
 // jx-post="fn:addToCart" calls jsonx.functions.addToCart instead of a server.
