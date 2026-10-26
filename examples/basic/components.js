@@ -6,7 +6,7 @@
  */
 
 // Pattern 1: a component that FIRES a custom event and has a `value`.
-// jsonx can listen for that event (jx-trigger="rating-changed") and send
+// jsonx can listen for that event (jx:trigger="rating-changed") and send
 // the value, just like it would for an <input>.
 class StarRating extends HTMLElement {
   constructor() {
@@ -45,7 +45,7 @@ customElements.define("star-rating", StarRating);
 
 
 // Pattern 2: a component that RECEIVES JSON as a property.
-// jx-swap="prop:stats" sets element.stats = data, and the component draws itself.
+// jx:swap="prop:stats" sets element.stats = data, and the component draws itself.
 // No template needed: the component owns its own rendering.
 class TodoStats extends HTMLElement {
   constructor() {

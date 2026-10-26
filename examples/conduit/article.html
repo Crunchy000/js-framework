@@ -6,13 +6,13 @@
   <title>Article — Conduit</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/styles/webawesome.css">
   <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
-  <link rel="stylesheet" href="style.css?v=36">
+  <link rel="stylesheet" href="style.css?v=37">
 
   <!-- Pretend servers: the RealWorld API, and the view API in front of it.
        In real life both run on a server, and these two lines go away. -->
-  <script src="mock-api.js?v=36"></script>
-  <script src="view-api.js?v=36"></script>
-  <script type="module" src="../../jsonx.js?v=36"></script>
+  <script src="mock-api.js?v=37"></script>
+  <script src="view-api.js?v=37"></script>
+  <script type="module" src="../../jsonx.js?v=37"></script>
   <script>if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("wa-dark");</script>
 </head>
 <body>
@@ -20,19 +20,19 @@
 
   <!-- article.html?slug=hello: jsonx fills :slug from the address.
        The view has the article and its comments; every button answers with it again. -->
-  <div id="article" jx-get="/view/article/:slug">
+  <div id="article" jx:get="/view/article/:slug">
     <template>
       <header class="banner dark">
         <h1>{{article.title}}</h1>
-        <template jx-use="#meta"></template>
+        <template jx:use="#meta"></template>
       </header>
 
       <div class="article-body">
         <!-- The body is HTML, cleaned before it's drawn. -->
-        <div class="rich-text" jx-html="{{article.body}}"></div>
+        <div class="rich-text" jx:html="{{article.body}}"></div>
         <div class="wa-cluster wa-gap-2xs"><jx-each items="article.tagList"><wa-tag size="s" appearance="outlined">{{.}}</wa-tag></jx-each></div>
         <hr>
-        <template jx-use="#meta"></template>
+        <template jx:use="#meta"></template>
       </div>
 
       <section id="comments" class="comments wa-stack">
@@ -42,7 +42,7 @@
         <jx-if test="signedIn">
           <div class="wa-stack wa-gap-s">
             <wa-textarea name="comment" placeholder="Write a comment..." rows="3" value="{{draft}}"></wa-textarea>
-            <div><wa-button variant="success" jx-post="/view/article/{{article.slug}}/comments">Post comment</wa-button></div>
+            <div><wa-button variant="success" jx:post="/view/article/{{article.slug}}/comments">Post comment</wa-button></div>
           </div>
         </jx-if>
         <jx-else>
@@ -53,10 +53,10 @@
           <wa-card>
             <p>{{body}}</p>
             <div slot="footer" class="wa-split">
-              <template jx-use="#author"></template>
+              <template jx:use="#author"></template>
               <jx-if test="mine">
                 <wa-button size="s" appearance="plain" variant="danger" label="Delete comment"
-                           jx-delete="/view/article/{{article.slug}}/comments/{{id}}"><wa-icon name="trash"></wa-icon></wa-button>
+                           jx:delete="/view/article/{{article.slug}}/comments/{{id}}"><wa-icon name="trash"></wa-icon></wa-button>
               </jx-if>
             </div>
           </wa-card>
@@ -75,15 +75,15 @@
       <jx-if test="article.mine">
         <div class="wa-cluster wa-gap-xs">
           <wa-button size="s" appearance="outlined" href="{{article.editUrl}}"><wa-icon slot="start" name="pen"></wa-icon>Edit article</wa-button>
-          <wa-button size="s" variant="danger" appearance="outlined" jx-delete="/view/article/{{article.slug}}"
-                     jx-swap="none" jx-then="index.html"><wa-icon slot="start" name="trash"></wa-icon>Delete article</wa-button>
+          <wa-button size="s" variant="danger" appearance="outlined" jx:delete="/view/article/{{article.slug}}"
+                     jx:swap="none" jx:then="index.html"><wa-icon slot="start" name="trash"></wa-icon>Delete article</wa-button>
         </div>
       </jx-if>
       <jx-else>
         <div class="wa-cluster wa-gap-xs">
-          <wa-button size="s" appearance="{{article.author.followAppearance}}" jx-post="/view/article/{{article.slug}}/follow">
+          <wa-button size="s" appearance="{{article.author.followAppearance}}" jx:post="/view/article/{{article.slug}}/follow">
             <wa-icon slot="start" name="user-plus"></wa-icon>{{article.author.followLabel}}</wa-button>
-          <wa-button size="s" variant="success" appearance="{{article.favoriteAppearance}}" jx-post="/view/article/{{article.slug}}/favorite">
+          <wa-button size="s" variant="success" appearance="{{article.favoriteAppearance}}" jx:post="/view/article/{{article.slug}}/favorite">
             <wa-icon slot="start" name="heart"></wa-icon>{{article.favoriteLabel}}</wa-button>
         </div>
       </jx-else>

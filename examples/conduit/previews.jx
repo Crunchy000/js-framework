@@ -9,6 +9,6 @@
     <p class="empty">No articles are here... yet.</p>
   </jx-if>
   <jx-each items="articles">
-    <article-preview article="{{.}}" jx-post="{{favoriteUrl}}" jx-trigger="favorite"></article-preview>
+    <article-preview article="{{.}}" jx:post="{{favoriteUrl}}" jx:trigger="favorite"></article-preview>
   </jx-each>
 </template>

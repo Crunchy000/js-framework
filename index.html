@@ -23,12 +23,12 @@
       <p class="wa-body-l">A tiny htmx-style framework for JSON APIs. Your server sends JSON shaped for the page, a plain HTML template draws it in the browser, and only what changed is updated. It plays nicely with web components.</p>
     </header>
 
-<pre><code>&lt;wa-card jx-get="api/todos"&gt;
+<pre><code>&lt;wa-card jx:get="api/todos"&gt;
   &lt;template&gt;
     &lt;ul&gt;
       &lt;jx-each items="todos"&gt;
         &lt;li class:done="{{done}}"&gt;
-          &lt;wa-checkbox checked="{{done}}" jx-post="api/todos/{{id}}/toggle"&gt;{{title}}&lt;/wa-checkbox&gt;
+          &lt;wa-checkbox checked="{{done}}" jx:post="api/todos/{{id}}/toggle"&gt;{{title}}&lt;/wa-checkbox&gt;
         &lt;/li&gt;
       &lt;/jx-each&gt;
     &lt;/ul&gt;

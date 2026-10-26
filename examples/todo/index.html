@@ -10,8 +10,8 @@
   <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
 
   <!-- A pretend JSON server (remove it when you have a real one), then jsonx -->
-  <script src="mock-api.js?v=36"></script>
-  <script type="module" src="../../jsonx.js?v=36"></script>
+  <script src="mock-api.js?v=37"></script>
+  <script type="module" src="../../jsonx.js?v=37"></script>
 
   <!-- Follow the visitor's light/dark setting -->
   <script>
@@ -49,7 +49,7 @@
 
     <!--
       This card is the whole app. It's a "region": it has a <template> inside, so it
-      loads its view when the page opens (jx-get), and every button inside it calls
+      loads its view when the page opens (jx:get), and every button inside it calls
       the API and redraws it. The view looks like:
 
         { filter, filters: [{ name, label, variant, appearance }],
@@ -59,7 +59,7 @@
       Template rules: {{name}} prints a value, <jx-each> repeats what's inside it,
       <jx-if> / <jx-else> show or hide it, and class:done="{{done}}" toggles a class.
     -->
-    <wa-card id="app" jx-get="api/todos">
+    <wa-card id="app" jx:get="api/todos">
       <wa-skeleton effect="sheen"></wa-skeleton>
 
       <template>
@@ -70,8 +70,8 @@
           <!-- Add: click the button, or press Enter in the input -->
           <div class="add wa-cluster wa-gap-s">
             <wa-input name="title" value="{{draft}}" placeholder="What needs doing?" aria-label="New todo"
-                      autocomplete="off" autofocus jx-post="api/todos" jx-trigger="keydown[key=Enter]"></wa-input>
-            <wa-button variant="brand" jx-post="api/todos">
+                      autocomplete="off" autofocus jx:post="api/todos" jx:trigger="keydown[key=Enter]"></wa-input>
+            <wa-button variant="brand" jx:post="api/todos">
               <wa-icon slot="start" name="plus"></wa-icon>
               Add
             </wa-button>
@@ -86,22 +86,22 @@
 
           <div class="wa-split">
             <wa-button-group label="Filter">
-              <!-- jx-vals overrides the hidden filter for this one request -->
+              <!-- jx:vals overrides the hidden filter for this one request -->
               <jx-each items="filters">
                 <wa-button size="s" variant="{{variant}}" appearance="{{appearance}}"
-                           jx-get="api/todos" jx-vals="filter=name">{{label}}</wa-button>
+                           jx:get="api/todos" jx:vals="filter=name">{{label}}</wa-button>
               </jx-each>
             </wa-button-group>
 
-            <wa-button size="s" appearance="plain" jx-delete="api/todos/completed">Clear completed</wa-button>
+            <wa-button size="s" appearance="plain" jx:delete="api/todos/completed">Clear completed</wa-button>
           </div>
 
           <ul class="todos">
             <jx-each items="todos">
               <li class:done="{{done}}">
                 <!-- A form control, so its default trigger is "change" -->
-                <wa-checkbox checked="{{done}}" jx-post="api/todos/{{id}}/toggle">{{title}}</wa-checkbox>
-                <wa-button size="s" appearance="plain" variant="danger" jx-delete="api/todos/{{id}}">
+                <wa-checkbox checked="{{done}}" jx:post="api/todos/{{id}}/toggle">{{title}}</wa-checkbox>
+                <wa-button size="s" appearance="plain" variant="danger" jx:delete="api/todos/{{id}}">
                   <wa-icon name="trash" label="Delete {{title}}"></wa-icon>
                 </wa-button>
               </li>

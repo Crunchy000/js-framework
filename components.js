@@ -1,10 +1,10 @@
 /*
  * components.js — web components written as jsonx templates.
  *
- *   <template jx-component="user-card" props="name role avatar">
+ *   <template jx:component="user-card" props="name role avatar">
  *     <style>:host { display: block; }</style>
  *     <strong>{{name}}</strong> {{role}}
- *     <button jx-emit="pick">Choose</button>
+ *     <button jx:emit="pick">Choose</button>
  *   </template>
  *
  * defines <user-card> as a LitElement:
@@ -14,7 +14,7 @@
  *     property, so objects and lists can be passed in.
  *   - the template draws the props, in shadow DOM, so its <style> stays inside
  *     and <slot> works.
- *   - jx-emit="pick" fires a "pick" event from the component when clicked, with
+ *   - jx:emit="pick" fires a "pick" event from the component when clicked, with
  *     the current item as event.detail. The page decides what happens.
  *   - jx- attributes inside work as usual (jsonx processes the shadow root).
  *
@@ -66,9 +66,9 @@ export var instances = new Set();
 
 // `tools` is { compileView, process, bindProps, scopeValue, scopeGet, fingerprint } from jsonx.
 export function defineComponent(template, tools) {
-  var tag = template.getAttribute("jx-component");
+  var tag = template.getAttribute("jx:component");
   if (customElements.get(tag)) return;
-  if (tag.indexOf("-") === -1) throw new Error('[jsonx] jx-component="' + tag + '" needs a dash in its name, like "user-card"');
+  if (tag.indexOf("-") === -1) throw new Error('[jsonx] jx:component="' + tag + '" needs a dash in its name, like "user-card"');
 
   var types = {};
   var props = (template.getAttribute("props") || "").split(/[\s,]+/).filter(Boolean).map(function (spec) {
@@ -105,7 +105,7 @@ export function defineComponent(template, tools) {
       return instance;
     };
   }
-  // <template jx-component="star-rating" form>: a form field. Its value is
+  // <template jx:component="star-rating" form>: a form field. Its value is
   // the view's `value`, and forms and jsonx send it under the element's name.
   var isField = template.hasAttribute("form");
 
@@ -121,7 +121,7 @@ export function defineComponent(template, tools) {
     static get formAssociated() { return isField; }
 
     // A component from a .jx file with a module carries that file's scope,
-    // so fn: and jx-data inside it find the module's exports.
+    // so fn: and jx:data inside it find the module's exports.
     constructor() {
       super();
       if (template.__jxScope) this.__jxScope = template.__jxScope;
@@ -213,11 +213,11 @@ export function defineComponent(template, tools) {
     updated() {
       introduce(this.renderRoot);
       var instance = this.__jxInstance;
-      // jx-ref="input": refs.input in the script is that element.
+      // jx:ref="input": refs.input in the script is that element.
       if (instance) {
         var refs = instance.refs;
         Object.keys(refs).forEach(function (key) { delete refs[key]; });
-        this.renderRoot.querySelectorAll("[jx-ref]").forEach(function (el) { refs[el.getAttribute("jx-ref")] = el; });
+        this.renderRoot.querySelectorAll("[jx\\:ref]").forEach(function (el) { refs[el.getAttribute("jx:ref")] = el; });
       }
       if (this.internals && this.__jxView) this.internals.setFormValue(this.__jxView.value == null ? "" : String(this.__jxView.value));
       this.__jxHook("rendered");
@@ -260,12 +260,12 @@ export function defineComponent(template, tools) {
 //   </script>
 //
 // Its top-level names (let, const, var, function, class) are what the
-// template and fn: see, with no exports to write. Inside a jx-component
+// template and fn: see, with no exports to write. Inside a jx:component
 // template, it runs once for each element, and the component's props are
 // variables in it too. At the top of a file, it runs once and is shared.
 
 // Inside a component's script, `el` is the element, `props` its props, and
-// `refs` the elements marked jx-ref="name" (filled after each draw). Functions
+// `refs` the elements marked jx:ref="name" (filled after each draw). Functions
 // named connected, disconnected and rendered run at those moments.
 
 // The names a script declares at its top level, and how: "let", "const"...

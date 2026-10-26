@@ -65,7 +65,7 @@
       };
     }
   </script>
-  <script type="module" src="../../jsonx.js?v=36"></script>
+  <script type="module" src="../../jsonx.js?v=37"></script>
 
   <style>
     :root { --bg: #fafafa; --panel: #fff; --text: #18181b; --muted: #71717a; --line: #e4e4e7; --head: #f4f4f5; --accent: #4f46e5; }
@@ -102,8 +102,8 @@
     <h1>People</h1>
     <p class="intro">10,000 rows with search, sort and infinite scroll, built with <a href="../../">jsonx</a>. One plain function, <code>people()</code>, returns each slice, and only new rows are drawn as you scroll. <a href="https://github.com/crunchy000/js-framework/blob/main/examples/data-table/index.html">Source</a></p>
 
-    <!-- The region. jx-push-url keeps the search and sort in the address bar. -->
-    <div jx-get="fn:people?q=:q&sort=:sort&dir=:dir" jx-push-url="q sort dir">
+    <!-- The region. jx:push-url keeps the search and sort in the address bar. -->
+    <div jx:get="fn:people?q=:q&sort=:sort&dir=:dir" jx:push-url="q sort dir">
       <p class="more">Loading…</p>
       <template>
         <input type="hidden" name="sort" value="{{sort}}">
@@ -113,7 +113,7 @@
         <div class="bar">
           <!-- A new search starts again from the top. -->
           <input type="search" name="q" value="{{q}}" placeholder="Search names, teams and cities" aria-label="Search"
-                 jx-get="fn:people" jx-trigger="input delay:250ms" jx-vals='{"limit": 50}'>
+                 jx:get="fn:people" jx:trigger="input delay:250ms" jx:vals='{"limit": 50}'>
           <span class="count">Showing {{shown}} of {{total}}</span>
         </div>
 
@@ -121,13 +121,13 @@
           <table>
             <thead>
               <tr>
-                <th jx-each="columns">
-                  <button jx-get="fn:people" jx-vals='{"sort": "{{key}}", "dir": "{{next}}", "limit": 50}'>{{label}} {{arrow}}</button>
+                <th jx:each="columns">
+                  <button jx:get="fn:people" jx:vals='{"sort": "{{key}}", "dir": "{{next}}", "limit": 50}'>{{label}} {{arrow}}</button>
                 </th>
               </tr>
             </thead>
             <tbody>
-              <tr jx-each="rows">
+              <tr jx:each="rows">
                 <td>{{name}}</td>
                 <td>{{team}}</td>
                 <td>{{city}}</td>
@@ -138,7 +138,7 @@
 
           <!-- Infinite scroll: when this comes into view, ask for 50 more. -->
           <jx-if test="more">
-            <p class="more" jx-get="fn:people" jx-trigger="revealed" jx-vals='{"limit": {{nextLimit}}}'>Loading more…</p>
+            <p class="more" jx:get="fn:people" jx:trigger="revealed" jx:vals='{"limit": {{nextLimit}}}'>Loading more…</p>
           </jx-if>
           <jx-else-if test="!total">
             <p class="empty">No one matches "{{q}}".</p>

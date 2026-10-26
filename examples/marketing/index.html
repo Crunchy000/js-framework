@@ -6,20 +6,20 @@
   <title>Beacon — status pages for small teams</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/styles/webawesome.css">
   <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
-  <link rel="stylesheet" href="style.css?v=36">
+  <link rel="stylesheet" href="style.css?v=37">
 
   <!-- Pretend servers: a Contentful-style CMS, and the view API in front of it.
        In real life both are on a server, and these two lines go away. -->
-  <script src="cms-api.js?v=36"></script>
-  <script src="view-api.js?v=36"></script>
-  <script type="module" src="../../jsonx.js?v=36"></script>
+  <script src="cms-api.js?v=37"></script>
+  <script src="view-api.js?v=37"></script>
+  <script type="module" src="../../jsonx.js?v=37"></script>
   <script>if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("wa-dark");</script>
 </head>
 <body>
   <!-- The whole site is this one page. ?page=pricing, ?page=blog and ?post=... pick
        what to show; the CMS decides which sections it has, and in what order.
        This file only says how each kind of section looks. -->
-  <div jx-get="/view/page?slug=:page&amp;post=:post">
+  <div jx:get="/view/page?slug=:page&amp;post=:post">
     <div class="loading"><wa-spinner></wa-spinner></div>
     <template>
       <header class="site-nav">
@@ -123,7 +123,7 @@
                 <h2>{{heading}}</h2>
                 <jx-each items="questions">
                   <wa-details summary="{{question}}">
-                    <template jx-use="#rich-text"></template>
+                    <template jx:use="#rich-text"></template>
                   </wa-details>
                 </jx-each>
               </div>
@@ -152,7 +152,7 @@
                 <p><a href="index.html?page=blog">← All posts</a></p>
                 <h1>{{title}}</h1>
                 <p class="byline">{{date}} · {{author}}</p>
-                <template jx-use="#rich-text"></template>
+                <template jx:use="#rich-text"></template>
                 <div class="wa-cluster wa-gap-2xs"><jx-each items="tags"><wa-tag size="s">{{.}}</wa-tag></jx-each></div>
               </div>
             </article>
@@ -164,13 +164,13 @@
                 <h2>{{heading}}</h2>
                 <p>{{body}}</p>
                 <!-- The form is its own small region: posting it only redraws the form. -->
-                <div class="signup-form" jx-region>
+                <div class="signup-form" jx:region>
                   <template>
                     <jx-if test="!done">
                       <div class="wa-cluster wa-gap-xs wa-align-items-end">
                         <wa-input name="email" type="email" placeholder="you@company.com" label="Email" hint="{{fieldErrors.email}}"
-                                  jx-post="/view/signup" jx-trigger="keydown[key=Enter]"></wa-input>
-                        <wa-button variant="brand" jx-post="/view/signup">Subscribe</wa-button>
+                                  jx:post="/view/signup" jx:trigger="keydown[key=Enter]"></wa-input>
+                        <wa-button variant="brand" jx:post="/view/signup">Subscribe</wa-button>
                       </div>
                     </jx-if>
                     <jx-else>
@@ -212,10 +212,10 @@
           <h2>{{text}}</h2>
         </jx-each>
         <jx-each items="p">
-          <p><template jx-use="#parts"></template></p>
+          <p><template jx:use="#parts"></template></p>
         </jx-each>
         <jx-each items="ul">
-          <ul><jx-each items="items"><li><template jx-use="#parts"></template></li></jx-each></ul>
+          <ul><jx-each items="items"><li><template jx:use="#parts"></template></li></jx-each></ul>
         </jx-each>
       </div>
     </jx-each>

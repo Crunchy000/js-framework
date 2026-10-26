@@ -15,8 +15,8 @@
  *        <jx-else-if test="!todos">…</jx-else-if>   `!` means falsy or empty list
  *        <jx-else>…</jx-else>
  *      Inside <table> and <select> the browser moves unknown tags away, so
- *      there you put the logic on the element instead: <tr jx-each="rows">,
- *      <option jx-if="x">, jx-else-if="y", jx-else.
+ *      there you put the logic on the element instead: <tr jx:each="rows">,
+ *      <option jx:if="x">, jx:else-if="y", jx:else.
  *
  *   3. Attributes are smart. When an attribute's whole value is one {{name}}:
  *        - if the element has a property with that name (value, checked, ...),
@@ -26,10 +26,10 @@
  *
  *   4. class:done="{{done}}" turns the class "done" on or off.
  *
- *   jx-vals="id product" sends the values named, as JSON: {"id": 3, "product": "Tea"}.
+ *   jx:vals="id product" sends the values named, as JSON: {"id": 3, "product": "Tea"}.
  *   A dotted name sends its last part (todo.id as "id"), and id=todo.id renames.
  *
- *   Reuse another template with <template jx-use="#todo-item"></template>.
+ *   Reuse another template with <template jx:use="#todo-item"></template>.
  *
  * How it works: we walk the template's HTML once and write it back out as a Lit
  * template, with a "hole" wherever a value goes. Lit then updates only those
@@ -141,7 +141,7 @@ class SmartAttribute extends Directive {
 }
 var smartAttribute = directive(SmartAttribute);
 
-// jx-emit: the element keeps the item it was drawn for, as el.__jxItem.
+// jx:emit: the element keeps the item it was drawn for, as el.__jxItem.
 class EmitItem extends Directive {
   update(part, [item]) {
     part.element.__jxItem = item;
@@ -151,12 +151,12 @@ class EmitItem extends Directive {
 }
 var emitItem = directive(EmitItem);
 
-// jx-markdown="{{article.body}}" and jx-html="{{bodyHtml}}" draw text as
+// jx:markdown="{{article.body}}" and jx:html="{{bodyHtml}}" draw text as
 // Markdown or HTML, inside that element. Everything is cleaned with DOMPurify
 // first: no scripts, no onclick=, no javascript: links. Anything jsonx would
 // act on is removed too (jx- attributes, templates, forms), so the text can't
 // make requests. Each library loads the first time a page needs it: a page
-// with only jx-html never loads marked.
+// with only jx:html never loads marked.
 var libraries = {};
 var LIBRARIES = {
   purify: ["./vendor/dompurify/purify.js", function (m) { return m.default; }],
@@ -359,12 +359,12 @@ function compileNodes(nodes, ctx) {
 // The logic tags, and the attribute forms kept for tables and selects (where
 // the browser's HTML parser moves unknown tags out of the way).
 function isIf(node) {
-  return node.nodeType === Node.ELEMENT_NODE && (node.localName === "jx-if" || node.hasAttribute("jx-if"));
+  return node.nodeType === Node.ELEMENT_NODE && (node.localName === "jx-if" || node.hasAttribute("jx:if"));
 }
 function isElse(node) {
   return node.nodeType === Node.ELEMENT_NODE &&
     (node.localName === "jx-else-if" || node.localName === "jx-else" ||
-     node.hasAttribute("jx-else-if") || node.hasAttribute("jx-else"));
+     node.hasAttribute("jx:else-if") || node.hasAttribute("jx:else"));
 }
 function isBlank(node) {
   return node.nodeType === Node.COMMENT_NODE || (node.nodeType === Node.TEXT_NODE && !node.nodeValue.trim());
@@ -380,8 +380,8 @@ function branch(node, ctx) {
     return { test: test === null ? null : condition(test), render: compileNodes(node.childNodes, ctx) };
   }
   var copy = node.cloneNode(true);
-  var attrTest = copy.hasAttribute("jx-else") ? null : (copy.getAttribute("jx-if") ?? copy.getAttribute("jx-else-if"));
-  ["jx-if", "jx-else-if", "jx-else"].forEach(function (a) { copy.removeAttribute(a); });
+  var attrTest = copy.hasAttribute("jx:else") ? null : (copy.getAttribute("jx:if") ?? copy.getAttribute("jx:else-if"));
+  ["jx:if", "jx:else-if", "jx:else"].forEach(function (a) { copy.removeAttribute(a); });
   return { test: attrTest === null ? null : condition(attrTest), render: compileNodes([copy], ctx) };
 }
 
@@ -442,9 +442,9 @@ function compileNode(node, b, ctx) {
   if (node.nodeType === Node.COMMENT_NODE) return; // comments are dropped
   if (node.nodeType !== Node.ELEMENT_NODE) return;
 
-  // <template jx-use="#todo-item">: render another template here.
-  if (node.localName === "template" && node.hasAttribute("jx-use")) {
-    var selector = node.getAttribute("jx-use");
+  // <template jx:use="#todo-item">: render another template here.
+  if (node.localName === "template" && node.hasAttribute("jx:use")) {
+    var selector = node.getAttribute("jx:use");
     b.hole(function (stack) { return ctx.partial(selector)(stack); });
     return;
   }
@@ -457,11 +457,11 @@ function compileNode(node, b, ctx) {
     return;
   }
 
-  // The attribute form, for tables and selects: <tr jx-each="rows">.
-  var each = node.getAttribute("jx-each");
+  // The attribute form, for tables and selects: <tr jx:each="rows">.
+  var each = node.getAttribute("jx:each");
   if (each !== null) {
     var copy = node.cloneNode(true);
-    copy.removeAttribute("jx-each");
+    copy.removeAttribute("jx:each");
     b.hole(eachHole(each, compileNodes([copy], ctx)));
     return;
   }
@@ -489,17 +489,17 @@ function compileElement(node, b, ctx) {
     return;
   }
 
-  // jx-emit="pick" remembers the current item, so the event can carry it.
-  if (node.hasAttribute("jx-emit")) {
-    b.add(" jx-emit-item=");
+  // jx:emit="pick" remembers the current item, so the event can carry it.
+  if (node.hasAttribute("jx:emit")) {
+    b.add(" jx:emit-item=");
     b.hole(function (stack) { return emitItem(stack[stack.length - 1]); });
   }
 
   b.add(">");
   if (VOID.test(tag)) return;
 
-  // jx-markdown and jx-html own the element's content (anything inside is ignored).
-  if (node.hasAttribute("jx-markdown") || node.hasAttribute("jx-html")) {
+  // jx:markdown and jx:html own the element's content (anything inside is ignored).
+  if (node.hasAttribute("jx:markdown") || node.hasAttribute("jx:html")) {
     b.add("</" + tag + ">");
     return;
   }
@@ -535,10 +535,10 @@ function compileText(value, b) {
 function compileAttribute(name, value, b) {
   var whole = value.trim().match(WHOLE);
 
-  // jx-markdown="{{body}}", jx-html="{{body}}": the element's content.
-  if (name === "jx-markdown" || name === "jx-html") {
+  // jx:markdown="{{body}}", jx:html="{{body}}": the element's content.
+  if (name === "jx:markdown" || name === "jx:html") {
     if (!whole) throw new Error('[jsonx] ' + name + '="…" must be exactly one {{name}}');
-    var kind = name === "jx-markdown" ? "markdown" : "html";
+    var kind = name === "jx:markdown" ? "markdown" : "html";
     loadLibraries(kind); // start now, so they're likely ready by the first draw
     var richPath = path(whole[1]);
     b.add(" " + name + "=");
@@ -546,15 +546,15 @@ function compileAttribute(name, value, b) {
     return;
   }
 
-  // jx-vals="id product" sends those values by name, as they are (a number
-  // stays a number). The JSON form, jx-vals='{"id": {{id}}}', still works.
-  if (name === "jx-vals" && /^\s*[\w$][\w$.=\s]*$/.test(value)) {
+  // jx:vals="id product" sends those values by name, as they are (a number
+  // stays a number). The JSON form, jx:vals='{"id": {{id}}}', still works.
+  if (name === "jx:vals" && /^\s*[\w$][\w$.=\s]*$/.test(value)) {
     var picks = value.trim().split(/\s+/).map(function (item) {
       var pair = item.split("=");
       var from = pair[1] || pair[0];
       return { key: pair[1] ? pair[0] : from.split(".").pop(), path: path(from) };
     });
-    b.add(" jx-vals=");
+    b.add(" jx:vals=");
     b.hole(function (stack) {
       var picked = {};
       picks.forEach(function (pick) { picked[pick.key] = lookup(stack, pick.path); });
@@ -605,7 +605,7 @@ function compileAttribute(name, value, b) {
 // ---------------------------------------------------------------------------
 
 // Compiles a <template> element. `find(selector)` returns another <template>,
-// for jx-use. Returns renderInto(data, target).
+// for jx:use. Returns renderInto(data, target).
 // Compiles a <template> to view(data) -> a Lit TemplateResult, for code that
 // renders with Lit itself (jsonx components are LitElements).
 export function compileView(templateElement, find) {
@@ -619,7 +619,7 @@ function compileParts(templateElement, find) {
     partial: function (selector) {
       if (!partials[selector]) {
         var other = find(selector);
-        if (!other) throw new Error('[jsonx] jx-use "' + selector + '" matched nothing');
+        if (!other) throw new Error('[jsonx] jx:use "' + selector + '" matched nothing');
         partials[selector] = compileNodes(Array.from(other.content.childNodes), ctx);
       }
       return partials[selector];

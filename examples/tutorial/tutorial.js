@@ -118,9 +118,9 @@
     var source = event.detail.source;
     var request = pending.get(source);
     pending.delete(source);
-    var entry = request || (source.hasAttribute && source.hasAttribute("jx-data")
-      ? { method: "—", url: "the variable " + source.getAttribute("jx-data") + " (jx-data)" }
-      : { method: "—", url: "no request (jx-region draws with an empty view)" });
+    var entry = request || (source.hasAttribute && source.hasAttribute("jx:data")
+      ? { method: "—", url: "the variable " + source.getAttribute("jx:data") + " (jx:data)" }
+      : { method: "—", url: "no request (jx:region draws with an empty view)" });
     entry.data = event.detail.data;
     entry.target = event.detail.target;
     // Wait a moment so the panel shows the view as it was drawn.

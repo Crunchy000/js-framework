@@ -4,7 +4,7 @@
  *   <rich-editor name="body" value="{{article.body}}" upload="/api/uploads"></rich-editor>
  *
  * Its value is HTML, so jsonx sends it like any other field. The page that shows
- * the article draws it with jx-html, which cleans it first.
+ * the article draws it with jx:html, which cleans it first.
  *
  * Images are uploaded, not linked: the image button, pasting or dropping a file
  * POSTs it to the upload address as form data (field "file"). The server

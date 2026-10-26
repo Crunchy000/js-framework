@@ -71,7 +71,7 @@
     button { font: inherit; padding: 10px 16px; border-radius: 10px; border: 1px solid var(--line, #ddd); background: var(--panel, #fff); color: inherit; cursor: pointer; text-transform: capitalize; }
     button:hover { border-color: var(--accent, #4f46e5); }
   </style>
-  <button on:click="add" jx-vals="product">Add {{product}}</button>
+  <button on:click="add" jx:vals="product">Add {{product}}</button>
 </template>
 
 <!-- <cart-list>: the whole cart, its props from the module. Rows are keyed by
@@ -91,9 +91,9 @@
   <jx-if test="ordered"><p class="done">{{ordered}}</p></jx-if>
   <jx-if test="items">
     <ul>
-      <li jx-each="items">
+      <li jx:each="items">
         <span>{{name}} × {{qty}} <small>{{price}} each</small></span>
-        <button on:click="remove" jx-vals="id" aria-label="Remove {{name}}">✕</button>
+        <button on:click="remove" jx:vals="id" aria-label="Remove {{name}}">✕</button>
       </li>
     </ul>
     <p class="total"><span>Total</span> <strong>{{total}}</strong></p>

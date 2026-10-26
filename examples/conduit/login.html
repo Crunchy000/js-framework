@@ -6,13 +6,13 @@
   <title>Sign in — Conduit</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/styles/webawesome.css">
   <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
-  <link rel="stylesheet" href="style.css?v=36">
+  <link rel="stylesheet" href="style.css?v=37">
 
   <!-- Pretend servers: the RealWorld API, and the view API in front of it.
        In real life both run on a server, and these two lines go away. -->
-  <script src="mock-api.js?v=36"></script>
-  <script src="view-api.js?v=36"></script>
-  <script type="module" src="../../jsonx.js?v=36"></script>
+  <script src="mock-api.js?v=37"></script>
+  <script src="view-api.js?v=37"></script>
+  <script type="module" src="../../jsonx.js?v=37"></script>
   <script>if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("wa-dark");</script>
 </head>
 <body>
@@ -22,8 +22,8 @@
     <h1>Sign in</h1>
     <p class="switch"><a href="register.html">Need an account?</a> Or try <code>demo@conduit.dev</code> / <code>password123</code>.</p>
 
-    <!-- Nothing to load, so it's a jx-region: it just draws its template. -->
-    <div class="wa-stack" jx-region>
+    <!-- Nothing to load, so it's a jx:region: it just draws its template. -->
+    <div class="wa-stack" jx:region>
       <template>
         <jx-if test="error">
           <wa-callout variant="danger">
@@ -32,8 +32,8 @@
         </jx-if>
         <wa-input name="email" type="email" placeholder="Email" size="l" autofocus></wa-input>
         <wa-input name="password" type="password" placeholder="Password" size="l" password-toggle
-                  jx-post="/view/login" jx-trigger="keydown[key=Enter]" jx-swap="none" jx-then="index.html"></wa-input>
-        <div><wa-button variant="success" size="l" jx-post="/view/login" jx-swap="none" jx-then="index.html">Sign in</wa-button></div>
+                  jx:post="/view/login" jx:trigger="keydown[key=Enter]" jx:swap="none" jx:then="index.html"></wa-input>
+        <div><wa-button variant="success" size="l" jx:post="/view/login" jx:swap="none" jx:then="index.html">Sign in</wa-button></div>
       </template>
     </div>
   </main>

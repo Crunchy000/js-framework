@@ -72,7 +72,7 @@
       show(value);
       el.dispatchEvent(new Event("change", { bubbles: true })); // like an <input>
     }
-    // jx-ref="stars" in the template: refs.stars is that element.
+    // jx:ref="stars" in the template: refs.stars is that element.
     function rendered() { refs.stars.setAttribute("aria-valuenow", value); }
   </script>
   <style>
@@ -80,8 +80,8 @@
     button { font-size: 26px; line-height: 1; padding: 2px; border: 0; background: none; cursor: pointer; color: #d4d4d8; }
     button.on { color: #f59e0b; }
   </style>
-  <span jx-ref="stars" role="slider" aria-valuemin="0" aria-valuemax="5" aria-label="Rating">
-    <button jx-each="stars" class:on="{{on}}" on:click="pick" jx-vals="n" aria-label="{{n}} stars">★</button>
+  <span jx:ref="stars" role="slider" aria-valuemin="0" aria-valuemax="5" aria-label="Rating">
+    <button jx:each="stars" class:on="{{on}}" on:click="pick" jx:vals="n" aria-label="{{n}} stars">★</button>
   </span>
 </template>
 

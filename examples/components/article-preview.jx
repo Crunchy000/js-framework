@@ -6,7 +6,7 @@
                   date, author: { username, image } }
 
      The heart button fires a "favorite" event. The component doesn't know what
-     favouriting means: the page that uses it decides, with jx-trigger="favorite". -->
+     favouriting means: the page that uses it decides, with jx:trigger="favorite". -->
 <template id="article-preview" props="article">
   <style>
     :host { display: block; padding: var(--wa-space-l) 0; border-bottom: var(--wa-border-width-s) solid var(--wa-color-surface-border); }
@@ -29,12 +29,12 @@
         <span><strong>{{author.username}}</strong><br><small>{{date}}</small></span>
       </a>
       <jx-if test="favorited">
-        <wa-button size="s" variant="success" jx-emit="favorite">
+        <wa-button size="s" variant="success" jx:emit="favorite">
           <wa-icon slot="start" name="heart"></wa-icon>{{favoritesCount}}
         </wa-button>
       </jx-if>
       <jx-else>
-        <wa-button size="s" variant="success" appearance="outlined" jx-emit="favorite">
+        <wa-button size="s" variant="success" appearance="outlined" jx:emit="favorite">
           <wa-icon slot="start" name="heart" variant="regular"></wa-icon>{{favoritesCount}}
         </wa-button>
       </jx-else>

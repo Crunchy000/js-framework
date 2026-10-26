@@ -6,20 +6,20 @@
   <title>Profile — Conduit</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/styles/webawesome.css">
   <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
-  <link rel="stylesheet" href="../conduit/style.css?v=36">
+  <link rel="stylesheet" href="../conduit/style.css?v=37">
 
   <!-- A pretend RealWorld API (the same one the other Conduits use) -->
-  <script src="../conduit/mock-api.js?v=36"></script>
+  <script src="../conduit/mock-api.js?v=37"></script>
   <!-- The views: plain functions that pages call with fn:name -->
-  <script src="views.js?v=36"></script>
-  <script type="module" src="../../jsonx.js?v=36"></script>
+  <script src="views.js?v=37"></script>
+  <script type="module" src="../../jsonx.js?v=37"></script>
   <script>if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("wa-dark");</script>
 </head>
 <body>
   <template src="nav.jx"></template>
 
   <!-- profile.html?username=ada. One region: the profile, its tabs and its articles. -->
-  <div jx-get="fn:profile?username=:username&tab=:tab&page=:page" jx-push-url="tab page">
+  <div jx:get="fn:profile?username=:username&tab=:tab&page=:page" jx:push-url="tab page">
     <template>
       <input type="hidden" name="tab" value="{{tab}}">
       <input type="hidden" name="page" value="{{page}}">
@@ -32,7 +32,7 @@
           <wa-button size="s" appearance="outlined" href="settings.html"><wa-icon slot="start" name="gear"></wa-icon>Edit profile settings</wa-button>
         </jx-if>
         <jx-else>
-          <wa-button size="s" appearance="{{profile.followAppearance}}" jx-post="fn:followProfile?username={{profile.username}}">
+          <wa-button size="s" appearance="{{profile.followAppearance}}" jx:post="fn:followProfile?username={{profile.username}}">
             <wa-icon slot="start" name="user-plus"></wa-icon>{{profile.followLabel}}</wa-button>
         </jx-else>
       </div>
@@ -44,15 +44,15 @@
         <div class="tabs">
           <jx-each items="tabs">
             <wa-button appearance="plain" class:active="{{active}}"
-                       jx-get="fn:profile?username={{profile.username}}" jx-vals='{"tab": "{{name}}", "page": 1}'>{{label}}</wa-button>
+                       jx:get="fn:profile?username={{profile.username}}" jx:vals='{"tab": "{{name}}", "page": 1}'>{{label}}</wa-button>
           </jx-each>
         </div>
-        <template jx-use="#previews"></template>
+        <template jx:use="#previews"></template>
         <jx-if test="pages">
           <div class="pages wa-cluster wa-gap-2xs">
             <jx-each items="pages">
               <wa-button size="s" appearance="outlined" class:current="{{current}}"
-                         jx-get="fn:profile?username={{profile.username}}" jx-vals='{"page": {{number}}}'>{{number}}</wa-button>
+                         jx:get="fn:profile?username={{profile.username}}" jx:vals='{"page": {{number}}}'>{{number}}</wa-button>
             </jx-each>
           </div>
         </jx-if>

@@ -1,7 +1,7 @@
 <!-- nav.jx: the navigation bar, shared by every page with <template src="nav.jx">.
-     It's a template with its own jx-get, so it loads and draws itself. -->
+     It's a template with its own jx:get, so it loads and draws itself. -->
 <header class="conduit-nav">
-  <template jx-get="/view/nav">
+  <template jx:get="/view/nav">
     <nav class="wa-split">
       <a class="brand" href="index.html">conduit</a>
       <div class="wa-cluster wa-gap-l">

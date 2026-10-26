@@ -3,7 +3,7 @@
 <script type="text/graphql" id="nav-query">query Nav { viewer { username } }</script>
 
 <header class="conduit-nav">
-  <template jx-query="#nav-query">
+  <template jx:query="#nav-query">
     <nav class="wa-split">
       <a class="brand" href="index.html">conduit <small>graphql</small></a>
       <div class="wa-cluster wa-gap-l">

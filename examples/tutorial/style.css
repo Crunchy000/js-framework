@@ -87,8 +87,8 @@ pre.code { margin: 0; padding: 14px 16px; background: var(--code-bg); border: 1p
 .jx-loading { opacity: .55; transition: opacity .1s; }
 
 /* "Outline regions": every element with a template gets a dashed border and a label. */
-.show-regions [jx-template]:not(button):not(jx-view) { outline: 2px dashed var(--accent); outline-offset: 4px; border-radius: 4px; position: relative; margin-top: 18px; }
-.show-regions [jx-template]:not(button):not(jx-view)::before {
+.show-regions [jx\:template]:not(button):not(jx-view) { outline: 2px dashed var(--accent); outline-offset: 4px; border-radius: 4px; position: relative; margin-top: 18px; }
+.show-regions [jx\:template]:not(button):not(jx-view)::before {
   content: "region " attr(id); position: absolute; top: -22px; right: 0; font: 600 11px ui-monospace, monospace;
   color: var(--accent); text-transform: none;
 }

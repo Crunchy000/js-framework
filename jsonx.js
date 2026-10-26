@@ -5,10 +5,10 @@
  * An element with a template is a "region". It loads its view, draws it with the
  * template, and every button inside it calls the API and redraws the region.
  *
- *   <wa-card jx-get="api/todos">              <- a region: loads itself
+ *   <wa-card jx:get="api/todos">              <- a region: loads itself
  *     <template>
  *       <jx-each items="todos">                <- template syntax: see templates.js
- *         <wa-checkbox checked="{{done}}" jx-post="api/todos/{{id}}/toggle">{{title}}</wa-checkbox>
+ *         <wa-checkbox checked="{{done}}" jx:post="api/todos/{{id}}/toggle">{{title}}</wa-checkbox>
  *       </jx-each>
  *     </template>
  *   </wa-card>
@@ -18,11 +18,11 @@
  *
  *   <script type="module" src="jsonx.js"></script>
  */
-import { compileTemplate, compileView } from "./templates.js?v=36";
-import { defineComponent, instances, compileScript } from "./components.js?v=36";
+import { compileTemplate, compileView } from "./templates.js?v=37";
+import { defineComponent, instances, compileScript } from "./components.js?v=37";
 
 var METHODS = ["get", "post", "put", "patch", "delete"];
-var SELECTOR = METHODS.map(function (m) { return "[jx-" + m + "]"; }).join(",") + ",[jx-region],[jx-query],[jx-data],[jx-emit],[jx-ws],[jx-ws-send]";
+var SELECTOR = METHODS.map(function (m) { return "[jx\\:" + m + "]"; }).join(",") + ",[jx\\:region],[jx\\:query],[jx\\:data],[jx\\:emit],[jx\\:ws],[jx\\:ws-send]";
 
 // Remember which elements already have listeners, so we never attach twice.
 var processed = new WeakSet();
@@ -31,7 +31,7 @@ var processed = new WeakSet();
 // 1. Finding elements and wiring up their events
 // ---------------------------------------------------------------------------
 
-// Look inside `root` for any element with a jx-get/jx-post/... (or jx-region) attribute and wire it up.
+// Look inside `root` for any element with a jx:get/jx:post/... (or jx:region) attribute and wire it up.
 // `root` can be the document body, any element, or a web component's shadowRoot.
 function process(root) {
   root = root || document.body;
@@ -43,8 +43,8 @@ function process(root) {
     Promise.all(Array.from(includes).map(include)).then(function () { process(root); });
     return;
   }
-  // <template jx-component="user-card"> defines <user-card> (see components.js).
-  root.querySelectorAll("template[jx-component]").forEach(function (template) {
+  // <template jx:component="user-card"> defines <user-card> (see components.js).
+  root.querySelectorAll("template[jx\\:component]").forEach(function (template) {
     defineComponent(template, { compileView: compileView, process: process, bindProps: bindProps, scopeValue: scopeValue, scopeGet: scopeGet, fingerprint: fingerprint, copy: copy });
   });
   var elements = Array.from(root.querySelectorAll(SELECTOR));
@@ -60,7 +60,7 @@ function wire(el) {
   if (processed.has(el)) return;
   processed.add(el);
 
-  // <template jx-get="..."> loads and draws right where it is. It needs an
+  // <template jx:get="..."> loads and draws right where it is. It needs an
   // element to draw into, so it's swapped for a <jx-view> (which takes no space
   // in the layout) with the same attributes, holding the template inside.
   if (el.localName === "template") {
@@ -88,21 +88,21 @@ function wire(el) {
   }
 }
 
-// A region can keep its template inside itself: <wa-card jx-get="..."><template>.
+// A region can keep its template inside itself: <wa-card jx:get="..."><template>.
 // We take it out (so it isn't wiped by the first render) and remember it.
 function adoptTemplate(el, plainOnly) {
   var inline = Array.from(el.children).find(function (child) {
-    return child.localName === "template" && !child.hasAttribute("jx-use") && !(plainOnly && child.attributes.length);
+    return child.localName === "template" && !child.hasAttribute("jx:use") && !(plainOnly && child.attributes.length);
   });
-  if (inline && !el.hasAttribute("jx-template")) {
+  if (inline && !el.hasAttribute("jx:template")) {
     el.__jxTemplate = inline;
-    el.setAttribute("jx-template", "");
+    el.setAttribute("jx:template", "");
     inline.remove();
   }
 }
 
 // <template src="nav.jx"></template>: a reusable piece of HTML in its own file.
-// A plain one is replaced by the file's contents. One with jx-get (or another
+// A plain one is replaced by the file's contents. One with jx:get (or another
 // request attribute) uses the file as its template instead.
 // Files are fetched once, however many pages or places use them.
 var files = {};
@@ -121,15 +121,15 @@ function include(template) {
     var holder = document.createElement("template");
     holder.innerHTML = html;
     // In a .jx file, <template id="my-counter"> defines <my-counter>: an id
-    // with a dash is a component's name (on a page, ids are for jx-template).
+    // with a dash is a component's name (on a page, ids are for jx:template).
     Array.from(holder.content.children).forEach(function (child) {
-      if (child.localName === "template" && child.id.indexOf("-") > 0 && !child.hasAttribute("jx-component")) {
-        child.setAttribute("jx-component", child.id);
+      if (child.localName === "template" && child.id.indexOf("-") > 0 && !child.hasAttribute("jx:component")) {
+        child.setAttribute("jx:component", child.id);
       }
     });
     // <script type="module"> in the file becomes the file's scope (see below).
     return fileScope(holder.content, url).then(function (scope) {
-      if (getMethodAndUrl(template) || template.hasAttribute("jx-region")) {
+      if (getMethodAndUrl(template) || template.hasAttribute("jx:region")) {
         template.innerHTML = "";
         template.content.append(holder.content);
         if (scope) template.__jxScope = scope;
@@ -149,7 +149,7 @@ function include(template) {
 // ---------------------------------------------------------------------------
 //
 // A .jx file can hold a <script type="module">. Its exports are the file's
-// scope: fn:add and jx-data="count" in the file's markup (and inside the
+// scope: fn:add and jx:data="count" in the file's markup (and inside the
 // components it defines) look there first, then at the page's globals. What
 // isn't exported stays private, and two files can each have their own count.
 //
@@ -269,15 +269,15 @@ function scopeValue(host, name) {
   return scope ? copy(scopeGet(scope, name)) : undefined;
 }
 
-// On article.html?slug=hello, jx-get="/view/article/:slug" becomes
+// On article.html?slug=hello, jx:get="/view/article/:slug" becomes
 // "/view/article/hello", and "?slug=:slug" works the same way.
 // A value the address doesn't have becomes empty.
 var addressValues = new URLSearchParams(location.search);
 
 function fillFromAddress(el) {
-  // Keep the originals, so back and forward can fill them again (jx-push-url).
+  // Keep the originals, so back and forward can fill them again (jx:push-url).
   var originals = el.__jxAddress || {};
-  METHODS.map(function (m) { return "jx-" + m; }).forEach(function (attr) {
+  METHODS.map(function (m) { return "jx:" + m; }).forEach(function (attr) {
     var url = originals[attr] || el.getAttribute(attr);
     if (url === null || url.indexOf(":") === -1) return;
     originals[attr] = url;
@@ -285,11 +285,11 @@ function fillFromAddress(el) {
       return before + encodeURIComponent(addressValues.get(name) || "");
     }));
   });
-  // jx-vals='{"slug": ":slug"}' works the same way.
-  var vals = originals["jx-vals"] || el.getAttribute("jx-vals");
+  // jx:vals='{"slug": ":slug"}' works the same way.
+  var vals = originals["jx:vals"] || el.getAttribute("jx:vals");
   // A name the address doesn't have is left out, so defaults apply.
   if (vals && vals.indexOf('":') !== -1) {
-    originals["jx-vals"] = vals;
+    originals["jx:vals"] = vals;
     var filled = JSON.parse(vals);
     Object.keys(filled).forEach(function (key) {
       var match = typeof filled[key] === "string" && /^:(\w+)$/.exec(filled[key]);
@@ -297,19 +297,19 @@ function fillFromAddress(el) {
       if (addressValues.has(match[1])) filled[key] = addressValues.get(match[1]);
       else delete filled[key];
     });
-    el.setAttribute("jx-vals", JSON.stringify(filled));
+    el.setAttribute("jx:vals", JSON.stringify(filled));
   }
   el.__jxAddress = originals;
 }
 
-// <div jx-get="/view/home?tab=:tab&page=:page" jx-push-url>: when a GET from
+// <div jx:get="/view/home?tab=:tab&page=:page" jx:push-url>: when a GET from
 // this region works, the values it sent go into the address bar, so refresh,
 // back and forward, and shared links all show the same view.
-// jx-push-url="tab page" keeps just those names. Empty values are left out.
+// jx:push-url="tab page" keeps just those names. Empty values are left out.
 function pushAddress(el, sent) {
-  var region = el.closest("[jx-push-url]");
+  var region = el.closest("[jx\\:push-url]");
   if (!region) return;
-  var names = (region.getAttribute("jx-push-url") || "").split(/[\s,]+/).filter(Boolean);
+  var names = (region.getAttribute("jx:push-url") || "").split(/[\s,]+/).filter(Boolean);
   var params = new URLSearchParams(location.search);
   (names.length ? names : Object.keys(sent)).forEach(function (name) {
     var value = sent[name];
@@ -326,24 +326,24 @@ function pushAddress(el, sent) {
   addressValues = params;
 }
 
-// Back and forward: load each jx-push-url region again from the address.
+// Back and forward: load each jx:push-url region again from the address.
 window.addEventListener("popstate", function () {
   addressValues = new URLSearchParams(location.search);
-  document.querySelectorAll("[jx-push-url]").forEach(function (region) {
+  document.querySelectorAll("[jx\\:push-url]").forEach(function (region) {
     fillFromAddress(region);
     issueRequest(region, null, true);
   });
 });
 
 function attachTriggers(el) {
-  // <div jx-ws="/ws/chat"> is drawn from a WebSocket: each message is a view.
-  // <form jx-ws-send> inside it sends its values over that socket.
-  if (el.hasAttribute("jx-ws")) {
+  // <div jx:ws="/ws/chat"> is drawn from a WebSocket: each message is a view.
+  // <form jx:ws-send> inside it sends its values over that socket.
+  if (el.hasAttribute("jx:ws")) {
     render(el, {});
     connect(el);
     return;
   }
-  if (el.hasAttribute("jx-ws-send")) {
+  if (el.hasAttribute("jx:ws-send")) {
     parseTriggers(el).forEach(function (trigger) {
       findSource(el, trigger.from).addEventListener(trigger.event, function (event) {
         if (!el.isConnected) return;
@@ -354,9 +354,9 @@ function attachTriggers(el) {
     });
     return;
   }
-  // <div jx-data="cart"> draws the variable cart, and again after
+  // <div jx:data="cart"> draws the variable cart, and again after
   // every fn: call or jsonx.update() (see "Shared data" below).
-  if (el.hasAttribute("jx-data") && !getMethodAndUrl(el)) {
+  if (el.hasAttribute("jx:data") && !getMethodAndUrl(el)) {
     dataNames(el).forEach(function (name) {
       var scope = scopeFor(el, name);
       var list = scope ? scope.bound : bound;
@@ -366,21 +366,21 @@ function attachTriggers(el) {
     render(el, copy(viewFor(el)));
     return;
   }
-  // <button jx-emit="pick"> fires a "pick" event, carrying the item it was drawn
+  // <button jx:emit="pick"> fires a "pick" event, carrying the item it was drawn
   // for. Inside a component, the event comes out of the component itself.
-  if (el.hasAttribute("jx-emit") && !getMethodAndUrl(el)) {
+  if (el.hasAttribute("jx:emit") && !getMethodAndUrl(el)) {
     parseTriggers(el).forEach(function (trigger) {
       findSource(el, trigger.from).addEventListener(trigger.event, function (event) {
         if (trigger.filter && String(event[trigger.filter.property]) !== trigger.filter.value) return;
         if (event.type === "submit" || el.tagName === "A") event.preventDefault();
-        // jx-detail='{"id": "{{id}}"}' sends that instead of the item.
-        var detail = el.hasAttribute("jx-detail") ? JSON.parse(el.getAttribute("jx-detail")) : el.__jxItem;
-        fire(el, el.getAttribute("jx-emit"), detail);
+        // jx:detail='{"id": "{{id}}"}' sends that instead of the item.
+        var detail = el.hasAttribute("jx:detail") ? JSON.parse(el.getAttribute("jx:detail")) : el.__jxItem;
+        fire(el, el.getAttribute("jx:emit"), detail);
       });
     });
     return;
   }
-  // <div jx-region> has no URL: it draws its template once, with an empty view.
+  // <div jx:region> has no URL: it draws its template once, with an empty view.
   // Good for a sign-in form, which has nothing to load.
   if (!getMethodAndUrl(el)) {
     render(el, {});
@@ -413,7 +413,7 @@ function listen(el, trigger, run) {
   var timer = null;
 
   // Any event name works here, including a web component's custom events
-  // (e.g. jx-trigger="rating-changed").
+  // (e.g. jx:trigger="rating-changed").
   source.addEventListener(trigger.event, function (event) {
     // The element may have been removed from the page since we started listening.
     if (!el.isConnected) return;
@@ -480,10 +480,18 @@ function attachEvents(el) {
     });
     var action = attribute.value.trim();
     var request = function () { return { method: "POST", url: "fn:" + fillAddress(action), action: true }; };
-    // A region's own load is what back, forward and jx-refresh repeat.
-    if (trigger.event === "load" && el.hasAttribute("jx-template")) el.__jxLoad = request;
+    // A region's own load is what back, forward and jx:refresh repeat.
+    if (trigger.event === "load" && el.hasAttribute("jx:template")) el.__jxLoad = request;
     listen(el, trigger, function () { issueRequest(el, null, false, request()); });
   });
+}
+
+// jsonx's attributes were jx-get, jx-vals and so on before they were jx:get, jx:vals.
+var warned = {};
+function warnOld(name) {
+  if (warned[name]) return;
+  warned[name] = true;
+  console.warn("[jsonx] " + name + " does nothing now: write " + name.replace("jx-", "jx:"));
 }
 
 // Elements with an on:event attribute. CSS can't select by an
@@ -492,7 +500,9 @@ function eventElements(root) {
   var list = [];
   var check = function (el) {
     for (var i = 0; i < el.attributes.length; i++) {
-      if (eventAttribute(el.attributes[i].name)) { list.push(el); return; }
+      var name = el.attributes[i].name;
+      if (name.indexOf("jx-") === 0) warnOld(name);
+      if (eventAttribute(name)) { list.push(el); return; }
     }
   };
   if (root.attributes) check(root);
@@ -514,14 +524,14 @@ function defaultTrigger(el) {
   return "load";
 }
 
-// Turns jx-trigger="input delay:300ms, jx:afterRender from:#list" into
+// Turns jx:trigger="input delay:300ms, jx:afterRender from:#list" into
 //   [{ event: "input", delay: 300 }, { event: "jx:afterRender", from: "#list" }]
 //
 // Writing a trigger for the element itself replaces the default.
 // Triggers with "from:" listen to *other* elements, so they're added on top of
 // the default instead.
 function parseTriggers(el) {
-  var raw = el.getAttribute("jx-trigger") || "";
+  var raw = el.getAttribute("jx:trigger") || "";
   var triggers = raw.split(",").filter(function (one) { return one.trim(); }).map(function (one) {
     var parts = one.trim().split(/\s+/);
     var trigger = { event: parts[0], delay: 0, from: null, filter: null };
@@ -546,13 +556,13 @@ function parseTriggers(el) {
 }
 
 // Where to listen for a trigger: the element itself, "document", "window",
-// or any CSS selector (looked up like jx-target).
+// or any CSS selector (looked up like jx:target).
 function findSource(el, from) {
   if (!from) return el;
   if (from === "document") return document;
   if (from === "window") return window;
   var source = el.getRootNode().querySelector(from) || document.querySelector(from);
-  if (!source) throw new Error('[jsonx] jx-trigger "from:' + from + '" matched nothing');
+  if (!source) throw new Error('[jsonx] jx:trigger "from:' + from + '" matched nothing');
   return source;
 }
 
@@ -574,11 +584,11 @@ function watch(root) {
 
 function getMethodAndUrl(el) {
   for (var i = 0; i < METHODS.length; i++) {
-    var url = el.getAttribute("jx-" + METHODS[i]);
+    var url = el.getAttribute("jx:" + METHODS[i]);
     if (url !== null) return { method: METHODS[i].toUpperCase(), url: url };
   }
   // A GraphQL query needs no URL: it goes to jsonx.graphql ("/graphql" unless you change it).
-  if (el.hasAttribute("jx-query")) return { method: "POST", url: api.graphql };
+  if (el.hasAttribute("jx:query")) return { method: "POST", url: api.graphql };
   // A region that loads itself with on:load="show" (see attachEvents).
   if (el.__jxLoad) return el.__jxLoad();
 }
@@ -587,14 +597,14 @@ function getMethodAndUrl(el) {
 // that has a template. Buttons inside a region send its named controls, and
 // their results redraw it.
 function findRegion(el) {
-  return el.closest("[jx-template]");
+  return el.closest("[jx\\:template]");
 }
 
 // Collects the values to send, in this order (later ones win):
 //   1. every named control in the element's region (or its <form>), like a form would
 //   2. the element's own name and value
-//   3. the values of any elements in jx-include="#a, #b"
-//   4. anything in jx-vals='{"key": "value"}'
+//   3. the values of any elements in jx:include="#a, #b"
+//   4. anything in jx:vals='{"key": "value"}'
 function collectValues(el) {
   var values = {};
   var form = el.tagName === "FORM" ? el : el.closest("form");
@@ -602,7 +612,7 @@ function collectValues(el) {
   if (region) addValues(values, region);
   if (region !== el) addValues(values, el);
 
-  var include = el.getAttribute("jx-include");
+  var include = el.getAttribute("jx:include");
   if (include) {
     var found = el.getRootNode().querySelectorAll(include);
     if (!found.length) found = document.querySelectorAll(include);
@@ -614,10 +624,10 @@ function collectValues(el) {
 }
 
 function ownValues(el) {
-  var vals = el.getAttribute("jx-vals");
+  var vals = el.getAttribute("jx:vals");
   if (!vals) return {};
-  // jx-vals="id" is filled in by a template; out here it's just a name.
-  if (vals.trim()[0] !== "{") throw new Error('[jsonx] jx-vals="' + vals + '" names values, which only works inside a template. Outside one, write JSON: jx-vals=\'{"key": "value"}\'');
+  // jx:vals="id" is filled in by a template; out here it's just a name.
+  if (vals.trim()[0] !== "{") throw new Error('[jsonx] jx:vals="' + vals + '" names values, which only works inside a template. Outside one, write JSON: jx:vals=\'{"key": "value"}\'');
   return JSON.parse(vals);
 }
 
@@ -629,7 +639,7 @@ function addValues(values, el) {
     new FormData(el).forEach(function (value, key) { values[key] = value; });
     return;
   }
-  if (el.hasAttribute("jx-template")) {
+  if (el.hasAttribute("jx:template")) {
     el.querySelectorAll("[name]").forEach(function (control) { addValue(values, control); });
   }
   addValue(values, el);
@@ -668,7 +678,7 @@ function closeGaps(value) {
 }
 
 // `override` ({ method, url }) repeats a request exactly, without collecting values.
-// jx-refresh uses it.
+// jx:refresh uses it.
 // `fromAddress` (back and forward) sends only the element's own values, not
 // the controls drawn for the view it's leaving.
 // `action` ({ method, url }) calls that instead of the element's own jx- attribute.
@@ -678,21 +688,21 @@ function issueRequest(el, override, fromAddress, action) {
   var url = info.url;
   var options = { method: info.method, headers: { Accept: "application/json" } };
 
-  // jx-query="#home-query" makes it a GraphQL request: the query comes from that
+  // jx:query="#home-query" makes it a GraphQL request: the query comes from that
   // <script type="text/graphql"> (or several, for fragments), and the values
   // become its variables.
-  var graphql = !override && el.getAttribute("jx-query");
+  var graphql = !override && el.getAttribute("jx:query");
   if (graphql) {
     var text = graphql.split(",").map(function (selector) {
       var script = el.getRootNode().querySelector(selector.trim()) || document.querySelector(selector.trim());
-      if (!script) throw new Error('[jsonx] jx-query "' + selector + '" matched nothing');
+      if (!script) throw new Error('[jsonx] jx:query "' + selector + '" matched nothing');
       return script.textContent;
     }).join("\n");
     options.method = "POST";
     options.headers["Content-Type"] = "application/json";
     var request = { query: text, variables: typedVariables(nest(values), text) };
-    // jx-operation="AddComment" picks one operation, when the script holds several.
-    if (el.hasAttribute("jx-operation")) request.operationName = el.getAttribute("jx-operation");
+    // jx:operation="AddComment" picks one operation, when the script holds several.
+    if (el.hasAttribute("jx:operation")) request.operationName = el.getAttribute("jx:operation");
     options.body = JSON.stringify(request);
   } else if (info.method === "GET" || info.method === "DELETE") {
     // GET and DELETE put values in the query string; the others send a JSON body.
@@ -717,9 +727,9 @@ function issueRequest(el, override, fromAddress, action) {
   // When answers arrive out of order (typing fast, clicking twice), only the
   // newest request for the same place is drawn.
   var place = el;
-  try { place = el.hasAttribute("jx-target") ? findTarget(el) : (findRegion(el) || el); } catch (e) {}
+  try { place = el.hasAttribute("jx:target") ? findTarget(el) : (findRegion(el) || el); } catch (e) {}
   var latest = place.__jxLatest = (place.__jxLatest || 0) + 1;
-  var stale = function () { return place.__jxLatest !== latest && el.getAttribute("jx-swap") !== "none"; };
+  var stale = function () { return place.__jxLatest !== latest && el.getAttribute("jx:swap") !== "none"; };
   var sentAt = performance.now();
 
   return send(url, options, el)
@@ -741,24 +751,24 @@ function issueRequest(el, override, fromAddress, action) {
         if (data.errors && data.errors.length) throw problem(data, "GraphQL request");
         data = data.data;
       }
-      // jx-select="favoriteArticle.query" draws just that part of the answer.
-      var select = el.getAttribute("jx-select");
+      // jx:select="favoriteArticle.query" draws just that part of the answer.
+      var select = el.getAttribute("jx:select");
       if (select) data = select.split(".").reduce(function (v, key) { return v == null ? v : v[key]; }, data);
       render(el, data, info.method === "GET" ? url : null, sentAt);
-      // jx-push-url: put what a GET (or a GraphQL query) sent in the address bar.
+      // jx:push-url: put what a GET (or a GraphQL query) sent in the address bar.
       // A region that loads itself with on:load counts as a GET here.
-      var reads = info.method === "GET" || (info.action && el.hasAttribute("jx-template")) || (graphql && !/^\s*mutation\b/m.test(text));
+      var reads = info.method === "GET" || (info.action && el.hasAttribute("jx:template")) || (graphql && !/^\s*mutation\b/m.test(text));
       if (!fromAddress && !override && reads) {
         var sent = Object.fromEntries(new URL(url.replace(/^fn:/, ""), location.href).searchParams);
         pushAddress(el, Object.assign(sent, values));
       }
-      // jx-refresh="#comments": once this worked, reload those regions the way
+      // jx:refresh="#comments": once this worked, reload those regions the way
       // they were last loaded. For APIs that answer with one thing, not the view.
-      var refresh = el.getAttribute("jx-refresh");
+      var refresh = el.getAttribute("jx:refresh");
       if (refresh) refresh.split(",").forEach(function (selector) { reload(findElement(el, selector.trim())); });
-      // jx-then="article.html?slug=:article.slug": once this worked, go to that
+      // jx:then="article.html?slug=:article.slug": once this worked, go to that
       // page. Here :name is filled from the server's answer.
-      var then = el.getAttribute("jx-then");
+      var then = el.getAttribute("jx:then");
       if (then) location.href = then.replace(/:([\w.]+)/g, function (all, name) {
         var value = name.split(".").reduce(function (v, key) { return v == null ? v : v[key]; }, data);
         return encodeURIComponent(value == null ? "" : value);
@@ -780,21 +790,21 @@ function issueRequest(el, override, fromAddress, action) {
 // WebSockets
 // ---------------------------------------------------------------------------
 //
-//   <div jx-ws="/ws/chat">
+//   <div jx:ws="/ws/chat">
 //     <template>
-//       <p jx-each="messages">{{text}}</p>
-//       <form jx-ws-send><input name="text" value="{{draft}}"></form>
+//       <p jx:each="messages">{{text}}</p>
+//       <form jx:ws-send><input name="text" value="{{draft}}"></form>
 //     </template>
 //   </div>
 //
 // Every message from the server is JSON: the region's whole view, drawn like
-// an answer to jx-get (only what changed is updated). jx-ws-send sends the
-// values a jx-post would, as one JSON message. The region gets the class
+// an answer to jx:get (only what changed is updated). jx:ws-send sends the
+// values a jx:post would, as one JSON message. The region gets the class
 // jx-ws-connecting, jx-ws-open or jx-ws-closed, so CSS can show the state. When
 // the connection drops it tries again, waiting longer each time (up to 30s).
 
 function connect(region) {
-  var url = new URL(region.getAttribute("jx-ws"), location.href);
+  var url = new URL(region.getAttribute("jx:ws"), location.href);
   url.protocol = url.protocol === "https:" ? "wss:" : url.protocol === "http:" ? "ws:" : url.protocol;
   var state = function (name) {
     region.classList.remove("jx-ws-connecting", "jx-ws-open", "jx-ws-closed");
@@ -812,7 +822,7 @@ function connect(region) {
   socket.addEventListener("message", function (event) {
     if (!region.isConnected) { socket.close(); return; }
     var data;
-    try { data = JSON.parse(event.data); } catch (e) { console.error("[jsonx] jx-ws message isn't JSON:", event.data); return; }
+    try { data = JSON.parse(event.data); } catch (e) { console.error("[jsonx] jx:ws message isn't JSON:", event.data); return; }
     // Fields typed in since the last send keep what's in them.
     render(region, data, null, region.__jxSentAt);
   });
@@ -825,11 +835,11 @@ function connect(region) {
   });
 }
 
-// The socket is the nearest jx-ws region's, or jx-ws-send="#chat" names one.
+// The socket is the nearest jx:ws region's, or jx:ws-send="#chat" names one.
 function sendOverSocket(el) {
-  var name = el.getAttribute("jx-ws-send");
-  var region = name ? findElement(el, name) : el.closest("[jx-ws]");
-  if (!region || !region.hasAttribute("jx-ws")) throw new Error("[jsonx] jx-ws-send needs a jx-ws region around it, or one named");
+  var name = el.getAttribute("jx:ws-send");
+  var region = name ? findElement(el, name) : el.closest("[jx\\:ws]");
+  if (!region || !region.hasAttribute("jx:ws")) throw new Error("[jsonx] jx:ws-send needs a jx:ws region around it, or one named");
   var message = JSON.stringify(nest(collectValues(el)));
   if (!fire(el, "jx:beforeSend", { message: message, socket: region.__jxSocket })) return;
   region.__jxSentAt = performance.now();
@@ -837,7 +847,7 @@ function sendOverSocket(el) {
   else region.__jxQueue.push(message);
 }
 
-// jx-post="fn:addToCart" calls jsonx.functions.addToCart instead of a server.
+// jx:post="fn:addToCart" calls jsonx.functions.addToCart instead of a server.
 // It gets the values a request would send, and returns the view (or a promise
 // of one). To fail, throw: { errors: {...} } or { error: "..." } (shown like a
 // server's error answer, with status 422 unless it has a `status`), or an Error.
@@ -865,11 +875,11 @@ function send(url, options, el) {
     .then(function () { return fn(values); })
     .finally(function () {
       // The function may have changed shared data, so redraw what shows it.
-      // <button jx-post="fn:add" jx-data="count"> says which data it changes,
+      // <button jx:post="fn:add" jx:data="count"> says which data it changes,
       // so only those regions redraw. Otherwise all of them do: unchanged rows
       // are skipped, but each item still costs about a microsecond to check.
       // A module's function: its changes are found by comparing (checkScopes).
-      var changes = el && el.getAttribute("jx-data");
+      var changes = el && el.getAttribute("jx:data");
       if (changes) changes.split(/[\s,]+/).filter(Boolean).forEach(function (n) { if (!scopeFor(el, n)) redraw(n); });
       else if (!fnScope && !instance) update();
       checkScopes();
@@ -885,17 +895,17 @@ function send(url, options, el) {
     });
 }
 
-// Shared data, for regions with jx-data="cart".
+// Shared data, for regions with jx:data="cart".
 //
 // The simplest way: a plain script with ordinary variables and functions.
 //   <script>
 //     let cart = { count: 0 };
 //     function add() { cart.count++; }
 //   </script>
-//   <span jx-data="cart"><template>{{count}}</template></span>
-//   <button jx-post="fn:add">Add</button>
-// After any fn: call, every jx-data region is drawn again from its variable,
-// or only the ones it names: <button jx-post="fn:add" jx-data="cart">.
+//   <span jx:data="cart"><template>{{count}}</template></span>
+//   <button jx:post="fn:add">Add</button>
+// After any fn: call, every jx:data region is drawn again from its variable,
+// or only the ones it names: <button jx:post="fn:add" jx:data="cart">.
 //
 // From other code (a timer, a fetch), call jsonx.update() to redraw them all,
 // or jsonx.update("cart", function (cart) { cart.count++; }) to change one and
@@ -943,12 +953,12 @@ function update(name, change) {
 }
 
 function dataNames(el) {
-  return (el.getAttribute("jx-data") || "").split(/[\s,]+/).filter(Boolean);
+  return (el.getAttribute("jx:data") || "").split(/[\s,]+/).filter(Boolean);
 }
 
-// The view a jx-data region draws. One name holding an object draws that
-// object (jx-data="cart" then {{count}}). Otherwise each name is a field:
-// jx-data="items total" draws { items: [...], total: "£7.50" }.
+// The view a jx:data region draws. One name holding an object draws that
+// object (jx:data="cart" then {{count}}). Otherwise each name is a field:
+// jx:data="items total" draws { items: [...], total: "£7.50" }.
 function valueFor(el, name) {
   var scope = scopeFor(el, name);
   return scope ? scopeGet(scope, name) : dataFor(name);
@@ -1039,8 +1049,8 @@ function errorList(body) {
 // `sentAt` is when its request was sent: controls changed since keep their value.
 function render(el, data, url, sentAt) {
   var region = findRegion(el);
-  var target = el.hasAttribute("jx-target") ? findTarget(el) : (region || el);
-  var swap = el.getAttribute("jx-swap") || "";
+  var target = el.hasAttribute("jx:target") ? findTarget(el) : (region || el);
+  var swap = el.getAttribute("jx:swap") || "";
 
   // Page code can reshape the data first: listen for "jx:beforeRender" and set
   // event.detail.data. That's how to adapt an API you don't control.
@@ -1048,7 +1058,7 @@ function render(el, data, url, sentAt) {
   fire(el, "jx:beforeRender", detail);
   data = detail.data;
 
-  // jx-swap="prop:items" skips templates: it sets target.items = data.
+  // jx:swap="prop:items" skips templates: it sets target.items = data.
   // This is the natural way to feed JSON to a web component.
   if (swap.indexOf("prop:") === 0) {
     target[swap.slice(5)] = data;
@@ -1056,12 +1066,12 @@ function render(el, data, url, sentAt) {
     return;
   }
 
-  // jx-swap="none" (or no template anywhere) means "call the API, draw nothing".
-  var owner = el.hasAttribute("jx-template") ? el : (target.hasAttribute && target.hasAttribute("jx-template") ? target : region);
+  // jx:swap="none" (or no template anywhere) means "call the API, draw nothing".
+  var owner = el.hasAttribute("jx:template") ? el : (target.hasAttribute && target.hasAttribute("jx:template") ? target : region);
   if (swap !== "none" && owner) {
     var firstTime = !target.__jxRendered;
     target.__jxView = data; // remembered, so an error can be shown on top of it
-    if (url && swap !== "none") target.__jxUrl = url; // and for jx-refresh
+    if (url && swap !== "none") target.__jxUrl = url; // and for jx:refresh
     drawAndWire(target, function () { getTemplate(owner)(data, target, false, sentAt); });
     if (firstTime) focusAutofocus(target);
   }
@@ -1075,11 +1085,11 @@ function render(el, data, url, sentAt) {
 //   fieldErrors  { email: "can't be blank" }, to show a message under each field
 // The next successful answer replaces the view, so the errors go away by themselves.
 function renderError(el, error) {
-  // (Even with jx-swap="none": "draw nothing" is for success.)
-  if ((el.getAttribute("jx-swap") || "").indexOf("prop:") === 0) return;
+  // (Even with jx:swap="none": "draw nothing" is for success.)
+  if ((el.getAttribute("jx:swap") || "").indexOf("prop:") === 0) return;
   var region = findRegion(el);
-  var target = el.hasAttribute("jx-target") ? findTarget(el) : (region || el);
-  var owner = el.hasAttribute("jx-template") ? el : (target.hasAttribute && target.hasAttribute("jx-template") ? target : region);
+  var target = el.hasAttribute("jx:target") ? findTarget(el) : (region || el);
+  var owner = el.hasAttribute("jx:template") ? el : (target.hasAttribute && target.hasAttribute("jx:template") ? target : region);
   if (!owner) return;
   var fieldErrors = {};
   error.errors.forEach(function (e) {
@@ -1110,9 +1120,9 @@ function drawAndWire(target, draw) {
   });
 }
 
-// jx-target can be a CSS selector, "this", or "closest <selector>".
+// jx:target can be a CSS selector, "this", or "closest <selector>".
 function findTarget(el) {
-  return findElement(el, el.getAttribute("jx-target"));
+  return findElement(el, el.getAttribute("jx:target"));
 }
 
 // Selectors are looked up in the element's own root first: inside a web
@@ -1126,24 +1136,24 @@ function findElement(el, value) {
 }
 
 // Loads a region again from wherever it was last loaded (a tab or page button
-// may have changed that), or else with its own jx-get.
+// may have changed that), or else with its own jx:get.
 function reload(region) {
   if (region.__jxUrl) issueRequest(region, { method: "GET", url: region.__jxUrl });
   else if (getMethodAndUrl(region)) issueRequest(region);
 }
 
-// The compiled template for an element with jx-template: either the <template>
-// it held inside itself, or jx-template="#id". Ids are looked up in the element's
+// The compiled template for an element with jx:template: either the <template>
+// it held inside itself, or jx:template="#id". Ids are looked up in the element's
 // own root first (so a web component can ship its own templates), then the page.
 var compiled = new WeakMap(); // <template> -> compiled template, so each is compiled once
 
 function getTemplate(owner) {
   var root = owner.getRootNode();
   var find = function (selector) { return root.querySelector(selector) || document.querySelector(selector); };
-  var selector = owner.getAttribute("jx-template");
+  var selector = owner.getAttribute("jx:template");
   var node = owner.__jxTemplate || find(selector);
   if (!node || node.localName !== "template") {
-    throw new Error('[jsonx] jx-template "' + selector + '" must point to a <template>');
+    throw new Error('[jsonx] jx:template "' + selector + '" must point to a <template>');
   }
   if (!compiled.has(node)) compiled.set(node, compileTemplate(node, find));
   return compiled.get(node);
@@ -1188,7 +1198,7 @@ var api = Object.assign({ headers: null, graphql: "/graphql", functions: {}, dat
 });
 window.jsonx = api;
 
-// <jx-view> is the element a <template jx-get> draws into. It takes no space in
+// <jx-view> is the element a <template jx:get> draws into. It takes no space in
 // the layout, so the template's content sits in the page as if written there.
 customElements.define("jx-view", class extends HTMLElement {
   connectedCallback() { this.style.display = "contents"; }

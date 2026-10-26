@@ -6,8 +6,8 @@
   <title>jsonx chat</title>
 
   <!-- A pretend WebSocket server (a real one would run elsewhere). The page itself has no script. -->
-  <script src="echo-server.js?v=36"></script>
-  <script type="module" src="../../jsonx.js?v=36"></script>
+  <script src="echo-server.js?v=37"></script>
+  <script type="module" src="../../jsonx.js?v=37"></script>
 
   <style>
     :root { --bg: #f4f4f5; --panel: #fff; --text: #18181b; --muted: #71717a; --line: #e4e4e7;
@@ -54,14 +54,14 @@
     <p class="intro">A WebSocket chat built with <a href="../../">jsonx</a> and no page script. Every message from the server is the whole view as JSON, and only what changed is drawn. Echo is a pretend server in the page. <a href="https://github.com/crunchy000/js-framework/blob/main/examples/chat/index.html">Source</a></p>
 
     <!-- The region: drawn from each message the socket sends. -->
-    <div class="chat" jx-ws="/ws/echo">
+    <div class="chat" jx:ws="/ws/echo">
       <template>
         <div class="head"><strong>Echo</strong> <span class="status" role="status"></span></div>
 
         <div class="log" aria-live="polite">
           <div>
             <ol>
-              <li jx-each="messages" class="{{from}}">
+              <li jx:each="messages" class="{{from}}">
                 <span class="bubble">{{text}}</span>
                 <time>{{who}} · {{time}}</time>
               </li>
@@ -73,7 +73,7 @@
         <jx-if test="notice"><p class="notice">{{notice}}</p></jx-if>
 
         <!-- Sends { "text": "..." } over the socket. -->
-        <form jx-ws-send>
+        <form jx:ws-send>
           <input name="text" value="{{draft}}" placeholder="Say something, or /help" aria-label="Message" autocomplete="off" autofocus>
           <button>Send</button>
         </form>

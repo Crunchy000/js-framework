@@ -11,7 +11,7 @@
 
   <!--
     The whole "server" is these plain functions. Each one gets the values the
-    page sent (the region's named controls, plus jx-vals) and returns the whole
+    page sent (the region's named controls, plus jx:vals) and returns the whole
     view, exactly like a JSON endpoint would. A plain script, not a module, so
     jsonx can find the functions by name.
   -->
@@ -82,7 +82,7 @@
       try { localStorage.setItem("jsonx-todo-functions", JSON.stringify(todos)); } catch (e) {}
     }
   </script>
-  <script type="module" src="../../jsonx.js?v=36"></script>
+  <script type="module" src="../../jsonx.js?v=37"></script>
 
   <!-- Follow the visitor's light/dark setting -->
   <script>
@@ -150,10 +150,10 @@
 
           <div class="wa-split">
             <wa-button-group label="Filter">
-              <!-- jx-vals overrides the hidden filter for this one request -->
+              <!-- jx:vals overrides the hidden filter for this one request -->
               <jx-each items="filters">
                 <wa-button size="s" variant="{{variant}}" appearance="{{appearance}}"
-                           on:click="show" jx-vals="filter=name">{{label}}</wa-button>
+                           on:click="show" jx:vals="filter=name">{{label}}</wa-button>
               </jx-each>
             </wa-button-group>
 
@@ -164,8 +164,8 @@
             <jx-each items="todos">
               <li class:done="{{done}}">
                 <!-- A checkbox changes rather than clicks -->
-                <wa-checkbox checked="{{done}}" on:change="toggle" jx-vals="id">{{title}}</wa-checkbox>
-                <wa-button size="s" appearance="plain" variant="danger" on:click="remove" jx-vals="id">
+                <wa-checkbox checked="{{done}}" on:change="toggle" jx:vals="id">{{title}}</wa-checkbox>
+                <wa-button size="s" appearance="plain" variant="danger" on:click="remove" jx:vals="id">
                   <wa-icon name="trash" label="Delete {{title}}"></wa-icon>
                 </wa-button>
               </li>
