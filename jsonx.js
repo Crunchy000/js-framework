@@ -18,8 +18,8 @@
  *
  *   <script type="module" src="jsonx.js"></script>
  */
-import { compileTemplate, compileView } from "./templates.js?v=35";
-import { defineComponent, instances, compileScript } from "./components.js?v=35";
+import { compileTemplate, compileView } from "./templates.js?v=36";
+import { defineComponent, instances, compileScript } from "./components.js?v=36";
 
 var METHODS = ["get", "post", "put", "patch", "delete"];
 var SELECTOR = METHODS.map(function (m) { return "[jx-" + m + "]"; }).join(",") + ",[jx-region],[jx-query],[jx-data],[jx-emit],[jx-ws],[jx-ws-send]";
@@ -609,14 +609,16 @@ function collectValues(el) {
     found.forEach(function (other) { addValues(values, other); });
   }
 
-  var extra = el.getAttribute("jx-vals");
-  if (extra) Object.assign(values, JSON.parse(extra));
+  Object.assign(values, ownValues(el));
   return values;
 }
 
 function ownValues(el) {
   var vals = el.getAttribute("jx-vals");
-  return vals ? JSON.parse(vals) : {};
+  if (!vals) return {};
+  // jx-vals="id" is filled in by a template; out here it's just a name.
+  if (vals.trim()[0] !== "{") throw new Error('[jsonx] jx-vals="' + vals + '" names values, which only works inside a template. Outside one, write JSON: jx-vals=\'{"key": "value"}\'');
+  return JSON.parse(vals);
 }
 
 // Adds values from one element: every field if it's a form, every named control

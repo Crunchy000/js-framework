@@ -140,7 +140,7 @@ Each file is fetched once. Nothing on the page is wired until every file is in, 
 | `jx-target` | Where the result goes: a CSS selector, `this`, or `closest <selector>`. | the region, or else the element itself |
 | `jx-swap` | `prop:<name>` sets a property on the target instead of drawing a template (good for components that take data). `none` calls the API and draws nothing. | draw the template |
 | `jx-include` | Also send the values of other elements, e.g. `jx-include="#filter"`. | none |
-| `jx-vals` | Extra JSON to send, e.g. `jx-vals='{"filter": "{{name}}"}'`. | none |
+| `jx-vals` | Extra values to send. In a template, name them: `jx-vals="id product"` sends `{"id": 3, "product": "Tea"}`, numbers and all. `todo.id` sends it as `id`, and `filter=name` renames. Or write JSON: `jx-vals='{"page": 1}'`. | none |
 | `jx-query` | Makes it a GraphQL request: the query comes from these `<script type="text/graphql">` elements (several, for fragments), and the values become its variables. Sent to `jsonx.graphql`, `/graphql` by default. | |
 | `jx-operation` | Which operation to run, when the script holds several. | |
 | `jx-select` | Draw only part of the answer, e.g. `jx-select="favoriteArticle.query"`. | the whole answer |

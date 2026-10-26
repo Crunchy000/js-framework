@@ -11,11 +11,11 @@
     </jx-if>
     <jx-each items="articles.nodes">
       <jx-if test="favorited">
-        <article-preview article="{{.}}" jx-trigger="favorite" jx-vals='{"slug": "{{slug}}"}'
+        <article-preview article="{{.}}" jx-trigger="favorite" jx-vals="slug"
                          jx-query="#unfavorite, #view, #preview-fields" jx-select="unfavoriteArticle.query"></article-preview>
       </jx-if>
       <jx-else>
-        <article-preview article="{{.}}" jx-trigger="favorite" jx-vals='{"slug": "{{slug}}"}'
+        <article-preview article="{{.}}" jx-trigger="favorite" jx-vals="slug"
                          jx-query="#favorite, #view, #preview-fields" jx-select="favoriteArticle.query"></article-preview>
       </jx-else>
     </jx-each>

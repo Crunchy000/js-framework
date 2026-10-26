@@ -26,6 +26,9 @@
  *
  *   4. class:done="{{done}}" turns the class "done" on or off.
  *
+ *   jx-vals="id product" sends the values named, as JSON: {"id": 3, "product": "Tea"}.
+ *   A dotted name sends its last part (todo.id as "id"), and id=todo.id renames.
+ *
  *   Reuse another template with <template jx-use="#todo-item"></template>.
  *
  * How it works: we walk the template's HTML once and write it back out as a Lit
@@ -540,6 +543,23 @@ function compileAttribute(name, value, b) {
     var richPath = path(whole[1]);
     b.add(" " + name + "=");
     b.hole(function (stack) { return richText(kind, lookup(stack, richPath)); });
+    return;
+  }
+
+  // jx-vals="id product" sends those values by name, as they are (a number
+  // stays a number). The JSON form, jx-vals='{"id": {{id}}}', still works.
+  if (name === "jx-vals" && /^\s*[\w$][\w$.=\s]*$/.test(value)) {
+    var picks = value.trim().split(/\s+/).map(function (item) {
+      var pair = item.split("=");
+      var from = pair[1] || pair[0];
+      return { key: pair[1] ? pair[0] : from.split(".").pop(), path: path(from) };
+    });
+    b.add(" jx-vals=");
+    b.hole(function (stack) {
+      var picked = {};
+      picks.forEach(function (pick) { picked[pick.key] = lookup(stack, pick.path); });
+      return JSON.stringify(picked);
+    });
     return;
   }
 

@@ -81,7 +81,7 @@
     button.on { color: #f59e0b; }
   </style>
   <span jx-ref="stars" role="slider" aria-valuemin="0" aria-valuemax="5" aria-label="Rating">
-    <button jx-each="stars" class:on="{{on}}" on:click="pick" jx-vals='{"n": {{n}}}' aria-label="{{n}} stars">★</button>
+    <button jx-each="stars" class:on="{{on}}" on:click="pick" jx-vals="n" aria-label="{{n}} stars">★</button>
   </span>
 </template>
 

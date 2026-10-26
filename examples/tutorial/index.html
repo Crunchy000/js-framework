@@ -4,10 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>jsonx tutorial</title>
-  <link rel="stylesheet" href="style.css?v=35">
+  <link rel="stylesheet" href="style.css?v=36">
   <!-- A pretend server, so every example works without one. -->
-  <script src="mock-api.js?v=35"></script>
-  <script type="module" src="../../jsonx.js?v=35"></script>
+  <script src="mock-api.js?v=36"></script>
+  <script type="module" src="../../jsonx.js?v=36"></script>
 </head>
 <body>
 <header class="top">
@@ -156,7 +156,7 @@
 
     <ul>
       <li><code>jx-post</code>, <code>jx-put</code> and <code>jx-patch</code> send the values as a JSON body. <code>jx-get</code> and <code>jx-delete</code> put them in the URL, as <code>?name=Ada</code>.</li>
-      <li><code>jx-vals</code> adds fixed values, written as JSON. They win over controls with the same name, so "In French" always sends <code>"fr"</code>.</li>
+      <li><code>jx-vals</code> adds fixed values, written as JSON. Inside a template you can just name them instead: <code>jx-vals="id name"</code> sends the current item's <code>id</code> and <code>name</code>. They win over controls with the same name, so "In French" always sends <code>"fr"</code>.</li>
       <li>A name with dots builds nested JSON: <code>name="user.email"</code> sends <code>{"user": {"email": …}}</code>.</li>
     </ul>
     <p>That works, but notice how much we're repeating: two buttons each name the same target, the same template and the same inputs. The next step removes all of it.</p>
@@ -555,7 +555,7 @@
             <template>
               <jx-if test="error"><p class="error">{{error}}</p></jx-if>
               <jx-each items="products">
-                <button on:click="add" jx-vals='{"id": {{id}}, "name": "{{name}}"}'>Add {{name}} (£{{price}})</button>
+                <button on:click="add" jx-vals="id name">Add {{name}} (£{{price}})</button>
               </jx-each>
             </template>
           </div>
@@ -674,6 +674,6 @@
   </section>
 </main>
 
-<script src="tutorial.js?v=35"></script>
+<script src="tutorial.js?v=36"></script>
 </body>
 </html>
