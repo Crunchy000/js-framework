@@ -88,8 +88,8 @@
     .note { color: var(--muted, #777); margin: 0; }
     .done { color: #16a34a; margin: 0 0 8px; }
   </style>
-  <jx-if test="ordered"><p class="done">{{ordered}}</p></jx-if>
-  <jx-if test="items">
+  <if test="ordered"><p class="done">{{ordered}}</p></if>
+  <if test="items">
     <ul>
       <li jx:each="items">
         <span>{{name}} × {{qty}} <small>{{price}} each</small></span>
@@ -97,8 +97,8 @@
       </li>
     </ul>
     <p class="total"><span>Total</span> <strong>{{total}}</strong></p>
-    <jx-if test="busy"><button class="checkout" disabled>Placing order…</button></jx-if>
-    <jx-else><button class="checkout" on:click="checkout">Check out</button></jx-else>
-  </jx-if>
-  <jx-else><p class="note">Your cart is empty.</p></jx-else>
+    <if test="busy"><button class="checkout" disabled>Placing order…</button></if>
+    <else><button class="checkout" on:click="checkout">Check out</button></else>
+  </if>
+  <else><p class="note">Your cart is empty.</p></else>
 </template>

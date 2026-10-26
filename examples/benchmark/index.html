@@ -6,7 +6,7 @@
   <title>jsonx benchmark</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/styles/webawesome.css">
   <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
-  <script type="module" src="../../jsonx.js?v=37"></script>
+  <script type="module" src="../../jsonx.js?v=38"></script>
   <!-- React 18.3.1, production builds, for comparison -->
   <script src="../../vendor/react/react.production.min.js"></script>
   <script src="../../vendor/react/react-dom.production.min.js"></script>
@@ -75,24 +75,24 @@
   <!-- The same markup, written as a jsonx template... -->
   <template id="bench-list">
     <ul>
-      <jx-each items="todos">
+      <each items="todos">
         <li class:done="{{done}}">
           <wa-checkbox checked="{{done}}">{{title}}</wa-checkbox>
           <wa-button size="s" appearance="plain">Delete</wa-button>
         </li>
-      </jx-each>
+      </each>
     </ul>
   </template>
 
   <!-- ...and with plain HTML. -->
   <template id="bench-list-plain">
     <ul>
-      <jx-each items="todos">
+      <each items="todos">
         <li class:done="{{done}}">
           <label><input type="checkbox" checked="{{done}}"> {{title}}</label>
           <button>Delete</button>
         </li>
-      </jx-each>
+      </each>
     </ul>
   </template>
 

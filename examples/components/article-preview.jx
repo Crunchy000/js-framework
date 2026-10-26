@@ -22,22 +22,22 @@
     .more:hover { color: var(--conduit-green, #5cb85c); }
     .tags { display: flex; flex-wrap: wrap; gap: var(--wa-space-2xs); }
   </style>
-  <jx-each items="article">
+  <each items="article">
     <div class="row">
       <a class="author" href="profile.html?username={{author.username}}">
         <wa-avatar image="{{author.image}}" label="{{author.username}}"></wa-avatar>
         <span><strong>{{author.username}}</strong><br><small>{{date}}</small></span>
       </a>
-      <jx-if test="favorited">
+      <if test="favorited">
         <wa-button size="s" variant="success" jx:emit="favorite">
           <wa-icon slot="start" name="heart"></wa-icon>{{favoritesCount}}
         </wa-button>
-      </jx-if>
-      <jx-else>
+      </if>
+      <else>
         <wa-button size="s" variant="success" appearance="outlined" jx:emit="favorite">
           <wa-icon slot="start" name="heart" variant="regular"></wa-icon>{{favoritesCount}}
         </wa-button>
-      </jx-else>
+      </else>
     </div>
     <a class="title" href="article.html?slug={{slug}}">
       <h2>{{title}}</h2>
@@ -45,7 +45,7 @@
     </a>
     <div class="row">
       <a class="more" href="article.html?slug={{slug}}">Read more...</a>
-      <div class="tags"><jx-each items="tagList"><wa-tag size="s" appearance="outlined">{{.}}</wa-tag></jx-each></div>
+      <div class="tags"><each items="tagList"><wa-tag size="s" appearance="outlined">{{.}}</wa-tag></each></div>
     </div>
-  </jx-each>
+  </each>
 </template>

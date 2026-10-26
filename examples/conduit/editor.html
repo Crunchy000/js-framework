@@ -6,15 +6,15 @@
   <title>Editor — Conduit</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/styles/webawesome.css">
   <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
-  <link rel="stylesheet" href="style.css?v=37">
+  <link rel="stylesheet" href="style.css?v=38">
 
   <!-- Pretend servers: the RealWorld API, and the view API in front of it.
        In real life both run on a server, and these two lines go away. -->
-  <script src="mock-api.js?v=37"></script>
-  <script src="view-api.js?v=37"></script>
+  <script src="mock-api.js?v=38"></script>
+  <script src="view-api.js?v=38"></script>
   <!-- <rich-editor>: a Tiptap editor that acts like a form field -->
-  <script type="module" src="../components/rich-editor.js?v=37"></script>
-  <script type="module" src="../../jsonx.js?v=37"></script>
+  <script type="module" src="../components/rich-editor.js?v=38"></script>
+  <script type="module" src="../../jsonx.js?v=38"></script>
   <script>if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("wa-dark");</script>
 </head>
 <body>
@@ -24,16 +24,16 @@
     <!-- editor.html?slug=hello edits that article; editor.html alone starts a new one. -->
     <div class="wa-stack" jx:get="/view/editor?slug=:slug">
       <template>
-        <jx-if test="!signedIn">
+        <if test="!signedIn">
           <p class="empty"><a href="login.html">Sign in</a> to see this page.</p>
-        </jx-if>
-        <jx-else>
+        </if>
+        <else>
           <div class="wa-stack">
-            <jx-if test="error">
+            <if test="error">
               <wa-callout variant="danger">
-                <ul class="wa-stack wa-gap-3xs" style="margin: 0; padding-left: 1em;"><jx-each items="errors"><li>{{text}}</li></jx-each></ul>
+                <ul class="wa-stack wa-gap-3xs" style="margin: 0; padding-left: 1em;"><each items="errors"><li>{{text}}</li></each></ul>
               </wa-callout>
-            </jx-if>
+            </if>
             <input type="hidden" name="slug" value="{{article.slug}}">
             <wa-input name="title" placeholder="Article title" size="l" value="{{article.title}}"></wa-input>
             <wa-input name="description" placeholder="What's this article about?" value="{{article.description}}"></wa-input>
@@ -43,12 +43,12 @@
             <div>
               <!-- On success the answer is { article: { slug } }, and jx:then goes to it. -->
               <wa-button variant="success" jx:post="/view/editor" jx:swap="none" jx:then="article.html?slug=:article.slug">
-                <jx-if test="isNew">Publish article</jx-if>
-                <jx-else>Update article</jx-else>
+                <if test="isNew">Publish article</if>
+                <else>Update article</else>
               </wa-button>
             </div>
           </div>
-        </jx-else>
+        </else>
       </template>
     </div>
   </main>

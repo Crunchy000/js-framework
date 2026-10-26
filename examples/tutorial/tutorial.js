@@ -14,10 +14,10 @@
     return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   }
 
-  // Colours {{values}}, jx: and on: attributes, <jx-...> tags and comments.
+  // Colours {{values}}, jx: and on: attributes, <if>, <each> and other tags and comments.
   function highlight(text) {
     return escapeHtml(text)
-      .replace(/(&lt;\/?)(jx-[\w-]+)/g, '$1<span class="hl-tag">$2</span>')
+      .replace(/(&lt;\/?)(jx-[\w-]+|else-if|if|else|each)(?=[\s&])/g, '$1<span class="hl-tag">$2</span>')
       .replace(/(\s)((?:jx|on|class):[\w.-]+)(?=[=\s&])/g, '$1<span class="hl-attr">$2</span>')
       .replace(/\{\{[^}]*\}\}/g, '<span class="hl-value">$&</span>')
       .replace(/&lt;!--[\s\S]*?--&gt;/g, '<span class="hl-comment">$&</span>')

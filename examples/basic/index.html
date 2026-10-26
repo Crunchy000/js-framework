@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>jsonx feature tour</title>
-  <link rel="stylesheet" href="../server-tutorial/style.css?v=37">
+  <link rel="stylesheet" href="../server-tutorial/style.css?v=38">
   <style>
     .results li.pioneer strong::after { content: " ★"; color: #e0a800; }
     .results { list-style: none; padding: 0 !important; }
@@ -13,11 +13,11 @@
     #event-log { font: 12.5px/1.5 ui-monospace, Menlo, monospace; max-height: 220px; overflow: auto; }
   </style>
   <!-- 1. A pretend server, so the page works without one. -->
-  <script src="mock-api.js?v=37"></script>
+  <script src="mock-api.js?v=38"></script>
   <!-- 2. jsonx itself. -->
-  <script type="module" src="../../jsonx.js?v=37"></script>
+  <script type="module" src="../../jsonx.js?v=38"></script>
   <!-- 3. Two hand-written web components, for features 9 and 10. -->
-  <script type="module" src="components.js?v=37"></script>
+  <script type="module" src="components.js?v=38"></script>
 </head>
 <body>
 <header class="top">
@@ -104,12 +104,12 @@
           <ul id="results" class="results"></ul>
 
           <template id="user-results">
-            <jx-each items="users">
+            <each items="users">
               <li class:pioneer="{{pioneer}}"><strong>{{name}}</strong> — {{role}}</li>
-            </jx-each>
-            <jx-if test="!users">
+            </each>
+            <if test="!users">
               <li><em>No one matches "{{query}}"</em></li>
-            </jx-if>
+            </if>
           </template>
           <!-- /example:search -->
         </div>
@@ -200,9 +200,9 @@
           </template>
 
           <template jx:get="/api/users?q=a">
-            <jx-each items="users">
+            <each items="users">
               <p><template jx:use="#person"></template></p>
-            </jx-each>
+            </each>
           </template>
           <!-- /example:partials -->
         </div>
@@ -222,8 +222,8 @@
           <!-- example:errors -->
           <div jx:get="/api/likes">
             <template>
-              <jx-if test="error"><p class="error">{{error}}</p></jx-if>
-              <jx-else><p>All good: {{label}}.</p></jx-else>
+              <if test="error"><p class="error">{{error}}</p></if>
+              <else><p>All good: {{label}}.</p></else>
               <button jx:post="/api/broken">Break the server</button>
               <button jx:get="/api/likes">Try again</button>
             </template>
@@ -361,6 +361,6 @@
   </section>
 </main>
 
-<script src="../server-tutorial/tutorial.js?v=37"></script>
+<script src="../server-tutorial/tutorial.js?v=38"></script>
 </body>
 </html>

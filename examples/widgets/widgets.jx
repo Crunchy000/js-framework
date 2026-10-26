@@ -55,9 +55,9 @@
     button { font: inherit; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--line, #ddd); background: var(--panel, #fff); color: inherit; cursor: pointer; }
   </style>
   <span class="time" class:done="{{done}}">{{left}}</span>
-  <jx-if test="running"><button on:click="stop">Pause</button></jx-if>
-  <jx-else-if test="done"><button on:click="again">Again</button></jx-else-if>
-  <jx-else><button on:click="start">Start</button></jx-else>
+  <if test="running"><button on:click="stop">Pause</button></if>
+  <else-if test="done"><button on:click="again">Again</button></else-if>
+  <else><button on:click="start">Start</button></else>
 </template>
 
 <template id="star-rating" form>
@@ -103,6 +103,6 @@
     <star-rating name="rating"></star-rating>
     <textarea name="comment" rows="3" placeholder="Anything else?"></textarea>
     <button>Send feedback</button>
-    <jx-if test="sent"><p class="sent">{{sent}}</p></jx-if>
+    <if test="sent"><p class="sent">{{sent}}</p></if>
   </form>
 </template>

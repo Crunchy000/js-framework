@@ -6,8 +6,8 @@
   <title>jsonx chat</title>
 
   <!-- A pretend WebSocket server (a real one would run elsewhere). The page itself has no script. -->
-  <script src="echo-server.js?v=37"></script>
-  <script type="module" src="../../jsonx.js?v=37"></script>
+  <script src="echo-server.js?v=38"></script>
+  <script type="module" src="../../jsonx.js?v=38"></script>
 
   <style>
     :root { --bg: #f4f4f5; --panel: #fff; --text: #18181b; --muted: #71717a; --line: #e4e4e7;
@@ -66,11 +66,11 @@
                 <time>{{who}} · {{time}}</time>
               </li>
             </ol>
-            <jx-if test="typing"><p class="typing">Echo is typing…</p></jx-if>
+            <if test="typing"><p class="typing">Echo is typing…</p></if>
           </div>
         </div>
 
-        <jx-if test="notice"><p class="notice">{{notice}}</p></jx-if>
+        <if test="notice"><p class="notice">{{notice}}</p></if>
 
         <!-- Sends { "text": "..." } over the socket. -->
         <form jx:ws-send>

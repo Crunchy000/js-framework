@@ -6,15 +6,15 @@ A tiny htmx-style framework for JSON APIs. Your server sends JSON shaped for the
 <wa-card jx:get="api/todos">
   <template>
     <ul>
-      <jx-each items="todos">
+      <each items="todos">
         <li class:done="{{done}}">
           <wa-checkbox checked="{{done}}" jx:post="api/todos/{{id}}/toggle">{{title}}</wa-checkbox>
         </li>
-      </jx-each>
+      </each>
     </ul>
-    <jx-if test="!todos">
+    <if test="!todos">
       <p>Nothing to do.</p>
-    </jx-if>
+    </if>
   </template>
 </wa-card>
 ```
@@ -60,7 +60,7 @@ An element with a template is a **region**. The template can sit inside it, as a
 2. **Results re-render the region.** A button inside a region doesn't need `jx:target` or `jx:template`. Whatever it calls, the response is drawn with the region's template.
 3. **A region is a form without the `<form>`.** Every request from inside it sends the region's named controls, so a hidden `<input name="filter">` tells the server the current filter on every click.
 
-Errors are part of the view too: if the title is empty, the todo server sends the same view with an `error` field, and the template shows it with `<jx-if test="error">`. Keep half-typed text in the view as well (the todo API echoes the title back as `draft`), so the server's view is always the truth.
+Errors are part of the view too: if the title is empty, the todo server sends the same view with an `error` field, and the template shows it with `<if test="error">`. Keep half-typed text in the view as well (the todo API echoes the title back as `draft`), so the server's view is always the truth.
 
 ## Templates
 
@@ -69,9 +69,9 @@ A template is plain HTML inside a `<template>` tag, plus four rules:
 | You write | What it does |
 |---|---|
 | `{{title}}` | Prints a value, between tags or inside an attribute value. Always HTML-escaped, so user text is safe. Dotted names work: `{{stats.done}}`, and `{{.}}` is the current item itself. |
-| `<jx-each items="todos">…</jx-each>` | Repeats what's inside for each item in the list. Inside it, names refer to the item first, then the outer view. Items with an `id` are tracked by it, so adding or removing one only adds or removes that row. Given a single object instead of a list, it draws once with the object's fields in scope. |
-| `<jx-if test="error">…</jx-if>` | Draws what's inside only if the value is there. `test="!todos"` is the opposite: only if it's missing, false, or an empty list. |
-| `<jx-else-if test="…">`, `<jx-else>` | Right after a `<jx-if>` (only spaces and comments between), they draw when the branches before them didn't. |
+| `<each items="todos">…</each>` | Repeats what's inside for each item in the list. Inside it, names refer to the item first, then the outer view. Items with an `id` are tracked by it, so adding or removing one only adds or removes that row. Given a single object instead of a list, it draws once with the object's fields in scope. |
+| `<if test="error">…</if>` | Draws what's inside only if the value is there. `test="!todos"` is the opposite: only if it's missing, false, or an empty list. |
+| `<else-if test="…">`, `<else>` | Right after a `<if>` (only spaces and comments between), they draw when the branches before them didn't. |
 | `checked="{{done}}"`, `value="{{draft}}"` | When an attribute's whole value is one `{{name}}`, it's smart: if the element has a property with that name, the live property is set, so form controls always show the view. Otherwise `true`/`false` adds or removes the attribute, and anything else becomes its text. |
 | `class:done="{{done}}"` | Turns the class `done` on or off. |
 | `jx:markdown="{{body}}"`, `jx:html="{{body}}"` | Draws the value as Markdown or HTML inside the element. It's cleaned with [DOMPurify](https://github.com/cure53/DOMPurify) first: no scripts, `onclick=` handlers or `javascript:` links, and nothing jsonx would act on (`jx-` attributes, templates, forms), so the text can't make requests. The libraries ([marked](https://marked.js.org) and DOMPurify, in `vendor/`) load only on pages that use them. |
@@ -79,15 +79,15 @@ A template is plain HTML inside a `<template>` tag, plus four rules:
 The `<jx-…>` tags only mark what to repeat or show. They're never put on the page, so they don't affect your layout or CSS (`ul > li` still matches).
 
 ```html
-<jx-if test="viewer">
+<if test="viewer">
   <a href="settings.html">Settings</a>
-</jx-if>
-<jx-else-if test="loading">
+</if>
+<else-if test="loading">
   <wa-spinner></wa-spinner>
-</jx-else-if>
-<jx-else>
+</else-if>
+<else>
   <a href="login.html">Sign in</a>
-</jx-else>
+</else>
 ```
 
 **Inside `<table>` and `<select>`, put the logic on the element instead.** The browser's HTML parser moves unknown tags out of tables and selects before jsonx ever sees them, so there you write `<tr jx:each="rows">`, `<option jx:if="x">`, and `jx:else-if="y"` / `jx:else` on the next element. Everywhere else, use the tags.
@@ -117,9 +117,9 @@ Put the request on the `<template>` itself, and it loads and draws right where i
 <header class="site-nav">
   <template jx:get="/view/nav">
     <a href="index.html">Home</a>
-    <jx-if test="signedIn">
+    <if test="signedIn">
       <a href="settings.html">Settings</a>
-    </jx-if>
+    </if>
   </template>
 </header>
 ```
@@ -202,7 +202,7 @@ When a request fails and the server sends JSON, jsonx redraws the region with it
 | Field | What it holds |
 |---|---|
 | `error` | One message for the whole thing: the server's `error` or `message`, or the field errors joined up. |
-| `errors` | A list for `<jx-each>`. `{"errors": {"email": ["can't be blank"]}` becomes `[{field: "email", message: "can't be blank", text: "email can't be blank"}]`. |
+| `errors` | A list for `<each>`. `{"errors": {"email": ["can't be blank"]}` becomes `[{field: "email", message: "can't be blank", text: "email can't be blank"}]`. |
 | `fieldErrors` | The same by field, e.g. `{{fieldErrors.email}}`, to show a message next to its input. |
 
 The next successful answer replaces the view, so the errors go away by themselves. What you typed stays, because the inputs aren't bound to the view. jsonx also fires `jx:error`, for page code.
@@ -289,9 +289,9 @@ A template can define a web component:
 ```html
 <template src="vote-button.jx"></template>
 …
-<jx-each items="options">
+<each items="options">
   <vote-button label="{{label}}" votes="{{votes}}" jx:post="/api/poll/{{id}}/vote" jx:trigger="vote"></vote-button>
-</jx-each>
+</each>
 ```
 
 - jsonx defines `<vote-button>` as a **LitElement** as soon as it finds the template (on the page, or in a `.jx` file).
@@ -336,7 +336,7 @@ If you can't add a view API, jsonx has three tools for working with the real one
 
 ### Beacon, on a CMS
 
-[Beacon](examples/marketing/), the marketing site, does the same with a Contentful-style CMS. Editors stack section entries (hero, features, pricing, FAQ...) into pages. The view API resolves the links between entries and turns rich text into blocks, and answers with a list of sections, each naming its kind: `{ hero: {...}, pricing: null, ... }`. The page is one HTML file with a template per kind of section, `<jx-each items="hero"><section>…`. A `<jx-each>` on a single object draws it once, with its fields in scope.
+[Beacon](examples/marketing/), the marketing site, does the same with a Contentful-style CMS. Editors stack section entries (hero, features, pricing, FAQ...) into pages. The view API resolves the links between entries and turns rich text into blocks, and answers with a list of sections, each naming its kind: `{ hero: {...}, pricing: null, ... }`. The page is one HTML file with a template per kind of section, `<each items="hero"><section>…`. A `<each>` on a single object draws it once, with its fields in scope.
 
 ### GraphQL
 
@@ -386,9 +386,9 @@ At 1,000 rows every action takes about 100 ms. At 10,000 rows the browser itself
 
 ```html
 <tbody><tr jx:each="rows">…</tr></tbody>
-<jx-if test="more">
+<if test="more">
   <p jx:get="/api/rows" jx:trigger="revealed" jx:vals='{"limit": {{nextLimit}}}'>Loading more…</p>
-</jx-if>
+</if>
 ```
 
 ## How it works

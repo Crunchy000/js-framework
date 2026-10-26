@@ -27,10 +27,10 @@
     ol { margin: 6px 0 0; padding-left: 22px; font-family: ui-monospace, monospace; }
   </style>
   <span class="time">{{shown}}s</span>
-  <jx-if test="running">
+  <if test="running">
     <button on:click="stop">Stop</button>
     <button on:click="lap">Lap</button>
-  </jx-if>
-  <jx-else><button on:click="start">Start</button></jx-else>
+  </if>
+  <else><button on:click="start">Start</button></else>
   <ol><li jx:each="laps">{{time}}s</li></ol>
 </template>

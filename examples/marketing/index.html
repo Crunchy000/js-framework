@@ -6,13 +6,13 @@
   <title>Beacon — status pages for small teams</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/styles/webawesome.css">
   <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
-  <link rel="stylesheet" href="style.css?v=37">
+  <link rel="stylesheet" href="style.css?v=38">
 
   <!-- Pretend servers: a Contentful-style CMS, and the view API in front of it.
        In real life both are on a server, and these two lines go away. -->
-  <script src="cms-api.js?v=37"></script>
-  <script src="view-api.js?v=37"></script>
-  <script type="module" src="../../jsonx.js?v=37"></script>
+  <script src="cms-api.js?v=38"></script>
+  <script src="view-api.js?v=38"></script>
+  <script type="module" src="../../jsonx.js?v=38"></script>
   <script>if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("wa-dark");</script>
 </head>
 <body>
@@ -26,64 +26,64 @@
         <nav class="wa-split container">
           <a class="brand" href="index.html"><wa-icon name="tower-broadcast"></wa-icon> {{nav.brand}}</a>
           <div class="wa-cluster wa-gap-l">
-            <jx-each items="nav.links">
+            <each items="nav.links">
               <a href="{{url}}">{{label}}</a>
-            </jx-each>
+            </each>
             <wa-button size="s" variant="brand" href="{{nav.cta.url}}">{{nav.cta.label}}</wa-button>
           </div>
         </nav>
       </header>
 
       <main>
-        <jx-each items="sections">
-          <jx-each items="hero">
+        <each items="sections">
+          <each items="hero">
             <section class="hero">
               <div class="container wa-stack wa-gap-l wa-align-items-center">
-                <jx-if test="badge">
+                <if test="badge">
                   <wa-badge pill appearance="outlined">{{badge}}</wa-badge>
-                </jx-if>
+                </if>
                 <h1>{{heading}}</h1>
                 <p class="lead">{{subheading}}</p>
-                <jx-if test="primary">
+                <if test="primary">
                   <div class="wa-cluster wa-justify-content-center">
                     <wa-button variant="brand" size="l" href="{{primary.url}}">{{primary.label}}</wa-button>
-                    <jx-if test="secondary">
+                    <if test="secondary">
                       <wa-button size="l" appearance="outlined" href="{{secondary.url}}">{{secondary.label}}</wa-button>
-                    </jx-if>
+                    </if>
                   </div>
-                </jx-if>
+                </if>
               </div>
             </section>
-          </jx-each>
+          </each>
 
-          <jx-each items="logos">
+          <each items="logos">
             <section class="logos">
               <div class="container wa-stack wa-align-items-center">
                 <p class="eyebrow">{{heading}}</p>
-                <div class="wa-cluster wa-gap-2xl wa-justify-content-center"><jx-each items="names"><span>{{.}}</span></jx-each></div>
+                <div class="wa-cluster wa-gap-2xl wa-justify-content-center"><each items="names"><span>{{.}}</span></each></div>
               </div>
             </section>
-          </jx-each>
+          </each>
 
-          <jx-each items="features">
+          <each items="features">
             <section class="features" id="{{anchor}}">
               <div class="container">
                 <h2>{{heading}}</h2>
                 <p class="lead">{{intro}}</p>
                 <div class="wa-grid" style="--min-column-size: 240px">
-                  <jx-each items="items">
+                  <each items="items">
                     <wa-card>
                       <wa-icon name="{{icon}}" class="feature-icon"></wa-icon>
                       <h3>{{title}}</h3>
                       <p>{{body}}</p>
                     </wa-card>
-                  </jx-each>
+                  </each>
                 </div>
               </div>
             </section>
-          </jx-each>
+          </each>
 
-          <jx-each items="testimonial">
+          <each items="testimonial">
             <section class="testimonial">
               <figure class="container">
                 <blockquote>“{{quote}}”</blockquote>
@@ -93,72 +93,72 @@
                 </figcaption>
               </figure>
             </section>
-          </jx-each>
+          </each>
 
-          <jx-each items="pricing">
+          <each items="pricing">
             <section class="pricing">
               <div class="container">
                 <h2>{{heading}}</h2>
                 <div class="wa-grid" style="--min-column-size: 240px">
-                  <jx-each items="plans">
+                  <each items="plans">
                     <wa-card class:highlighted="{{highlighted}}">
-                      <jx-if test="highlighted">
+                      <if test="highlighted">
                         <wa-badge slot="header" variant="brand">Most popular</wa-badge>
-                      </jx-if>
+                      </if>
                       <h3>{{name}}</h3>
                       <p class="price"><strong>{{price}}</strong> {{period}}</p>
                       <p>{{description}}</p>
-                      <ul class="checks"><jx-each items="features"><li><wa-icon name="check"></wa-icon> {{.}}</li></jx-each></ul>
+                      <ul class="checks"><each items="features"><li><wa-icon name="check"></wa-icon> {{.}}</li></each></ul>
                       <wa-button slot="footer" variant="{{buttonVariant}}" appearance="{{buttonAppearance}}" href="{{cta.url}}">{{cta.label}}</wa-button>
                     </wa-card>
-                  </jx-each>
+                  </each>
                 </div>
               </div>
             </section>
-          </jx-each>
+          </each>
 
-          <jx-each items="faq">
+          <each items="faq">
             <section class="faq">
               <div class="container narrow">
                 <h2>{{heading}}</h2>
-                <jx-each items="questions">
+                <each items="questions">
                   <wa-details summary="{{question}}">
                     <template jx:use="#rich-text"></template>
                   </wa-details>
-                </jx-each>
+                </each>
               </div>
             </section>
-          </jx-each>
+          </each>
 
-          <jx-each items="posts">
+          <each items="posts">
             <section class="posts">
               <div class="container narrow wa-stack">
                 <h2>{{heading}}</h2>
-                <jx-each items="items">
+                <each items="items">
                   <a class="post" href="{{url}}">
                     <small>{{date}} · {{author}}</small>
                     <h3>{{title}}</h3>
                     <p>{{excerpt}}</p>
-                    <div class="wa-cluster wa-gap-2xs"><jx-each items="tags"><wa-tag size="s">{{.}}</wa-tag></jx-each></div>
+                    <div class="wa-cluster wa-gap-2xs"><each items="tags"><wa-tag size="s">{{.}}</wa-tag></each></div>
                   </a>
-                </jx-each>
+                </each>
               </div>
             </section>
-          </jx-each>
+          </each>
 
-          <jx-each items="article">
+          <each items="article">
             <article class="article">
               <div class="container narrow">
                 <p><a href="index.html?page=blog">← All posts</a></p>
                 <h1>{{title}}</h1>
                 <p class="byline">{{date}} · {{author}}</p>
                 <template jx:use="#rich-text"></template>
-                <div class="wa-cluster wa-gap-2xs"><jx-each items="tags"><wa-tag size="s">{{.}}</wa-tag></jx-each></div>
+                <div class="wa-cluster wa-gap-2xs"><each items="tags"><wa-tag size="s">{{.}}</wa-tag></each></div>
               </div>
             </article>
-          </jx-each>
+          </each>
 
-          <jx-each items="signup">
+          <each items="signup">
             <section class="signup" id="signup">
               <div class="container narrow wa-stack wa-align-items-center">
                 <h2>{{heading}}</h2>
@@ -166,23 +166,23 @@
                 <!-- The form is its own small region: posting it only redraws the form. -->
                 <div class="signup-form" jx:region>
                   <template>
-                    <jx-if test="!done">
+                    <if test="!done">
                       <div class="wa-cluster wa-gap-xs wa-align-items-end">
                         <wa-input name="email" type="email" placeholder="you@company.com" label="Email" hint="{{fieldErrors.email}}"
                                   jx:post="/view/signup" jx:trigger="keydown[key=Enter]"></wa-input>
                         <wa-button variant="brand" jx:post="/view/signup">Subscribe</wa-button>
                       </div>
-                    </jx-if>
-                    <jx-else>
+                    </if>
+                    <else>
                       <wa-callout variant="success"><wa-icon slot="icon" name="circle-check"></wa-icon>{{message}}</wa-callout>
-                    </jx-else>
+                    </else>
                   </template>
                 </div>
               </div>
             </section>
-          </jx-each>
+          </each>
 
-          <jx-each items="cta">
+          <each items="cta">
             <section class="cta">
               <div class="container wa-stack wa-align-items-center">
                 <h2>{{heading}}</h2>
@@ -190,8 +190,8 @@
                 <wa-button size="l" href="{{button.url}}">{{button.label}}</wa-button>
               </div>
             </section>
-          </jx-each>
-        </jx-each>
+          </each>
+        </each>
       </main>
 
       <footer class="site-footer">
@@ -206,20 +206,20 @@
   <!-- Rich text from the CMS, as blocks: headings, paragraphs and lists.
        Each paragraph is a list of parts, which can be bold, italic or a link. -->
   <template id="rich-text">
-    <jx-each items="blocks">
+    <each items="blocks">
       <div class="rich">
-        <jx-each items="h2">
+        <each items="h2">
           <h2>{{text}}</h2>
-        </jx-each>
-        <jx-each items="p">
+        </each>
+        <each items="p">
           <p><template jx:use="#parts"></template></p>
-        </jx-each>
-        <jx-each items="ul">
-          <ul><jx-each items="items"><li><template jx:use="#parts"></template></li></jx-each></ul>
-        </jx-each>
+        </each>
+        <each items="ul">
+          <ul><each items="items"><li><template jx:use="#parts"></template></li></each></ul>
+        </each>
       </div>
-    </jx-each>
+    </each>
   </template>
-  <template id="parts"><jx-each items="parts"><span class:bold="{{bold}}" class:italic="{{italic}}"><jx-if test="href"><a href="{{href}}">{{text}}</a></jx-if><jx-else><span>{{text}}</span></jx-else></span></jx-each></template>
+  <template id="parts"><each items="parts"><span class:bold="{{bold}}" class:italic="{{italic}}"><if test="href"><a href="{{href}}">{{text}}</a></if><else><span>{{text}}</span></else></span></each></template>
 </body>
 </html>

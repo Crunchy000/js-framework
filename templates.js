@@ -8,12 +8,12 @@
  *      the current item itself.
  *
  *   2. Logic is written as tags, which draw only what's inside them:
- *        <jx-each items="todos">…</jx-each>   repeat for each item; inside, names
+ *        <each items="todos">…</each>   repeat for each item; inside, names
  *                                             refer to the item. Items with an
  *                                             `id` are tracked by it.
- *        <jx-if test="error">…</jx-if>         draw if `error` is truthy
- *        <jx-else-if test="!todos">…</jx-else-if>   `!` means falsy or empty list
- *        <jx-else>…</jx-else>
+ *        <if test="error">…</if>         draw if `error` is truthy
+ *        <else-if test="!todos">…</else-if>   `!` means falsy or empty list
+ *        <else>…</else>
  *      Inside <table> and <select> the browser moves unknown tags away, so
  *      there you put the logic on the element instead: <tr jx:each="rows">,
  *      <option jx:if="x">, jx:else-if="y", jx:else.
@@ -46,7 +46,7 @@ import { repeat } from "./vendor/lit-html/directives/repeat.js";
 
 // `stack` is the list of contexts, innermost last: [view, todo, ...].
 // A name is looked up from the innermost context outwards, so inside
-// <jx-each items="todos">, {{title}} is the todo's title and {{filter}} still works.
+// <each items="todos">, {{title}} is the todo's title and {{filter}} still works.
 //
 // Names are split on dots once, when the template is compiled: path("a.b") is
 // ["a", "b"], and path(".") is DOT.
@@ -221,7 +221,7 @@ var toggleClass = directive(ToggleClass);
 //   1. share(old, new) compares the new view with the last one, and wherever a
 //      part is equal, it reuses the old object. So after sharing, "unchanged"
 //      simply means "the same object" (===).
-//   2. Each <jx-each> row remembers the item it drew, and every name it read
+//   2. Each <each> row remembers the item it drew, and every name it read
 //      from outside the item (like {{filter}}). If the item is the same object
 //      and those names have the same values, the row is skipped: none of its
 //      holes are even looked at.
@@ -280,7 +280,7 @@ function hasTouched(part) {
   return false;
 }
 
-// One <jx-each> row: row(item, stack, draw).
+// One <each> row: row(item, stack, draw).
 class Row extends Directive {
   update(part, [item, stack, draw]) {
     if (this.item === item && !hasTouched(part) && this.reads.every(function (read) {
@@ -356,14 +356,20 @@ function compileNodes(nodes, ctx) {
   return b.finish();
 }
 
-// The logic tags, and the attribute forms kept for tables and selects (where
-// the browser's HTML parser moves unknown tags out of the way).
+// The logic tags, <if>, <else-if>, <else> and <each>, and the attribute forms
+// kept for tables and selects (where the browser's HTML parser moves unknown
+// tags out of the way). The older <if> spellings work too.
+var LOGIC = { "if": "if", "else-if": "else-if", "else": "else", "each": "each",
+  "jx-if": "if", "jx-else-if": "else-if", "jx-else": "else", "jx-each": "each" };
+function logic(node) {
+  return node.nodeType === Node.ELEMENT_NODE ? LOGIC[node.localName] || null : null;
+}
 function isIf(node) {
-  return node.nodeType === Node.ELEMENT_NODE && (node.localName === "jx-if" || node.hasAttribute("jx:if"));
+  return node.nodeType === Node.ELEMENT_NODE && (logic(node) === "if" || node.hasAttribute("jx:if"));
 }
 function isElse(node) {
   return node.nodeType === Node.ELEMENT_NODE &&
-    (node.localName === "jx-else-if" || node.localName === "jx-else" ||
+    (logic(node) === "else-if" || logic(node) === "else" ||
      node.hasAttribute("jx:else-if") || node.hasAttribute("jx:else"));
 }
 function isBlank(node) {
@@ -373,10 +379,10 @@ function isBlank(node) {
 // One branch of an if / else-if / else chain: { test, render }.
 // `test` is null for the final else.
 function branch(node, ctx) {
-  var tag = node.localName;
-  if (tag === "jx-if" || tag === "jx-else-if" || tag === "jx-else") {
-    var test = tag === "jx-else" ? null : node.getAttribute("test");
-    if (tag !== "jx-else" && test === null) throw new Error("[jsonx] <" + tag + "> needs test=\"name\"");
+  var tag = logic(node);
+  if (tag === "if" || tag === "else-if" || tag === "else") {
+    var test = tag === "else" ? null : node.getAttribute("test");
+    if (tag !== "else" && test === null) throw new Error("[jsonx] <" + node.localName + "> needs test=\"name\"");
     return { test: test === null ? null : condition(test), render: compileNodes(node.childNodes, ctx) };
   }
   var copy = node.cloneNode(true);
@@ -397,10 +403,10 @@ function passes(test, stack) {
 function compileInto(nodes, b, ctx) {
   for (var i = 0; i < nodes.length; i++) {
     var node = nodes[i];
-    if (isElse(node)) throw new Error("[jsonx] <" + node.localName + "> must come right after <jx-if> or <jx-else-if>");
+    if (isElse(node)) throw new Error("[jsonx] <" + node.localName + "> must come right after <if> or <else-if>");
     if (!isIf(node)) { compileNode(node, b, ctx); continue; }
 
-    // Gather the chain: <jx-if>, then any <jx-else-if>s, then maybe <jx-else>.
+    // Gather the chain: <if>, then any <else-if>s, then maybe <else>.
     // Only whitespace and comments may sit between them.
     var branches = [branch(node, ctx)];
     var next = i + 1;
@@ -449,10 +455,10 @@ function compileNode(node, b, ctx) {
     return;
   }
 
-  // <jx-each items="todos">…</jx-each>: repeat what's inside.
-  if (node.localName === "jx-each") {
+  // <each items="todos">…</each>: repeat what's inside.
+  if (logic(node) === "each") {
     var items = node.getAttribute("items");
-    if (items === null) throw new Error('[jsonx] <jx-each> needs items="name"');
+    if (items === null) throw new Error('[jsonx] <' + node.localName + '> needs items="name"');
     b.hole(eachHole(items, compileNodes(node.childNodes, ctx)));
     return;
   }

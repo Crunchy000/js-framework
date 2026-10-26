@@ -23,7 +23,7 @@
     .points { margin: 0; padding-left: 1.2em; }
     .points li + li { margin-top: var(--wa-space-2xs); }
   </style>
-  <script type="module" src="jsonx.js?v=37"></script>
+  <script type="module" src="jsonx.js?v=38"></script>
 </head>
 <body>
   <main class="wa-stack wa-gap-xl">
@@ -43,7 +43,7 @@
     &lt;wa-button on:click="up"&gt;
       Clicked {{count}} times
     &lt;/wa-button&gt;
-    &lt;jx-if test="count"&gt;Nice.&lt;/jx-if&gt;
+    &lt;if test="count"&gt;Nice.&lt;/if&gt;
   &lt;/template&gt;
 &lt;/div&gt;</code></pre>
       <div class="live">
@@ -55,7 +55,7 @@
         <div jx:data="count">
           <template>
             <wa-button on:click="up">Clicked {{count}} times</wa-button>
-            <jx-if test="count">Nice.</jx-if>
+            <if test="count">Nice.</if>
           </template>
         </div>
       </div>

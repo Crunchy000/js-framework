@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Learn jsonx</title>
-  <link rel="stylesheet" href="style.css?v=37">
-  <script type="module" src="../../jsonx.js?v=37"></script>
+  <link rel="stylesheet" href="style.css?v=38">
+  <script type="module" src="../../jsonx.js?v=38"></script>
 </head>
 <body>
 <header class="top">
@@ -81,7 +81,7 @@
         <p jx:data="count">
           <template>
             Clicked {{count}} times.
-            <jx-if test="count"><button on:click="up">Again!</button></jx-if>
+            <if test="count"><button on:click="up">Again!</button></if>
           </template>
         </p>
         <!-- /example:count -->
@@ -92,7 +92,7 @@
       <li><code>on:click="up"</code> calls <code>up()</code> when the element is clicked. Any event works the same way: <code>on:input</code>, <code>on:change</code>, <code>on:submit</code>, <code>on:keydown</code>, or a component's own events.</li>
       <li>After the function returns, jsonx compares the variables it can see with what they were, and redraws the regions that use the ones that changed. It only touches the parts of the page that are different.</li>
       <li>The button doesn't have to be in the region. Nothing says <em>what</em> a button changes: jsonx works it out.</li>
-      <li><code>&lt;jx-if test="count"&gt;</code> draws what's inside only when <code>count</code> is truthy. More on that in step 4.</li>
+      <li><code>&lt;if test="count"&gt;</code> draws what's inside only when <code>count</code> is truthy. More on that in step 4.</li>
       <li>Not <code>onclick</code>: that's the browser's own attribute, and it runs its text as code.</li>
     </ul>
   </section>
@@ -174,18 +174,18 @@
             </form>
 
             <ul class="items">
-              <jx-each items="todos">
+              <each items="todos">
                 <li class:done="{{done}}">
                   <input type="checkbox" checked="{{done}}" on:change="toggle" jx:vals="id">
                   {{title}}
                 </li>
-              </jx-each>
+              </each>
             </ul>
 
-            <jx-if test="!todos"><p>Nothing to do.</p></jx-if>
-            <jx-else>
+            <if test="!todos"><p>Nothing to do.</p></if>
+            <else>
               <p>{{left}} left <button on:click="clearDone">Clear done</button></p>
-            </jx-else>
+            </else>
           </template>
         </div>
         <!-- /example:todos -->
@@ -193,8 +193,8 @@
     </div>
 
     <ul>
-      <li><code>&lt;jx-each items="todos"&gt;</code> repeats what's inside for each item. Inside, names look in the item first, then outwards. Items with an <code>id</code> are tracked by it, so ticking one off only touches that row.</li>
-      <li><code>&lt;jx-if test="!todos"&gt;</code>: a <code>!</code> means false or empty. <code>&lt;jx-else-if&gt;</code> and <code>&lt;jx-else&gt;</code> come right after.</li>
+      <li><code>&lt;each items="todos"&gt;</code> repeats what's inside for each item. Inside, names look in the item first, then outwards. Items with an <code>id</code> are tracked by it, so ticking one off only touches that row.</li>
+      <li><code>&lt;if test="!todos"&gt;</code>: a <code>!</code> means false or empty. <code>&lt;else-if&gt;</code> and <code>&lt;else&gt;</code> come right after.</li>
       <li><code>jx:vals="id"</code> sends the item's <code>id</code> as a value, as it is (a number stays a number). Name several, <code>jx:vals="id title"</code>, or rename one, <code>jx:vals="todo=id"</code>.</li>
       <li>When a value fills a whole attribute, like <code>checked="{{done}}"</code> or <code>value="{{draft}}"</code>, it sets the live property, so the box and the input always match the data. That's how <code>draft = ""</code> empties the input. <code>class:done="{{done}}"</code> turns a class on and off.</li>
       <li><code>on:submit</code> stops the browser reloading the page, as you'd want.</li>
@@ -211,11 +211,11 @@
       <div class="codes">
         <pre class="code" data-example="counter"></pre>
         <p class="file-name">counter.jx</p>
-        <pre class="code" data-file="counter.jx?v=37"></pre>
+        <pre class="code" data-file="counter.jx?v=38"></pre>
       </div>
       <div class="result">
         <!-- example:counter -->
-        <template src="counter.jx?v=37"></template>
+        <template src="counter.jx?v=38"></template>
 
         <p><click-counter></click-counter></p>
         <p><click-counter start="10"></click-counter></p>
@@ -242,11 +242,11 @@
       <div class="codes">
         <pre class="code" data-example="shop"></pre>
         <p class="file-name">shop.jx</p>
-        <pre class="code" data-file="shop.jx?v=37"></pre>
+        <pre class="code" data-file="shop.jx?v=38"></pre>
       </div>
       <div class="result">
         <!-- example:shop -->
-        <template src="shop.jx?v=37"></template>
+        <template src="shop.jx?v=38"></template>
 
         <p><basket-count></basket-count></p>
         <p>
@@ -276,11 +276,11 @@
       <div class="codes">
         <pre class="code" data-example="watch"></pre>
         <p class="file-name">stopwatch.jx</p>
-        <pre class="code" data-file="stopwatch.jx?v=37"></pre>
+        <pre class="code" data-file="stopwatch.jx?v=38"></pre>
       </div>
       <div class="result">
         <!-- example:watch -->
-        <template src="stopwatch.jx?v=37"></template>
+        <template src="stopwatch.jx?v=38"></template>
         <script>
           let showWatch = true;
           function toggleWatch() { showWatch = !showWatch; }
@@ -289,7 +289,7 @@
         <button on:click="toggleWatch">Show or hide</button>
         <div jx:data="showWatch">
           <template>
-            <jx-if test="showWatch"><stop-watch autostart></stop-watch></jx-if>
+            <if test="showWatch"><stop-watch autostart></stop-watch></if>
           </template>
         </div>
         <!-- /example:watch -->
@@ -312,11 +312,11 @@
       <div class="codes">
         <pre class="code" data-example="feedback"></pre>
         <p class="file-name">rating.jx</p>
-        <pre class="code" data-file="rating.jx?v=37"></pre>
+        <pre class="code" data-file="rating.jx?v=38"></pre>
       </div>
       <div class="result">
         <!-- example:feedback -->
-        <template src="rating.jx?v=37"></template>
+        <template src="rating.jx?v=38"></template>
         <script>
           let thanks = "";
           function send({ stars, comment }) {
@@ -349,11 +349,11 @@
       <div class="codes">
         <pre class="code" data-example="picker"></pre>
         <p class="file-name">picker.jx</p>
-        <pre class="code" data-file="picker.jx?v=37"></pre>
+        <pre class="code" data-file="picker.jx?v=38"></pre>
       </div>
       <div class="result">
         <!-- example:picker -->
-        <template src="picker.jx?v=37"></template>
+        <template src="picker.jx?v=38"></template>
         <script>
           let picked = { name: "nothing yet", hex: "transparent" };
           function choose({ name, hex }) { picked = { name, hex }; }
@@ -386,9 +386,9 @@
     <h3>Templates</h3>
     <table>
       <tr><td><code>{{name}}</code>, <code>{{a.b}}</code>, <code>{{.}}</code></td><td>Print a value, always as text. <code>{{.}}</code> is the item itself</td></tr>
-      <tr><td><code>&lt;jx-each items="list"&gt;</code></td><td>Repeat for each item. Names look in the item, then outwards</td></tr>
-      <tr><td><code>&lt;jx-if test="x"&gt;</code>, <code>test="!x"</code></td><td>Draw if there, or if not there (false or empty)</td></tr>
-      <tr><td><code>&lt;jx-else-if test="y"&gt;</code>, <code>&lt;jx-else&gt;</code></td><td>The rest of the chain</td></tr>
+      <tr><td><code>&lt;each items="list"&gt;</code></td><td>Repeat for each item. Names look in the item, then outwards</td></tr>
+      <tr><td><code>&lt;if test="x"&gt;</code>, <code>test="!x"</code></td><td>Draw if there, or if not there (false or empty)</td></tr>
+      <tr><td><code>&lt;else-if test="y"&gt;</code>, <code>&lt;else&gt;</code></td><td>The rest of the chain</td></tr>
       <tr><td><code>jx:each</code>, <code>jx:if</code>, <code>jx:else</code></td><td>The same, on an element, for tables and selects</td></tr>
       <tr><td><code>value="{{draft}}"</code></td><td>A whole-attribute value sets the live property</td></tr>
       <tr><td><code>class:done="{{done}}"</code></td><td>Turn a class on or off</td></tr>
@@ -419,6 +419,6 @@
   </section>
 </main>
 
-<script src="tutorial.js?v=37"></script>
+<script src="tutorial.js?v=38"></script>
 </body>
 </html>

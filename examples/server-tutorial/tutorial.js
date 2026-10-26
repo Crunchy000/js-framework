@@ -19,7 +19,7 @@
   // Colours {{values}}, jx: attributes and <jx-...> tags in escaped HTML.
   function highlight(html) {
     return escapeHtml(html)
-      .replace(/(&lt;\/?)(jx-[\w-]+)/g, '$1<span class="hl-tag">$2</span>')
+      .replace(/(&lt;\/?)(jx-[\w-]+|else-if|if|else|each)(?=[\s&])/g, '$1<span class="hl-tag">$2</span>')
       .replace(/(\s)((?:jx|on|class):[\w.-]+)(=)/g, '$1<span class="hl-attr">$2</span>$3')
       .replace(/\{\{[^}]*\}\}/g, '<span class="hl-value">$&</span>')
       .replace(/&lt;!--[\s\S]*?--&gt;/g, '<span class="hl-comment">$&</span>');

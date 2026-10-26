@@ -7,9 +7,9 @@
  *
  *   <wa-card jx:get="api/todos">              <- a region: loads itself
  *     <template>
- *       <jx-each items="todos">                <- template syntax: see templates.js
+ *       <each items="todos">                <- template syntax: see templates.js
  *         <wa-checkbox checked="{{done}}" jx:post="api/todos/{{id}}/toggle">{{title}}</wa-checkbox>
- *       </jx-each>
+ *       </each>
  *     </template>
  *   </wa-card>
  *
@@ -18,8 +18,8 @@
  *
  *   <script type="module" src="jsonx.js"></script>
  */
-import { compileTemplate, compileView } from "./templates.js?v=37";
-import { defineComponent, instances, compileScript } from "./components.js?v=37";
+import { compileTemplate, compileView } from "./templates.js?v=38";
+import { defineComponent, instances, compileScript } from "./components.js?v=38";
 
 var METHODS = ["get", "post", "put", "patch", "delete"];
 var SELECTOR = METHODS.map(function (m) { return "[jx\\:" + m + "]"; }).join(",") + ",[jx\\:region],[jx\\:query],[jx\\:data],[jx\\:emit],[jx\\:ws],[jx\\:ws-send]";
@@ -1088,7 +1088,7 @@ function render(el, data, url, sentAt) {
 
 // When a request fails, the region is redrawn with its last view plus:
 //   error        one message for the whole thing
-//   errors       the list from errorList(), for jx-each
+//   errors       the list from errorList(), for <each>
 //   fieldErrors  { email: "can't be blank" }, to show a message under each field
 // The next successful answer replaces the view, so the errors go away by themselves.
 function renderError(el, error) {

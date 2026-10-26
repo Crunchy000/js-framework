@@ -6,13 +6,13 @@
   <title>Home — Conduit</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/styles/webawesome.css">
   <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
-  <link rel="stylesheet" href="style.css?v=37">
+  <link rel="stylesheet" href="style.css?v=38">
 
   <!-- Pretend servers: the RealWorld API, and the view API in front of it.
        In real life both run on a server, and these two lines go away. -->
-  <script src="mock-api.js?v=37"></script>
-  <script src="view-api.js?v=37"></script>
-  <script type="module" src="../../jsonx.js?v=37"></script>
+  <script src="mock-api.js?v=38"></script>
+  <script src="view-api.js?v=38"></script>
+  <script type="module" src="../../jsonx.js?v=38"></script>
   <script>if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("wa-dark");</script>
 </head>
 <body>
@@ -34,32 +34,32 @@
 
       <main>
         <div class="tabs">
-          <jx-each items="tabs">
+          <each items="tabs">
             <wa-button appearance="plain" class:active="{{active}}"
                        jx:get="/view/home" jx:vals='{"tab": "{{name}}", "tag": "{{tag}}", "page": 1}'>{{label}}</wa-button>
-          </jx-each>
+          </each>
         </div>
-        <jx-if test="error">
+        <if test="error">
           <wa-callout variant="warning">{{error}} <a href="login.html">Sign in</a></wa-callout>
-        </jx-if>
+        </if>
         <template jx:use="#previews"></template>
-        <jx-if test="pages">
+        <if test="pages">
           <div class="pages wa-cluster wa-gap-2xs">
-            <jx-each items="pages">
+            <each items="pages">
               <wa-button size="s" appearance="outlined" class:current="{{current}}"
                          jx:get="/view/home" jx:vals='{"page": {{number}}}'>{{number}}</wa-button>
-            </jx-each>
+            </each>
           </div>
-        </jx-if>
+        </if>
       </main>
 
       <aside>
         <wa-card>
           <h2>Popular tags</h2>
           <div class="wa-cluster wa-gap-2xs">
-            <jx-each items="tags">
+            <each items="tags">
               <a href="#" jx:get="/view/home" jx:vals='{"tag": "{{.}}", "page": 1}'><wa-tag size="s" pill>{{.}}</wa-tag></a>
-            </jx-each>
+            </each>
           </div>
         </wa-card>
       </aside>

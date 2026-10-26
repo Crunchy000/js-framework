@@ -6,13 +6,13 @@
   <title>Settings — Conduit</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/styles/webawesome.css">
   <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
-  <link rel="stylesheet" href="style.css?v=37">
+  <link rel="stylesheet" href="style.css?v=38">
 
   <!-- Pretend servers: the RealWorld API, and the view API in front of it.
        In real life both run on a server, and these two lines go away. -->
-  <script src="mock-api.js?v=37"></script>
-  <script src="view-api.js?v=37"></script>
-  <script type="module" src="../../jsonx.js?v=37"></script>
+  <script src="mock-api.js?v=38"></script>
+  <script src="view-api.js?v=38"></script>
+  <script type="module" src="../../jsonx.js?v=38"></script>
   <script>if (matchMedia("(prefers-color-scheme: dark)").matches) document.documentElement.classList.add("wa-dark");</script>
 </head>
 <body>
@@ -22,16 +22,16 @@
     <h1>Your settings</h1>
     <div class="wa-stack" style="margin-top: var(--wa-space-l)" jx:get="/view/settings">
       <template>
-        <jx-if test="!signedIn">
+        <if test="!signedIn">
           <p class="empty"><a href="login.html">Sign in</a> to see this page.</p>
-        </jx-if>
-        <jx-else>
+        </if>
+        <else>
           <div class="wa-stack">
-            <jx-if test="error">
+            <if test="error">
               <wa-callout variant="danger">
-                <ul class="wa-stack wa-gap-3xs" style="margin: 0; padding-left: 1em;"><jx-each items="errors"><li>{{text}}</li></jx-each></ul>
+                <ul class="wa-stack wa-gap-3xs" style="margin: 0; padding-left: 1em;"><each items="errors"><li>{{text}}</li></each></ul>
               </wa-callout>
-            </jx-if>
+            </if>
             <wa-input name="image" placeholder="URL of profile picture" value="{{user.image}}"></wa-input>
             <wa-input name="username" placeholder="Username" size="l" value="{{user.username}}"></wa-input>
             <wa-textarea name="bio" placeholder="Short bio about you" rows="5" value="{{user.bio}}"></wa-textarea>
@@ -45,7 +45,7 @@
               <wa-button appearance="plain" size="s" jx:post="/view/reset" jx:swap="none" jx:then="index.html">Reset demo data</wa-button>
             </div>
           </div>
-        </jx-else>
+        </else>
       </template>
     </div>
   </main>

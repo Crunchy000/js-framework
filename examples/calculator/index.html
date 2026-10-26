@@ -101,7 +101,7 @@
       return String(Number(n.toPrecision(12)));
     }
   </script>
-  <script type="module" src="../../jsonx.js?v=37"></script>
+  <script type="module" src="../../jsonx.js?v=38"></script>
 
   <style>
     :root { --bg: #f4f4f5; --panel: #fff; --text: #18181b; --muted: #71717a; --line: #e4e4e7;
@@ -156,26 +156,26 @@
         </div>
 
         <div class="keys">
-          <jx-each items="rows">
+          <each items="rows">
             <div class="row">
-              <jx-each items="keys">
+              <each items="keys">
                 <button class="{{kind}}" class:active="{{active}}"
                         on:click="press" jx:vals="key">{{key}}</button>
-              </jx-each>
+              </each>
             </div>
-          </jx-each>
+          </each>
         </div>
 
-        <jx-if test="tape">
+        <if test="tape">
           <div class="tape">
             <div class="tape-head">History <button on:click="clearTape">Clear</button></div>
             <ol>
-              <jx-each items="tape">
+              <each items="tape">
                 <li><span>{{text}}</span> <strong>{{result}}</strong></li>
-              </jx-each>
+              </each>
             </ol>
           </div>
-        </jx-if>
+        </if>
       </template>
     </div>
   </main>

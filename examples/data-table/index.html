@@ -65,7 +65,7 @@
       };
     }
   </script>
-  <script type="module" src="../../jsonx.js?v=37"></script>
+  <script type="module" src="../../jsonx.js?v=38"></script>
 
   <style>
     :root { --bg: #fafafa; --panel: #fff; --text: #18181b; --muted: #71717a; --line: #e4e4e7; --head: #f4f4f5; --accent: #4f46e5; }
@@ -137,15 +137,15 @@
           </table>
 
           <!-- Infinite scroll: when this comes into view, ask for 50 more. -->
-          <jx-if test="more">
+          <if test="more">
             <p class="more" jx:get="fn:people" jx:trigger="revealed" jx:vals='{"limit": {{nextLimit}}}'>Loading more…</p>
-          </jx-if>
-          <jx-else-if test="!total">
+          </if>
+          <else-if test="!total">
             <p class="empty">No one matches "{{q}}".</p>
-          </jx-else-if>
-          <jx-else>
+          </else-if>
+          <else>
             <p class="more">That's everyone.</p>
-          </jx-else>
+          </else>
         </div>
       </template>
     </div>

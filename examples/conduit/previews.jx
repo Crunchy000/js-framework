@@ -5,10 +5,10 @@
 <template src="../components/article-preview.jx"></template>
 
 <template id="previews">
-  <jx-if test="!articles">
+  <if test="!articles">
     <p class="empty">No articles are here... yet.</p>
-  </jx-if>
-  <jx-each items="articles">
+  </if>
+  <each items="articles">
     <article-preview article="{{.}}" jx:post="{{favoriteUrl}}" jx:trigger="favorite"></article-preview>
-  </jx-each>
+  </each>
 </template>

@@ -4,10 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>jsonx tutorial</title>
-  <link rel="stylesheet" href="style.css?v=37">
+  <link rel="stylesheet" href="style.css?v=38">
   <!-- A pretend server, so every example works without one. -->
-  <script src="mock-api.js?v=37"></script>
-  <script type="module" src="../../jsonx.js?v=37"></script>
+  <script src="mock-api.js?v=38"></script>
+  <script type="module" src="../../jsonx.js?v=38"></script>
 </head>
 <body>
 <header class="top">
@@ -266,7 +266,7 @@
   <!-- ===================================================================== -->
   <section class="lesson" id="s6">
     <h2>6. Lists, and where names are looked up</h2>
-    <p><code>&lt;jx-each items="items"&gt;</code> draws what's inside it once for each item in the list.</p>
+    <p><code>&lt;each items="items"&gt;</code> draws what's inside it once for each item in the list.</p>
 
     <div class="example">
       <pre class="code" data-example="list"></pre>
@@ -276,16 +276,16 @@
           <div jx:get="/api/list">
             <template>
               <ul class="items">
-                <jx-each items="items">
+                <each items="items">
                   <li class:done="{{done}}">
                     <input type="checkbox" checked="{{done}}" jx:post="/api/list/{{id}}/toggle">
                     {{qty}} × {{name}} <small>from {{store}}</small>
                     <button jx:delete="/api/list/{{id}}">Remove</button>
                   </li>
-                </jx-each>
+                </each>
               </ul>
 
-              <p>Tags: <jx-each items="tags"><span class="tag">{{.}}</span></jx-each></p>
+              <p>Tags: <each items="tags"><span class="tag">{{.}}</span></each></p>
 
               <input name="item" placeholder="Add an item" value="{{draft}}"
                      jx:post="/api/list" jx:trigger="keydown[key=Enter]">
@@ -299,7 +299,7 @@
     </div>
 
     <h3>Where names are looked up</h3>
-    <p>Inside <code>&lt;jx-each&gt;</code>, a name is looked up in the current item first, then outwards in the view around it:</p>
+    <p>Inside <code>&lt;each&gt;</code>, a name is looked up in the current item first, then outwards in the view around it:</p>
     <script type="text/plain" class="snippet">
       view:  { store: "the corner shop", items: [ ... ], tags: [ ... ], draft: "" }
                ↑ 2. then here
@@ -318,7 +318,7 @@
       <li>Values work in URLs too: <code>jx:post="/api/list/{{id}}/toggle"</code> gives each row its own address.</li>
       <li><code>class:done="{{done}}"</code> turns the class <code>done</code> on or off.</li>
       <li>Items with an <code>id</code> are tracked by it. Removing one row removes just that row's elements, and the others stay as they are, even mid-typing.</li>
-      <li><code>&lt;jx-each&gt;</code> isn't put on the page, so <code>ul &gt; li</code> still matches in your CSS.</li>
+      <li><code>&lt;each&gt;</code> isn't put on the page, so <code>ul &gt; li</code> still matches in your CSS.</li>
       <li>Adding sends <code>item</code>, the region's only named control. The server answers with <code>draft: ""</code>, which empties the box.</li>
     </ul>
   </section>
@@ -326,7 +326,7 @@
   <!-- ===================================================================== -->
   <section class="lesson" id="s7">
     <h2>7. Conditions</h2>
-    <p><code>&lt;jx-if&gt;</code> draws what's inside only when a value is there. <code>&lt;jx-else-if&gt;</code> and <code>&lt;jx-else&gt;</code> can follow it.</p>
+    <p><code>&lt;if&gt;</code> draws what's inside only when a value is there. <code>&lt;else-if&gt;</code> and <code>&lt;else&gt;</code> can follow it.</p>
 
     <div class="example">
       <pre class="code" data-example="delivery"></pre>
@@ -335,26 +335,26 @@
           <!-- example:delivery -->
           <div jx:get="/api/delivery">
             <template>
-              <jx-if test="delivered">
+              <if test="delivered">
                 <p class="big">Delivered!</p>
-              </jx-if>
-              <jx-else-if test="shipped">
+              </if>
+              <else-if test="shipped">
                 <p class="big">On its way, arriving {{eta}}.</p>
-              </jx-else-if>
-              <jx-else>
+              </else-if>
+              <else>
                 <p class="big">Not shipped yet.</p>
-              </jx-else>
+              </else>
 
-              <jx-if test="!notes">
+              <if test="!notes">
                 <p><small>No updates yet.</small></p>
-              </jx-if>
+              </if>
               <ul>
-                <jx-each items="notes"><li>{{text}}</li></jx-each>
+                <each items="notes"><li>{{text}}</li></each>
               </ul>
 
-              <jx-if test="!delivered">
+              <if test="!delivered">
                 <button jx:post="/api/delivery/next">Next step</button>
-              </jx-if>
+              </if>
               <button jx:post="/api/delivery/reset">Start over</button>
             </template>
           </div>
@@ -367,7 +367,7 @@
     <ul>
       <li><code>test="shipped"</code> passes when the value is there. Missing, <code>null</code>, <code>false</code>, <code>0</code>, <code>""</code> and an empty list <code>[]</code> all count as "not there".</li>
       <li><code>test="!notes"</code> is the opposite. Here it's the empty-list message.</li>
-      <li>In a chain, the first branch that passes is drawn, and <code>&lt;jx-else&gt;</code> catches the rest. Only spaces and comments may sit between the branches.</li>
+      <li>In a chain, the first branch that passes is drawn, and <code>&lt;else&gt;</code> catches the rest. Only spaces and comments may sit between the branches.</li>
       <li>There are no comparisons like <code>step &gt; 1</code>, on purpose. The server sends a ready answer, like <code>shipped: true</code>. Logic lives in one place, and templates stay easy to read.</li>
     </ul>
     <p class="note"><strong>Tables and selects:</strong> the browser moves unknown tags out of <code>&lt;table&gt;</code> and <code>&lt;select&gt;</code> before jsonx sees them. In those two places, put the logic on the element: <code>&lt;tr jx:each="rows"&gt;</code>, <code>&lt;option jx:if="x"&gt;</code>, and <code>jx:else-if</code> / <code>jx:else</code> on the elements that follow.</p>
@@ -393,8 +393,8 @@
               <section id="comments" jx:get="/api/post/comments">
                 <template>
                   <p><strong>{{count}} comments</strong> · loaded at {{loadedAt}}</p>
-                  <jx-if test="error"><p class="error">{{error}}</p></jx-if>
-                  <jx-each items="comments"><p class="comment">{{text}}</p></jx-each>
+                  <if test="error"><p class="error">{{error}}</p></if>
+                  <each items="comments"><p class="comment">{{text}}</p></each>
                   <input name="text" placeholder="Write a comment" value="{{draft}}">
                   <button jx:post="/api/post/comments">Comment</button>
                   <button jx:post="/api/post/like" jx:target="#post">Like (from in here)</button>
@@ -420,12 +420,12 @@
 
     <h3>The rules</h3>
     <ol>
-      <li><strong>Each region's names come only from its own view.</strong> Views don't flow from an outer region into an inner one. If the comments need the post's title, the comments view includes it. (Inside one template, <code>&lt;jx-each&gt;</code> looks outwards as in step 6. That lookup stops at the region's edge.)</li>
+      <li><strong>Each region's names come only from its own view.</strong> Views don't flow from an outer region into an inner one. If the comments need the post's title, the comments view includes it. (Inside one template, <code>&lt;each&gt;</code> looks outwards as in step 6. That lookup stops at the region's edge.)</li>
       <li><strong>A button belongs to its nearest region.</strong> "Comment" redraws only the comments, and sends only <code>text</code>.</li>
       <li><strong>Redrawing the outer region leaves the inner one alone.</strong> Click "Like": the post's clock changes, but the comments' clock doesn't, and a half-typed comment stays. jsonx only updates the outer view's values, and the inner region is not one of them.</li>
       <li><strong>Reach across on purpose.</strong> <code>jx:target="#post"</code> sends the answer to another region, drawn with that region's template. <code>jx:refresh="#comments"</code> reloads another region once a request works, from wherever it last loaded.</li>
     </ol>
-    <p>If an outer redraw removes an inner region, for example inside a <code>&lt;jx-if&gt;</code> that turns off, and later draws it again, it's a new region. It loads again from scratch.</p>
+    <p>If an outer redraw removes an inner region, for example inside a <code>&lt;if&gt;</code> that turns off, and later draws it again, it's a new region. It loads again from scratch.</p>
     <p>Use nested regions when part of a page changes on its own, like comments under an article, or a live counter in a header. Each part then asks the server only for its own view.</p>  </section>
 
   <!-- ===================================================================== -->
@@ -440,18 +440,18 @@
           <!-- example:signup -->
           <div class="signup" jx:region>
             <template>
-              <jx-if test="done">
+              <if test="done">
                 <p>Thanks! <strong>{{email}}</strong> is signed up.</p>
                 <button jx:get="/api/signup">Start again</button>
-              </jx-if>
-              <jx-else>
-                <jx-if test="errors"><p class="error">Please fix {{errors.length}} problem(s).</p></jx-if>
+              </if>
+              <else>
+                <if test="errors"><p class="error">Please fix {{errors.length}} problem(s).</p></if>
                 <label>Email <input name="email"></label>
                 <small class="error">{{fieldErrors.email}}</small>
                 <label>Age <input name="age" type="number"></label>
                 <small class="error">{{fieldErrors.age}}</small>
                 <button jx:post="/api/signup">Sign up</button>
-              </jx-else>
+              </else>
             </template>
           </div>
           <!-- /example:signup -->
@@ -464,7 +464,7 @@
     <table>
       <tr><th>Name</th><th>What it holds</th></tr>
       <tr><td><code>error</code></td><td>One message for the whole thing: the server's <code>error</code> or <code>message</code>, or the errors joined together.</td></tr>
-      <tr><td><code>errors</code></td><td>A list for <code>&lt;jx-each&gt;</code>: <code>[{field, message, text}]</code>.</td></tr>
+      <tr><td><code>errors</code></td><td>A list for <code>&lt;each&gt;</code>: <code>[{field, message, text}]</code>.</td></tr>
       <tr><td><code>fieldErrors</code></td><td>The same by field, to show next to each input: <code>{{fieldErrors.email}}</code>.</td></tr>
     </table>
     <ul>
@@ -491,12 +491,12 @@
 
           <template jx:get="/api/team">
             <p>Lead:
-              <jx-each items="lead"><template jx:use="#person"></template></jx-each>
+              <each items="lead"><template jx:use="#person"></template></each>
             </p>
             <ul>
-              <jx-each items="members">
+              <each items="members">
                 <li><template jx:use="#person"></template></li>
-              </jx-each>
+              </each>
             </ul>
           </template>
           <!-- /example:team -->
@@ -507,7 +507,7 @@
 
     <ul>
       <li><strong>A template that loads itself.</strong> <code>&lt;template jx:get="…"&gt;</code> needs no wrapper element. jsonx swaps it for a <code>&lt;jx-view&gt;</code> element that takes no space in the layout, so its content sits in the page as if written there.</li>
-      <li><strong><code>&lt;jx-each&gt;</code> with one object</strong> draws once, with the object's fields in scope. Here it lets <code>#person</code> read <code>lead.name</code> as <code>{{name}}</code>.</li>
+      <li><strong><code>&lt;each&gt;</code> with one object</strong> draws once, with the object's fields in scope. Here it lets <code>#person</code> read <code>lead.name</code> as <code>{{name}}</code>.</li>
       <li><strong>Across pages:</strong> <code>&lt;template src="nav.jx"&gt;&lt;/template&gt;</code> pulls in a file of HTML, such as a shared nav bar or partials. Conduit's pages share their nav bar this way.</li>
     </ul>
   </section>
@@ -553,18 +553,18 @@
 
           <div on:load="products">
             <template>
-              <jx-if test="error"><p class="error">{{error}}</p></jx-if>
-              <jx-each items="products">
+              <if test="error"><p class="error">{{error}}</p></if>
+              <each items="products">
                 <button on:click="add" jx:vals="id name">Add {{name}} (£{{price}})</button>
-              </jx-each>
+              </each>
             </template>
           </div>
 
           <div jx:data="cart">
             <template>
-              <jx-each items="items"><p>{{qty}} × {{name}}</p></jx-each>
-              <jx-if test="count"><button on:click="empty">Empty the basket</button></jx-if>
-              <jx-else><p><small>Your basket is empty.</small></p></jx-else>
+              <each items="items"><p>{{qty}} × {{name}}</p></each>
+              <if test="count"><button on:click="empty">Empty the basket</button></if>
+              <else><p><small>Your basket is empty.</small></p></else>
             </template>
           </div>
           <!-- /example:shop -->
@@ -615,10 +615,10 @@
           <div jx:get="/api/poll">
             <template>
               <p>Tabs or spaces? {{total}} votes so far.</p>
-              <jx-each items="options">
+              <each items="options">
                 <vote-button label="{{label}}" votes="{{votes}}"
                              jx:post="/api/poll/{{id}}/vote" jx:trigger="vote"></vote-button>
-              </jx-each>
+              </each>
             </template>
           </div>
           <!-- /example:poll -->
@@ -642,9 +642,9 @@
     <h3>Templates</h3>
     <table>
       <tr><td><code>{{name}}</code>, <code>{{a.b}}</code>, <code>{{.}}</code></td><td>Print a value (always as text)</td></tr>
-      <tr><td><code>&lt;jx-each items="list"&gt;</code></td><td>Repeat for each item; names look in the item, then outwards</td></tr>
-      <tr><td><code>&lt;jx-if test="x"&gt;</code>, <code>test="!x"</code></td><td>Draw if there / not there</td></tr>
-      <tr><td><code>&lt;jx-else-if test="y"&gt;</code>, <code>&lt;jx-else&gt;</code></td><td>The rest of the chain</td></tr>
+      <tr><td><code>&lt;each items="list"&gt;</code></td><td>Repeat for each item; names look in the item, then outwards</td></tr>
+      <tr><td><code>&lt;if test="x"&gt;</code>, <code>test="!x"</code></td><td>Draw if there / not there</td></tr>
+      <tr><td><code>&lt;else-if test="y"&gt;</code>, <code>&lt;else&gt;</code></td><td>The rest of the chain</td></tr>
       <tr><td><code>value="{{draft}}"</code></td><td>Exactly one value: sets the live property if there is one</td></tr>
       <tr><td><code>class:done="{{done}}"</code></td><td>Toggle a class</td></tr>
       <tr><td><code>&lt;template jx:use="#id"&gt;</code></td><td>Draw another template here</td></tr>
@@ -674,6 +674,6 @@
   </section>
 </main>
 
-<script src="tutorial.js?v=37"></script>
+<script src="tutorial.js?v=38"></script>
 </body>
 </html>

@@ -10,8 +10,8 @@
   <script type="module" src="https://cdn.jsdelivr.net/npm/@awesome.me/webawesome@3.14.0/dist-cdn/webawesome.loader.js"></script>
 
   <!-- A pretend JSON server (remove it when you have a real one), then jsonx -->
-  <script src="mock-api.js?v=37"></script>
-  <script type="module" src="../../jsonx.js?v=37"></script>
+  <script src="mock-api.js?v=38"></script>
+  <script type="module" src="../../jsonx.js?v=38"></script>
 
   <!-- Follow the visitor's light/dark setting -->
   <script>
@@ -56,8 +56,8 @@
           todos: [{ id, title, done }], stats: { total, done, open, percent },
           draft, error }
 
-      Template rules: {{name}} prints a value, <jx-each> repeats what's inside it,
-      <jx-if> / <jx-else> show or hide it, and class:done="{{done}}" toggles a class.
+      Template rules: {{name}} prints a value, <each> repeats what's inside it,
+      <if> / <else> show or hide it, and class:done="{{done}}" toggles a class.
     -->
     <wa-card id="app" jx:get="api/todos">
       <wa-skeleton effect="sheen"></wa-skeleton>
@@ -77,27 +77,27 @@
             </wa-button>
           </div>
 
-          <jx-if test="error">
+          <if test="error">
             <wa-callout variant="danger" size="s">
               <wa-icon slot="icon" name="circle-exclamation"></wa-icon>
               {{error}}
             </wa-callout>
-          </jx-if>
+          </if>
 
           <div class="wa-split">
             <wa-button-group label="Filter">
               <!-- jx:vals overrides the hidden filter for this one request -->
-              <jx-each items="filters">
+              <each items="filters">
                 <wa-button size="s" variant="{{variant}}" appearance="{{appearance}}"
                            jx:get="api/todos" jx:vals="filter=name">{{label}}</wa-button>
-              </jx-each>
+              </each>
             </wa-button-group>
 
             <wa-button size="s" appearance="plain" jx:delete="api/todos/completed">Clear completed</wa-button>
           </div>
 
           <ul class="todos">
-            <jx-each items="todos">
+            <each items="todos">
               <li class:done="{{done}}">
                 <!-- A form control, so its default trigger is "change" -->
                 <wa-checkbox checked="{{done}}" jx:post="api/todos/{{id}}/toggle">{{title}}</wa-checkbox>
@@ -105,10 +105,10 @@
                   <wa-icon name="trash" label="Delete {{title}}"></wa-icon>
                 </wa-button>
               </li>
-            </jx-each>
-            <jx-if test="!todos">
+            </each>
+            <if test="!todos">
               <li class="empty">Nothing here yet</li>
-            </jx-if>
+            </if>
           </ul>
 
           <wa-divider></wa-divider>

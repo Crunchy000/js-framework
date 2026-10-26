@@ -7,8 +7,8 @@
 
   <!-- A pretend GraphQL server (in real life it's on your server), then jsonx.
        There's no other script: paging, sorting and search are all HTML. -->
-  <script type="module" src="people-server.js?v=37"></script>
-  <script type="module" src="../../jsonx.js?v=37"></script>
+  <script type="module" src="people-server.js?v=38"></script>
+  <script type="module" src="../../jsonx.js?v=38"></script>
 
   <!-- The page's one query. The region's controls are its variables. -->
   <script type="text/graphql" id="people">
@@ -103,20 +103,20 @@
               </tr>
             </tbody>
           </table>
-          <jx-if test="!people.total"><p class="empty">No one matches "{{people.search}}".</p></jx-if>
+          <if test="!people.total"><p class="empty">No one matches "{{people.search}}".</p></if>
         </div>
 
         <div class="pager">
           <span>{{people.from}}–{{people.to}} of {{people.total}}</span>
           <div class="pages">
-            <jx-if test="people.previous"><button jx:query="#people" jx:vals='{"page": {{people.previous}}}' aria-label="Previous page">‹</button></jx-if>
-            <jx-else><button disabled aria-label="Previous page">‹</button></jx-else>
-            <jx-each items="people.pages">
-              <jx-if test="gap"><span class="gap">…</span></jx-if>
-              <jx-else><button class:current="{{current}}" jx:query="#people" jx:vals='{"page": {{number}}}'>{{label}}</button></jx-else>
-            </jx-each>
-            <jx-if test="people.next"><button jx:query="#people" jx:vals='{"page": {{people.next}}}' aria-label="Next page">›</button></jx-if>
-            <jx-else><button disabled aria-label="Next page">›</button></jx-else>
+            <if test="people.previous"><button jx:query="#people" jx:vals='{"page": {{people.previous}}}' aria-label="Previous page">‹</button></if>
+            <else><button disabled aria-label="Previous page">‹</button></else>
+            <each items="people.pages">
+              <if test="gap"><span class="gap">…</span></if>
+              <else><button class:current="{{current}}" jx:query="#people" jx:vals='{"page": {{number}}}'>{{label}}</button></else>
+            </each>
+            <if test="people.next"><button jx:query="#people" jx:vals='{"page": {{people.next}}}' aria-label="Next page">›</button></if>
+            <else><button disabled aria-label="Next page">›</button></else>
           </div>
         </div>
       </template>
