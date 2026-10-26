@@ -23,7 +23,7 @@ The card loads `api/todos` when the page opens and draws it with the template in
 
 **Live demos:** https://crunchy000.github.io/js-framework/
 
-**New to jsonx?** Start with the [tutorial](https://crunchy000.github.io/js-framework/examples/tutorial/): twelve live steps, from explicit ids to regions inside regions, with each request's JSON shown as it happens.
+**New to jsonx?** Start with the [tutorial](https://crunchy000.github.io/js-framework/examples/tutorial/): nine live steps, from one variable and a template to components that share state, with the code beside each result. The [server tutorial](https://crunchy000.github.io/js-framework/examples/server-tutorial/) covers loading views from a server.
 
 - [Todo app](https://crunchy000.github.io/js-framework/examples/todo/), built with [Web Awesome](https://webawesome.com) components
 - [Todo app, with functions](https://crunchy000.github.io/js-framework/examples/todo-functions/), the same app with no server: plain functions return the view
@@ -220,7 +220,7 @@ jsonx fires DOM events you can listen to from page code. They bubble and cross s
 
 ## Functions and shared data (optional)
 
-Views usually come from a server. Two opt-in features let the browser supply them too, for state that never touches a server or for reshaping an API you don't control. [Tutorial step 11](examples/tutorial/#s11) shows both. They're plain variables and functions:
+Views usually come from a server. Two opt-in features let the browser supply them too, for state that never touches a server or for reshaping an API you don't control. [Tutorial step 11](examples/server-tutorial/#s11) shows both. They're plain variables and functions:
 
 ```html
 <script>
@@ -427,7 +427,8 @@ At 1,000 rows every action takes about 100 ms. At 10,000 rows the browser itself
 | `examples/data-table/` | A 10,000-row table with search, sort and infinite scroll (`jx:trigger="revealed"`), from one plain function. |
 | `examples/basic/` | The feature tour: one live example per feature. |
 | `examples/components/` | `article-preview.jx`, a component shared by the Conduit apps, and `rich-editor.js`, their Tiptap editor. |
-| `examples/tutorial/` | The tutorial. |
+| `examples/tutorial/` | The tutorial: variables, events and components. |
+| `examples/server-tutorial/` | The server tutorial: views from a server, with jx:get and jx:post. |
 | `examples/conduit/` | The RealWorld app: one HTML file per page and no page script. `view-api.js` is a pretend backend-for-frontend that turns the RealWorld API (`mock-api.js`) into page-shaped views. |
 | `examples/conduit-functions/` | Conduit again, with no server of its own: `views.js` holds the view API as plain `fn:` functions that call the RealWorld API. It shares Conduit's styles, mock and article list. |
 | `examples/conduit-graphql/` | Conduit again, talking GraphQL. Queries live in the pages; `graphql-server.js` is a pretend GraphQL server (the real graphql-js, in `vendor/`) over the RealWorld mock. |

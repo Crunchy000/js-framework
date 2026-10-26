@@ -1,0 +1,48 @@
+<!-- Three components sharing one basket. The script at the top runs once, for
+     the whole file, and its variables stay inside this file. -->
+<script>
+  const PRICES = { tea: 3, coffee: 4, cake: 5 };
+  let basket = [];
+  let count = 0;
+  let total = "£0";
+
+  function add({ product }) {
+    const line = basket.find((l) => l.id === product);
+    if (line) line.qty++;
+    else basket.push({ id: product, qty: 1 });
+    sum();
+  }
+  function remove({ id }) {
+    basket = basket.filter((l) => l.id !== id);
+    sum();
+  }
+  function sum() {
+    count = basket.reduce((n, l) => n + l.qty, 0);
+    total = "£" + basket.reduce((n, l) => n + l.qty * PRICES[l.id], 0);
+  }
+</script>
+
+<!-- product comes from the attribute: the file has no `product`. -->
+<template id="buy-button" props="product">
+  <style>button { font: inherit; padding: 4px 12px; border-radius: 999px; border: 1px solid #8884; background: none; color: inherit; cursor: pointer; }</style>
+  <button on:click="add" jx:vals="product">Add {{product}}</button>
+</template>
+
+<!-- count isn't passed in: it's the file's `count`. -->
+<template id="basket-count" props="count">
+  <span>🧺 {{count}}</span>
+</template>
+
+<template id="basket-list" props="basket total">
+  <style>
+    ul { padding-left: 18px; margin: 6px 0; }
+    button { font-size: 12px; margin-left: 6px; border: 0; background: none; color: inherit; text-decoration: underline; cursor: pointer; }
+  </style>
+  <jx-if test="basket">
+    <ul>
+      <li jx:each="basket">{{qty}} × {{id}} <button on:click="remove" jx:vals="id">remove</button></li>
+    </ul>
+    <strong>Total {{total}}</strong>
+  </jx-if>
+  <jx-else><p>The basket is empty.</p></jx-else>
+</template>

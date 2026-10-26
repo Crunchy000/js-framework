@@ -1,0 +1,21 @@
+<!-- `form` makes the component a form field: a form sends its `value`
+     under its name, like an <input>. -->
+<template id="star-rating" form>
+  <script>
+    let value = 0;
+    let stars = [];
+    draw();
+
+    function draw() { stars = [1, 2, 3, 4, 5].map((n) => ({ id: n, n, on: n <= value })); }
+    function pick({ n }) {
+      value = n;
+      draw();
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+  </script>
+  <style>
+    button { font-size: 24px; line-height: 1; padding: 0 2px; border: 0; background: none; cursor: pointer; color: #a1a1aa66; }
+    button.on { color: #f59e0b; }
+  </style>
+  <button jx:each="stars" class:on="{{on}}" on:click="pick" jx:vals="n" type="button" aria-label="{{n}} stars">★</button>
+</template>

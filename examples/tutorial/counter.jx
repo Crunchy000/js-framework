@@ -1,0 +1,16 @@
+<!-- A component: the template's id is its tag name, and props are its attributes. -->
+<template id="click-counter" props="start:number">
+  <script>
+    // Runs once for each <click-counter>, so each one counts on its own.
+    let count = start ?? 0;
+    function up() { count++; }
+    function reset() { count = start ?? 0; }
+  </script>
+  <style>
+    /* Only this component: it draws into its own shadow DOM. */
+    button { font: inherit; padding: 6px 14px; border-radius: 999px; border: 1px solid #8884; background: none; color: inherit; cursor: pointer; }
+    strong { font-variant-numeric: tabular-nums; }
+  </style>
+  <button on:click="up">Clicked <strong>{{count}}</strong> times</button>
+  <button on:click="reset">Reset</button>
+</template>

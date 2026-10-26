@@ -1,0 +1,7 @@
+<!-- A component that doesn't know what picking means: it just says so. -->
+<template id="colour-picker" props="colours:json">
+  <style>
+    button { width: 34px; height: 34px; border-radius: 50%; border: 2px solid #0002; cursor: pointer; margin-right: 6px; }
+  </style>
+  <button jx:each="colours" jx:emit="pick" style="background: {{hex}}" aria-label="{{name}}"></button>
+</template>

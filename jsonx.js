@@ -426,9 +426,9 @@ function listen(el, trigger, run) {
     // "delay:300ms" waits until the events stop for 300ms (a debounce).
     clearTimeout(timer);
     if (trigger.delay > 0) {
-      timer = setTimeout(run, trigger.delay);
+      timer = setTimeout(function () { run(event); }, trigger.delay);
     } else {
-      run();
+      run(event);
     }
   }, { once: !!trigger.once });
 }
@@ -482,7 +482,13 @@ function attachEvents(el) {
     var request = function () { return { method: "POST", url: "fn:" + fillAddress(action), action: true }; };
     // A region's own load is what back, forward and jx:refresh repeat.
     if (trigger.event === "load" && el.hasAttribute("jx:template")) el.__jxLoad = request;
-    listen(el, trigger, function () { issueRequest(el, null, false, request()); });
+    listen(el, trigger, function (event) {
+      var info = request();
+      // A component's event (from jx:emit, say) sends its detail too.
+      var detail = event && event.detail;
+      if (detail && typeof detail === "object" && !Array.isArray(detail) && Object.getPrototypeOf(detail) === Object.prototype) info.detail = detail;
+      issueRequest(el, null, false, info);
+    });
   });
 }
 
@@ -685,6 +691,7 @@ function closeGaps(value) {
 function issueRequest(el, override, fromAddress, action) {
   var info = override || action || getMethodAndUrl(el);
   var values = override ? {} : fromAddress ? ownValues(el) : collectValues(el);
+  if (action && action.detail) Object.assign(values, action.detail);
   var url = info.url;
   var options = { method: info.method, headers: { Accept: "application/json" } };
 

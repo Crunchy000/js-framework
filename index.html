@@ -14,107 +14,147 @@
     main { max-width: 720px; margin: 0 auto; padding: var(--wa-space-2xl) 16px; }
     pre { overflow-x: auto; }
     .wa-grid wa-card { height: 100%; }
+    .wa-grid wa-card p { margin: 0; }
+    .hero { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: var(--wa-space-m); align-items: start; }
+    @media (max-width: 640px) { .hero { grid-template-columns: minmax(0, 1fr); } }
+    .hero pre { margin: 0; font-size: 13px; }
+    .live { padding: var(--wa-space-m); border: var(--wa-border-width-s) solid var(--wa-color-surface-border); border-radius: var(--wa-border-radius-l); background: var(--wa-color-surface-default); }
+    .live p { margin: 0 0 var(--wa-space-s); }
+    .points { margin: 0; padding-left: 1.2em; }
+    .points li + li { margin-top: var(--wa-space-2xs); }
   </style>
+  <script type="module" src="jsonx.js?v=37"></script>
 </head>
 <body>
   <main class="wa-stack wa-gap-xl">
     <header class="wa-stack wa-gap-xs">
       <h1 class="wa-heading-3xl">jsonx</h1>
-      <p class="wa-body-l">A tiny htmx-style framework for JSON APIs. Your server sends JSON shaped for the page, a plain HTML template draws it in the browser, and only what changed is updated. It plays nicely with web components.</p>
+      <p class="wa-body-l">HTML templates and plain JavaScript. Keep your data in ordinary variables, change it with ordinary functions, and the parts of the page that use it redraw by themselves. No build step, nothing to import, and every component is a real web component.</p>
     </header>
 
-<pre><code>&lt;wa-card jx:get="api/todos"&gt;
+    <div class="hero">
+<pre><code>&lt;script&gt;
+  let count = 0;
+  function up() { count++; }
+&lt;/script&gt;
+
+&lt;div jx:data="count"&gt;
   &lt;template&gt;
-    &lt;ul&gt;
-      &lt;jx-each items="todos"&gt;
-        &lt;li class:done="{{done}}"&gt;
-          &lt;wa-checkbox checked="{{done}}" jx:post="api/todos/{{id}}/toggle"&gt;{{title}}&lt;/wa-checkbox&gt;
-        &lt;/li&gt;
-      &lt;/jx-each&gt;
-    &lt;/ul&gt;
-    &lt;jx-if test="!todos"&gt;
-      &lt;p&gt;Nothing to do.&lt;/p&gt;
-    &lt;/jx-if&gt;
+    &lt;wa-button on:click="up"&gt;
+      Clicked {{count}} times
+    &lt;/wa-button&gt;
+    &lt;jx-if test="count"&gt;Nice.&lt;/jx-if&gt;
   &lt;/template&gt;
-&lt;/wa-card&gt;</code></pre>
+&lt;/div&gt;</code></pre>
+      <div class="live">
+        <p class="wa-caption-m">This, running:</p>
+        <script>
+          let count = 0;
+          function up() { count++; }
+        </script>
+        <div jx:data="count">
+          <template>
+            <wa-button on:click="up">Clicked {{count}} times</wa-button>
+            <jx-if test="count">Nice.</jx-if>
+          </template>
+        </div>
+      </div>
+    </div>
+
+    <ul class="points">
+      <li><strong>Events call functions.</strong> <code>on:click="add"</code>, <code>on:submit="save"</code>, <code>on:input.delay-300="search"</code>. A function gets the values of the inputs around it.</li>
+      <li><strong>Nothing to wire up.</strong> After a function runs, jsonx sees which variables changed and redraws only what uses them.</li>
+      <li><strong>Components in .jx files.</strong> A template with a tag name, its own script, props, lifecycle and form fields, drawn by Lit.</li>
+    </ul>
 
     <div class="wa-grid" style="--min-column-size: 200px;">
       <wa-card>
-          <h2 class="wa-heading-l">Tutorial</h2>
-          <p>Learn the language in twelve live steps, from explicit ids to regions inside regions, with each request's JSON shown as it happens.</p>
-          <wa-button slot="footer" variant="brand" href="examples/tutorial/">Start <wa-icon slot="end" name="arrow-right"></wa-icon></wa-button>
-        </wa-card>
+        <h3 class="wa-heading-m">Tutorial</h3>
+        <p>Nine live steps, from one variable to components that share state, with the code beside each result.</p>
+        <wa-button slot="footer" variant="brand" href="examples/tutorial/">Start <wa-icon slot="end" name="arrow-right"></wa-icon></wa-button>
+      </wa-card>
       <wa-card>
-          <h2 class="wa-heading-l">Todo app</h2>
+        <h3 class="wa-heading-m">Widgets</h3>
+        <p>Counters, a countdown, a star rating and a feedback form: components with their own state, lifecycle and form fields.</p>
+        <wa-button slot="footer" href="examples/widgets/">Open <wa-icon slot="end" name="arrow-right"></wa-icon></wa-button>
+      </wa-card>
+      <wa-card>
+        <h3 class="wa-heading-m">Café cart</h3>
+        <p>Three components in different parts of the page share one script. Nothing says what a button changes: jsonx works it out.</p>
+        <wa-button slot="footer" href="examples/cart/">Open <wa-icon slot="end" name="arrow-right"></wa-icon></wa-button>
+      </wa-card>
+      <wa-card>
+        <h3 class="wa-heading-m">Todos</h3>
+        <p>A full todo app: add, tick off, filter and clear, as plain functions and one template. Saved in your browser.</p>
+        <wa-button slot="footer" href="examples/todo-functions/">Open <wa-icon slot="end" name="arrow-right"></wa-icon></wa-button>
+      </wa-card>
+      <wa-card>
+        <h3 class="wa-heading-m">Calculator</h3>
+        <p>A calculator with a history tape. Each key calls one plain function.</p>
+        <wa-button slot="footer" href="examples/calculator/">Open <wa-icon slot="end" name="arrow-right"></wa-icon></wa-button>
+      </wa-card>
+    </div>
+
+    <wa-details summary="Examples that talk to servers">
+      <p>jsonx can also draw views from a server, with <code>jx:get</code>, <code>jx:post</code>, GraphQL and WebSockets. These examples use that.</p>
+      <div class="wa-grid" style="--min-column-size: 200px;">
+      <wa-card>
+          <h3 class="wa-heading-m">Todo app</h3>
           <p>A Web Awesome todo list: add, tick off, filter, delete and clear. Saved in your browser.</p>
           <wa-button slot="footer" href="examples/todo/">Open <wa-icon slot="end" name="arrow-right"></wa-icon></wa-button>
         </wa-card>
       <wa-card>
-          <h2 class="wa-heading-l">Todo app, with functions</h2>
-          <p>The same app with no server: plain functions in the page return the whole view, and the same template draws it.</p>
-          <wa-button slot="footer" href="examples/todo-functions/">Open <wa-icon slot="end" name="arrow-right"></wa-icon></wa-button>
-        </wa-card>
-      <wa-card>
-          <h2 class="wa-heading-l">Calculator</h2>
-          <p>A calculator with a history tape. Each key calls one plain function that returns the whole view.</p>
-          <wa-button slot="footer" href="examples/calculator/">Open <wa-icon slot="end" name="arrow-right"></wa-icon></wa-button>
-        </wa-card>
-      <wa-card>
-          <h2 class="wa-heading-l">Widgets</h2>
-          <p>Components written as templates with their own state, lifecycle hooks and form fields, like hand-written Lit components.</p>
-          <wa-button slot="footer" href="examples/widgets/">Open <wa-icon slot="end" name="arrow-right"></wa-icon></wa-button>
-        </wa-card>
-      <wa-card>
-          <h2 class="wa-heading-l">Café cart</h2>
-          <p>Three components in different parts of the page share one script in a .jx file. Nothing says what a button changes: jsonx works it out.</p>
-          <wa-button slot="footer" href="examples/cart/">Open <wa-icon slot="end" name="arrow-right"></wa-icon></wa-button>
-        </wa-card>
-      <wa-card>
-          <h2 class="wa-heading-l">Chat with Echo</h2>
+          <h3 class="wa-heading-m">Chat with Echo</h3>
           <p>A WebSocket chatbot with no page script. Every message from the server is the whole view, and only what changed is drawn.</p>
           <wa-button slot="footer" href="examples/chat/">Open <wa-icon slot="end" name="arrow-right"></wa-icon></wa-button>
         </wa-card>
       <wa-card>
-          <h2 class="wa-heading-l">Data table</h2>
+          <h3 class="wa-heading-m">Data table</h3>
           <p>10,000 people with search, sort and infinite scroll. Only new rows are drawn as you scroll.</p>
           <wa-button slot="footer" href="examples/data-table/">Open <wa-icon slot="end" name="arrow-right"></wa-icon></wa-button>
         </wa-card>
       <wa-card>
-          <h2 class="wa-heading-l">People, on GraphQL</h2>
+          <h3 class="wa-heading-m">People, on GraphQL</h3>
           <p>Search, sorting and paging with no script: one GraphQL query, and HTML that says which variables each button changes.</p>
           <wa-button slot="footer" href="examples/table-graphql/">Open <wa-icon slot="end" name="arrow-right"></wa-icon></wa-button>
         </wa-card>
       <wa-card>
-          <h2 class="wa-heading-l">Feature tour</h2>
+          <h3 class="wa-heading-m">Feature tour</h3>
           <p>Every attribute in one page, plus three patterns for using jsonx with your own web components.</p>
           <wa-button slot="footer" href="examples/basic/">Open <wa-icon slot="end" name="arrow-right"></wa-icon></wa-button>
         </wa-card>
       <wa-card>
-          <h2 class="wa-heading-l">Conduit</h2>
+          <h3 class="wa-heading-m">Conduit</h3>
           <p>The RealWorld Medium clone: feeds, articles, comments, profiles and sign-in.</p>
           <wa-button slot="footer" href="examples/conduit/">Open <wa-icon slot="end" name="arrow-right"></wa-icon></wa-button>
         </wa-card>
       <wa-card>
-          <h2 class="wa-heading-l">Conduit on GraphQL</h2>
+          <h3 class="wa-heading-m">Conduit on GraphQL</h3>
           <p>The same app with no view API: each page sends its own GraphQL query, and actions ask for the view again.</p>
           <wa-button slot="footer" href="examples/conduit-graphql/">Open <wa-icon slot="end" name="arrow-right"></wa-icon></wa-button>
         </wa-card>
       <wa-card>
-          <h2 class="wa-heading-l">Conduit with functions</h2>
+          <h3 class="wa-heading-m">Conduit with functions</h3>
           <p>Conduit with no server of its own: plain functions in the page call the RealWorld API and build each view.</p>
           <wa-button slot="footer" href="examples/conduit-functions/">Open <wa-icon slot="end" name="arrow-right"></wa-icon></wa-button>
         </wa-card>
       <wa-card>
-          <h2 class="wa-heading-l">Beacon</h2>
+          <h3 class="wa-heading-m">Beacon</h3>
           <p>A marketing site built from a Contentful-style CMS: sections, rich text and a signup form.</p>
           <wa-button slot="footer" href="examples/marketing/">Open <wa-icon slot="end" name="arrow-right"></wa-icon></wa-button>
         </wa-card>
       <wa-card>
-          <h2 class="wa-heading-l">Benchmark</h2>
+          <h3 class="wa-heading-m">Benchmark</h3>
           <p>How fast jsonx updates a list of 10 to 10,000 todos, compared with React, htmx and rebuilding the HTML.</p>
           <wa-button slot="footer" href="examples/benchmark/">Open <wa-icon slot="end" name="arrow-right"></wa-icon></wa-button>
         </wa-card>
-    </div>
+      <wa-card>
+        <h3 class="wa-heading-m">Server tutorial</h3>
+        <p>The first tutorial: twelve steps on loading views from a server with jx:get and jx:post, with each request's JSON shown.</p>
+        <wa-button slot="footer" href="examples/server-tutorial/">Open <wa-icon slot="end" name="arrow-right"></wa-icon></wa-button>
+      </wa-card>
+      </div>
+    </wa-details>
 
     <p><a href="https://github.com/Crunchy000/js-framework">Source and docs on GitHub</a></p>
   </main>

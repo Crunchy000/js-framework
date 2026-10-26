@@ -45,20 +45,6 @@ pre.code { margin: 0; padding: 14px 16px; background: var(--code-bg); border: 1p
 .side { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .result { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; position: relative; }
 .result::before { content: "Result"; position: absolute; top: -9px; left: 12px; padding: 0 6px; background: var(--bg); color: var(--muted); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
-.data { background: var(--code-bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; max-height: 420px; overflow: auto; }
-.data-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 6px; }
-.data-empty { color: var(--muted); font-size: 14px; margin: 0; }
-.data-entry { border-top: 1px dashed var(--line); padding: 8px 0; animation: flash .6s; }
-.data-entry:first-child { border-top: 0; padding-top: 0; }
-.data-entry:not(:first-child) { opacity: .6; }
-.data-entry pre { margin: 2px 0 6px; font: 12.5px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap; word-break: break-word; }
-.data-head { font: 600 13px ui-monospace, SFMono-Regular, Menlo, monospace; }
-.data-head .method { color: var(--accent); }
-.data-head .status { color: var(--error); }
-.data-meta, .data-label { font-size: 12px; color: var(--muted); }
-.data-label { margin-top: 4px; }
-.failed .data-label { color: var(--error); }
-@keyframes flash { from { background: var(--accent-soft); } to { background: transparent; } }
 .hl-attr { color: var(--hl-attr); } .hl-value { color: var(--hl-value); font-weight: 600; }
 .hl-tag { color: var(--hl-tag); font-weight: 600; } .hl-comment { color: var(--hl-comment); font-style: italic; }
 .j-key { color: var(--j-key); } .j-str { color: var(--j-str); } .j-num { color: var(--j-num); } .j-null { color: var(--j-null); }
@@ -86,9 +72,12 @@ pre.code { margin: 0; padding: 14px 16px; background: var(--code-bg); border: 1p
 #comments { margin-top: 12px; padding: 12px; border-radius: 8px; background: var(--bg); }
 .jx-loading { opacity: .55; transition: opacity .1s; }
 
-/* "Outline regions": every element with a template gets a dashed border and a label. */
-.show-regions [jx\:template]:not(button):not(jx-view) { outline: 2px dashed var(--accent); outline-offset: 4px; border-radius: 4px; position: relative; margin-top: 18px; }
-.show-regions [jx\:template]:not(button):not(jx-view)::before {
-  content: "region " attr(id); position: absolute; top: -22px; right: 0; font: 600 11px ui-monospace, monospace;
-  color: var(--accent); text-transform: none;
-}
+.file-name { font: 600 12px ui-monospace, monospace; color: var(--muted); margin: 0 0 4px; }
+.codes { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.result > * + * { margin-top: 10px; }
+.swatch { display: inline-block; width: 14px; height: 14px; border-radius: 50%; vertical-align: -2px; margin-right: 4px; }
+.lead code { font-size: .8em; }
+.codes > * { min-width: 0; max-width: 100%; }
+/* Long code: the result stays in view beside it. */
+.example > .result { position: sticky; top: 60px; align-self: start; }
+@media (max-width: 860px) { .example > .result { position: relative; top: 0; } }

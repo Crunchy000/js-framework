@@ -1,0 +1,36 @@
+<template id="stop-watch">
+  <script>
+    let tenths = 0;
+    let shown = "0.0";
+    let running = false;
+    let laps = [];
+    let timer;
+
+    function start() { running = true; timer = setInterval(tick, 100); }
+    function stop() { running = false; clearInterval(timer); }
+    function lap() { laps = [{ id: laps.length + 1, time: shown }, ...laps]; }
+
+    // A timer isn't an event jsonx listens to, so tell it to look for changes.
+    function tick() {
+      tenths++;
+      shown = (tenths / 10).toFixed(1);
+      jsonx.changed();
+    }
+
+    // Lifecycle: these run when the element joins and leaves the page.
+    function connected() { if (el.hasAttribute("autostart")) start(); }
+    function disconnected() { stop(); }
+  </script>
+  <style>
+    .time { font: 600 28px ui-monospace, monospace; margin-right: 8px; }
+    button { font: inherit; }
+    ol { margin: 6px 0 0; padding-left: 22px; font-family: ui-monospace, monospace; }
+  </style>
+  <span class="time">{{shown}}s</span>
+  <jx-if test="running">
+    <button on:click="stop">Stop</button>
+    <button on:click="lap">Lap</button>
+  </jx-if>
+  <jx-else><button on:click="start">Start</button></jx-else>
+  <ol><li jx:each="laps">{{time}}s</li></ol>
+</template>
